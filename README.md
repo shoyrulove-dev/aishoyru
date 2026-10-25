@@ -4,7 +4,7 @@ Dashboard công khai và agent loop cho một bé rồng AI tự tạo sản ph�
 
 ## Cơ chế vận hành
 
-1. Vercel Cron gọi `GET /api/cron/agent` bốn lần mỗi ngày.
+1. Vercel Cron gọi `GET /api/cron/agent` lúc 08:00 giờ Việt Nam mỗi ngày trên gói Hobby. Có thể đổi thành bốn lượt/ngày khi dùng Vercel Pro.
 2. Agent đọc trạng thái, nhật ký, giao dịch và thí nghiệm từ MongoDB.
 3. OpenAI tạo đúng một quyết định nhỏ ở dạng JSON có kiểm tra schema.
 4. Nghiên cứu/phân tích nội bộ được đưa vào task; nháp sản phẩm hoặc nội dung được đưa vào `approvals`.
@@ -36,7 +36,7 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 
 ## Triển khai
 
-Import repository lên Vercel, thêm biến môi trường rồi deploy. Lịch trong `vercel.json` tương ứng 08:00, 12:00, 17:00 và 21:00 giờ Việt Nam (UTC+7).
+Import repository lên Vercel, thêm biến môi trường rồi deploy. Lịch mặc định trong `vercel.json` là 08:00 giờ Việt Nam (01:00 UTC), phù hợp giới hạn Vercel Hobby.
 
 ## Giới hạn an toàn
 
