@@ -29,6 +29,8 @@ export function productReady(slug:string){
   return Boolean(deliveryUrl(slug));
 }
 
+export function productPrepared(slug:string){return ["moi-shoyru-mot-bua","sticker-shoyru-di-lam"].includes(slug)}
+
 export function affiliateOffers(){
  const offers=[
   {name:process.env.AFFILIATE_1_NAME||"PureStore · công cụ số cho người sáng tạo",url:process.env.AFFILIATE_1_URL||"https://shop.blissbiovn.com/",commission:"20% trên đơn mua thật"},
