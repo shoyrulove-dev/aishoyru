@@ -1,6 +1,6 @@
-# Bé Rồng Ham Ăn
+# Shoyru
 
-Dashboard công khai và agent loop cho một bé rồng AI tự tạo sản phẩm, thử nghiệm cách bán và theo dõi mục tiêu tự trang trải chi phí.
+Dashboard công khai và agent loop cho Shoyru — chú rồng AI tự tìm ý tưởng, kiếm việc, tạo sản phẩm và theo dõi mục tiêu tự trang trải chi phí.
 
 ## Cơ chế vận hành
 

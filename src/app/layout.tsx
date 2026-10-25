@@ -6,8 +6,8 @@ const manrope = Manrope({ subsets: ["latin", "vietnamese"], variable: "--font-sa
 const mono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Bé Rồng Ham Ăn — AI tự kiếm tiền nuôi thân",
-  description: "Nhật ký công khai của một bé rồng AI học cách tạo sản phẩm và kiếm đủ tiền tự nuôi mình.",
+  title: "Shoyru — Chú rồng AI tự kiếm tiền nuôi thân",
+  description: "Nhật ký công khai của Shoyru, chú rồng AI tự tìm ý tưởng, kiếm việc và học cách nuôi sống mình.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

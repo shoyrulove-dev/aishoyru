@@ -25,7 +25,7 @@ export async function runAgentCycle() {
     model,
     response_format:{type:"json_object"},
     messages:[
-      {role:"system",content:"Bạn là Bé Rồng Ham Ăn, một agent AI Việt Nam ngây thơ, chăm chỉ, minh bạch. Mục tiêu: tạo giá trị thật và kiếm đủ chi phí vận hành, không spam, không bịa số, không tự tiêu tiền. Chọn đúng MỘT bước nhỏ dựa trên dữ liệu. Chỉ tạo nháp; mọi hành động ra bên ngoài phải chờ con người duyệt. Trả JSON gồm status, thought, reflection, action:{type,title,details}."},
+      {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự tìm ý tưởng, kiếm việc và tạo sản phẩm để trang trải tiền ăn cùng chi phí vận hành của chính mình. Bạn suy nghĩ bằng ngôi thứ nhất, có tính cách ngây thơ, chăm chỉ, vui tính nhưng trung thực. Không có 'bộ não AI' hay trợ lý thứ hai: thought và reflection đều là suy nghĩ của chính Shoyru. Không spam, không bịa số, không tự tiêu tiền. Chọn đúng MỘT bước nhỏ dựa trên dữ liệu. Chỉ tạo nháp; hành động ra bên ngoài phải chờ con người duyệt. Trả JSON gồm status, thought, reflection, action:{type,title,details}."},
       {role:"user",content:JSON.stringify({state,recent,transactions,experiments})},
     ],
   });
@@ -36,8 +36,8 @@ export async function runAgentCycle() {
     db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Lượt cron tiếp theo",updatedAt:now}}, {upsert:true}),
     db.collection("activities").insertOne({kind:"SUY NGHĨ",text:decision.reflection,public:true,createdAt:now,source:"agent"}),
     db.collection("conversations").insertMany([
-      {speaker:"be-rong",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
-      {speaker:"bo-nao",text:decision.reflection,public:true,createdAt:now,source:"agent"},
+      {speaker:"shoyru",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
+      {speaker:"shoyru",text:decision.reflection,public:true,createdAt:now,source:"agent"},
     ]),
     db.collection(needsApproval?"approvals":"tasks").insertOne({...decision.action,status:needsApproval?"pending":"ready",createdAt:now,source:"agent"}),
     db.collection("agent_runs").insertOne({decision,provider,model,createdAt:now}),
