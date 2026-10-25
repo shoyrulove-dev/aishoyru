@@ -25,7 +25,8 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 ## Biến môi trường cần trên Vercel
 
 - `MONGODB_URI`, `MONGODB_DB`
-- `OPENAI_API_KEY`, `OPENAI_MODEL`
+- `AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `GROQ_API_KEY` cho giai đoạn thử nghiệm
+- Có thể đổi sang `AI_PROVIDER=openai` và thêm `OPENAI_API_KEY` mà không sửa code
 - `CRON_SECRET`: Vercel tự gửi dưới dạng Bearer khi chạy cron
 - `ADMIN_API_KEY`: khóa tự đặt để mở `/admin`
 - `SEPAY_API_KEY`: khóa xác minh webhook SePay
