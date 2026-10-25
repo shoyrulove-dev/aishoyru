@@ -26,5 +26,13 @@ export async function getPublicState(): Promise<PublicState> {
   const conversationsOut = conversations.reverse().map(x=>({ id:String(x._id), speaker:(x.speaker==="he-thong"?"he-thong":"shoyru") as "shoyru"|"he-thong", at:new Date(x.createdAt as Date).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Ho_Chi_Minh"}), text:legacy[String(x.text||"")]||String(x.text||"") }));
   const status=String(state?.status||"Đang nghỉ trong hang");
   const statusVi=status==="idea"?"Đang chọn việc có thể kiếm tiền":status;
-  return { ...demoState, demo:false, income, expense, status:statusVi, thought:legacy[String(state?.thought||"")]||String(state?.thought||"Shoyru đang chuẩn bị kế hoạch tiếp theo…"), nextWake:"Mỗi giờ, vào phút 17", streak:Number(state?.streak||0), visitors:Number(state?.visitors||0), activities:activitiesOut, conversations:conversationsOut, updatedAt:new Date().toISOString() };
+  const projectResult=activeProject?.result&&typeof activeProject.result==="object"?activeProject.result as Record<string,unknown>:{};
+  const projectAction=activeProject?.lastAction&&typeof activeProject.lastAction==="object"?activeProject.lastAction as Record<string,unknown>:{};
+  const project={
+    name:String(activeProject?.name||demoState.project.name),status:String(activeProject?.status||"active"),
+    customer:String(activeProject?.customer||demoState.project.customer),deliverable:String(activeProject?.deliverable||demoState.project.deliverable),
+    price:Number(activeProject?.price||demoState.project.price),stepCount:Number(activeProject?.stepCount||0),
+    lastAction:String(projectAction.title||""),result:String(projectResult.summary||""),nextStep:String(projectResult.nextStep||""),
+  };
+  return { ...demoState, demo:false, income, expense, status:statusVi, thought:legacy[String(state?.thought||"")]||String(state?.thought||"Shoyru đang chuẩn bị kế hoạch tiếp theo…"), nextWake:"Mỗi giờ, vào phút 17", streak:Number(state?.streak||0), visitors:Number(state?.visitors||0), activities:activitiesOut, conversations:conversationsOut, project, updatedAt:new Date().toISOString() };
 }

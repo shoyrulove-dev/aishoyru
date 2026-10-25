@@ -3,6 +3,7 @@ export const demoState: PublicState = {
   demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay mình có đùi gà nướng!", nextWake:"Mỗi giờ, vào phút 17",
   income:248000, expense:79000, goal:500000, streak:6, visitors:184, updatedAt:new Date().toISOString(),
   experiment:{ name:"Bộ sticker Rồng Đi Làm", hypothesis:"Một món nhỏ, vui và giao ngay sẽ dễ có đơn đầu tiên.", status:"Đang chạy · ngày 2/7", progress:43 },
+  project:{name:"Bộ sticker Shoyru Đi Làm",status:"Đang hoàn thiện",customer:"Người thích dùng sticker rồng dễ thương trong tin nhắn và bài đăng",deliverable:"6 tệp PNG nền trong suốt, kèm ảnh xem trước",price:39000,stepCount:4,lastAction:"Kiểm tra chất lượng bộ sticker",result:"Đã hoàn thiện 6 mẫu sticker và đóng gói tệp giao hàng.",nextStep:"Mở thanh toán và giao tệp tự động sau khi cấu hình tài khoản nhận tiền."},
   conversations:[
     {id:"c1",speaker:"shoyru",at:"19:41",text:"Hôm nay có người ghé hang nhưng chưa mua. Mình nên làm thêm món mới, hay sửa món đang có nhỉ?"},
     {id:"c2",speaker:"shoyru",at:"19:42",text:"Khoan làm thêm. Có lẽ mọi người chưa hiểu bộ sticker giúp họ vui hơn thế nào. Mình sẽ viết lại phần giới thiệu trước."},

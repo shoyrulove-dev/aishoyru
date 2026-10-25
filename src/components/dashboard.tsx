@@ -47,6 +47,21 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
     <div className="panel rounded-2xl p-5"><Eyebrow>LỊCH LÀM VIỆC</Eyebrow><p className="font-extrabold">Lượt tiếp theo: {data.nextWake}</p></div>
    </div>
   </section>
+  <section className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
+   <div className="panel overflow-hidden rounded-[2rem]">
+    <div className="grid gap-0 lg:grid-cols-[.72fr_1.28fr]">
+     <div className="border-b border-white/8 bg-[#18130f] p-6 lg:border-b-0 lg:border-r sm:p-8">
+      <Eyebrow>SẢN PHẨM SHOYRU ĐANG THEO ĐUỔI</Eyebrow><h2 className="text-3xl font-black">{data.project.name}</h2>
+      <p className="mt-4 text-sm leading-6 text-[#aaa39a]">Dành cho: {data.project.customer}</p>
+      <div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full bg-[#ffbd3e]/10 px-3 py-1 text-xs font-bold text-[#ffcf70]">{money(data.project.price)}</span><span className="rounded-full bg-[#55d88a]/10 px-3 py-1 text-xs font-bold text-[#72d78a]">{projectStatus(data.project.status)}</span><span className="rounded-full bg-white/5 px-3 py-1 text-xs text-[#aaa39a]">{data.project.stepCount} lượt đã làm</span></div>
+     </div>
+     <div className="p-6 sm:p-8">
+      <div className="grid gap-6 sm:grid-cols-2"><div><Eyebrow>ĐẦU RA BÁN ĐƯỢC</Eyebrow><p className="leading-7 text-[#e8dfd1]">{data.project.deliverable}</p></div><div><Eyebrow>VIỆC VỪA HOÀN THÀNH</Eyebrow><p className="leading-7 text-[#e8dfd1]">{data.project.result||data.project.lastAction||"Chưa có kết quả mới."}</p></div></div>
+      <div className="mt-6 rounded-2xl border border-[#ffbd3e]/15 bg-[#ffbd3e]/5 p-4"><p className="text-xs font-black tracking-[.16em] text-[#ffbd3e]">BƯỚC KẾ TIẾP</p><p className="mt-2 text-sm leading-6 text-[#c9c1b5]">{data.project.nextStep||"Shoyru sẽ chọn một việc nhỏ trong lượt làm việc kế tiếp."}</p></div>
+     </div>
+    </div>
+   </div>
+  </section>
   <section className="hidden">
    <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-[#ff5722]/10 blur-[120px]"/>
    <div className="relative z-10">
@@ -106,3 +121,4 @@ function LiveFeed({messages,nextWake}:{messages:PublicState["conversations"];nex
 }
 function Stat({icon,label,value,tone}:{icon:React.ReactNode,label:string,value:string,tone:string}){const c:{[k:string]:string}={gold:"text-[#ffbd3e]",orange:"text-[#ff8255]",green:"text-[#72d78a]",red:"text-[#ed6c62]"};return <div className="p-5 sm:p-7"><div className={`${c[tone]} mb-4 [&>svg]:h-5 [&>svg]:w-5`}>{icon}</div><p className="text-xs text-[#88837c]">{label}</p><p className="mt-1 text-xl font-black sm:text-2xl">{value}</p></div>}
 function Rule({icon,title,text}:{icon:React.ReactNode,title:string,text:string}){return <div className="panel rounded-2xl p-5"><div className="mb-5 text-[#ffbd3e] [&>svg]:h-5 [&>svg]:w-5">{icon}</div><h3 className="font-extrabold">{title}</h3><p className="mt-2 text-sm leading-6 text-[#938e87]">{text}</p></div>}
+function projectStatus(status:string){return ({active:"Đang làm",validating:"Đang kiểm tra",ready:"Sẵn sàng bán"} as Record<string,string>)[status]||status}
