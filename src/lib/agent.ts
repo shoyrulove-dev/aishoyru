@@ -30,7 +30,8 @@ async function inspectFundingSource(index:number){
     const response=await fetch(source.url,{headers:{"User-Agent":"Shoyru grant research bot/1.0 (+https://aishoyru.vercel.app)"},signal:AbortSignal.timeout(9000)});
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const html=(await response.text()).slice(0,250000);
-    const text=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g," ").trim().slice(0,14000);
+    const withLinks=html.replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,(_match,href:string,label:string)=>{try{return `${label} [${new URL(href,source.url).toString()}]`}catch{return label}});
+    const text=withLinks.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g," ").trim().slice(0,14000);
     return {...source,checkedAt:new Date().toISOString(),text,error:""};
   }catch(error){return {...source,checkedAt:new Date().toISOString(),text:"",error:error instanceof Error?error.message:"Không đọc được nguồn"}}
 }
