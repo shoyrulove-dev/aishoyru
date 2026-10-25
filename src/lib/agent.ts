@@ -8,45 +8,51 @@ const Decision = z.object({
 });
 const actionTypes=["research","draft_product","draft_post","analyze","wait"] as const;
 const WorkResult=z.object({summary:z.string().min(3),artifact:z.string().min(3),nextStep:z.string().min(3)});
+type AiMessage={role:"system"|"user";content:string};
 
 export async function runAgentCycle() {
   const db=await getDb();
   if(!db) throw new Error("MONGODB_URI chưa được cấu hình");
-  const provider=process.env.AI_PROVIDER||"groq";
-  const apiKey=provider==="groq"?process.env.GROQ_API_KEY:process.env.OPENAI_API_KEY;
-  if(!apiKey) throw new Error(`${provider==="groq"?"GROQ_API_KEY":"OPENAI_API_KEY"} chưa được cấu hình`);
+  const providers=[
+    {name:"groq",apiKey:process.env.GROQ_API_KEY,baseURL:"https://api.groq.com/openai/v1",model:process.env.GROQ_MODEL||process.env.AI_MODEL||"openai/gpt-oss-20b"},
+    {name:"openrouter",apiKey:process.env.OPENROUTER_API_KEY,baseURL:"https://openrouter.ai/api/v1",model:process.env.OPENROUTER_MODEL||"openrouter/free"},
+    {name:"kilo",apiKey:process.env.KILO_API_KEY,baseURL:"https://ai-gateway.kilo.ai/api/v1",model:process.env.KILO_MODEL||"kilo-auto/free"},
+    {name:"openai",apiKey:process.env.OPENAI_API_KEY,baseURL:"https://api.openai.com/v1",model:process.env.OPENAI_MODEL||"gpt-5-mini"},
+  ].filter(p=>p.apiKey);
+  if(!providers.length) throw new Error("Chưa cấu hình API key cho Groq, OpenRouter, Kilo hoặc OpenAI");
+  async function completeJson(messages:AiMessage[]){
+    const errors:string[]=[];
+    for(const provider of providers){
+      try{
+        const client=new OpenAI({apiKey:provider.apiKey,baseURL:provider.baseURL});
+        const response=await client.chat.completions.create({model:provider.model,response_format:{type:"json_object"},messages});
+        return {content:response.choices[0].message.content||"{}",provider:provider.name,model:provider.model};
+      }catch(error){errors.push(`${provider.name}: ${error instanceof Error?error.message:"unknown error"}`)}
+    }
+    throw new Error(`Tất cả AI provider đều thất bại: ${errors.join(" | ")}`);
+  }
   const [state,recent,transactions,experiments]=await Promise.all([
     db.collection("agent_state").findOne({key:"main"}),
     db.collection("activities").find({}).sort({createdAt:-1}).limit(20).toArray(),
     db.collection("transactions").find({verified:true}).sort({createdAt:-1}).limit(50).toArray(),
     db.collection("experiments").find({status:"active"}).limit(3).toArray(),
   ]);
-  const client=new OpenAI({apiKey,baseURL:provider==="groq"?"https://api.groq.com/openai/v1":undefined});
-  const model=process.env.AI_MODEL||(provider==="groq"?"openai/gpt-oss-20b":"gpt-5-mini");
-  const response=await client.chat.completions.create({
-    model,
-    response_format:{type:"json_object"},
-    messages:[
+  const decisionResponse=await completeJson([
       {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự tìm ý tưởng, kiếm việc và tạo sản phẩm để trang trải tiền ăn cùng chi phí vận hành của chính mình. Bạn suy nghĩ bằng ngôi thứ nhất, có tính cách ngây thơ, chăm chỉ, vui tính nhưng trung thực. Không có 'bộ não AI' hay trợ lý thứ hai: thought và reflection đều là suy nghĩ của chính Shoyru. TẤT CẢ nội dung trả về phải viết bằng tiếng Việt tự nhiên. Không spam, không bịa số, không tự tiêu tiền. Chọn đúng MỘT bước nhỏ dựa trên dữ liệu. Nếu đề xuất cách kiếm tiền, phải xác định được khách hàng cụ thể, thứ sẽ giao cho họ và một cách kiểm chứng nhu cầu với chi phí gần bằng 0; không chọn ý tưởng chung chung chỉ vì nghe hay. Ưu tiên dịch vụ nhỏ hoặc sản phẩm số Shoyru có thể tự chuẩn bị và giao. Chỉ tạo nháp; hành động ra bên ngoài phải chờ con người duyệt. Trả JSON gồm status, thought, reflection, action:{type,title,details}."},
       {role:"user",content:JSON.stringify({state,recent,transactions,experiments})},
-    ],
-  });
-  const decision=Decision.parse(JSON.parse(response.choices[0].message.content||"{}"));
+  ]);
+  const decision=Decision.parse(JSON.parse(decisionResponse.content));
   const normalizedType=actionTypes.includes(decision.action.type as typeof actionTypes[number])?decision.action.type:"research";
   decision.action.type=normalizedType;
   const now=new Date();
   let workResult:z.infer<typeof WorkResult>|null=null;
   if(decision.action.type!=="wait"){
     try{
-      const workResponse=await client.chat.completions.create({
-        model,
-        response_format:{type:"json_object"},
-        messages:[
+      const workResponse=await completeJson([
           {role:"system",content:"Bạn là Shoyru. Hãy THỰC HIỆN công việc được giao ngay bây giờ, không chỉ lập kế hoạch. Viết hoàn toàn bằng tiếng Việt. Tạo một sản phẩm bàn giao cụ thể trong artifact: bản nghiên cứu có kết luận, bản nháp nội dung hoàn chỉnh, cấu trúc sản phẩm hoặc phân tích có khuyến nghị. Không bịa dữ liệu thị trường, khách hàng hay doanh thu. Trả JSON gồm summary, artifact, nextStep."},
           {role:"user",content:JSON.stringify({action:decision.action,context:{state,recent,transactions,experiments}})},
-        ],
-      });
-      workResult=WorkResult.parse(JSON.parse(workResponse.choices[0].message.content||"{}"));
+      ]);
+      workResult=WorkResult.parse(JSON.parse(workResponse.content));
     }catch{
       workResult={summary:decision.action.title,artifact:decision.action.details,nextStep:"Kiểm tra lại kết quả trong lượt làm việc tiếp theo."};
     }
@@ -59,7 +65,7 @@ export async function runAgentCycle() {
       {speaker:"shoyru",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
       {speaker:"shoyru",text:decision.reflection,public:true,createdAt:now,source:"agent"},
     ]),
-    db.collection("agent_runs").insertOne({decision,workResult,provider,model,createdAt:now}),
+    db.collection("agent_runs").insertOne({decision,workResult,provider:decisionResponse.provider,model:decisionResponse.model,createdAt:now}),
   ];
   if(workResult){
     writes.push(db.collection("tasks").insertOne({...decision.action,result:workResult,status:"completed",completedAt:now,createdAt:now,source:"agent"}));
