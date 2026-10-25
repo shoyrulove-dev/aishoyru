@@ -1,0 +1,12 @@
+@import "tailwindcss";
+:root { --ink:#f8f1df; --ember:#ff6b35; --gold:#ffbd3e; --cave:#0c1014; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--cave); color:var(--ink); font-family:var(--font-sans),sans-serif; }
+::selection { background:#ff6b35; color:white; }
+.noise { background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E"); }
+.panel { background:linear-gradient(145deg,rgba(26,33,39,.96),rgba(17,22,27,.94)); border:1px solid rgba(255,255,255,.08); box-shadow:0 24px 80px rgba(0,0,0,.24); }
+.glow { box-shadow:0 0 70px rgba(255,107,53,.14); }
+@keyframes breathe { 50% { transform:translateY(-7px) rotate(-1deg); } }
+.dragon { animation:breathe 4.5s ease-in-out infinite; filter:drop-shadow(0 30px 35px rgba(0,0,0,.4)); }
+@media (prefers-reduced-motion: reduce) { * { animation:none!important; scroll-behavior:auto!important; } }
