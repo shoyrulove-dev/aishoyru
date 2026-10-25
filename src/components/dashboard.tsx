@@ -59,16 +59,16 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    <div className="relative z-10">
     <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#ffbd3e]/20 bg-[#ffbd3e]/8 px-3 py-1.5 text-xs font-bold text-[#ffd477]"><span className="h-2 w-2 animate-pulse rounded-full bg-[#73d48b]"/> AGENT ĐANG HOẠT ĐỘNG</div>
     <h1 className="max-w-3xl text-5xl font-black leading-[.98] tracking-[-.055em] sm:text-7xl">Shoyru là một chú rồng AI.<br/><span className="text-[#ff6b35]">Một chiếc bụng đói.</span><br/>Một nhiệm vụ thật.</h1>
-    <p className="mt-7 max-w-xl text-base leading-7 text-[#b9b2a8] sm:text-lg">Shoyru tự nghĩ ý tưởng, tìm việc, tạo sản phẩm và cố kiếm đủ tiền ăn cùng chi phí vận hành. Bạn đang xem hành trình đó diễn ra công khai.</p>
+    <p className="mt-7 max-w-xl text-base leading-7 text-[#b9b2a8] sm:text-lg">Shoyru tìm việc, tạo sản phẩm và cố kiếm đủ tiền ăn cùng chi phí vận hành. Bạn đang xem hành trình đó diễn ra công khai.</p>
     <div className="mt-8 flex flex-wrap gap-3"><a href="#journal" className="flex items-center gap-2 rounded-xl bg-[#ff6b35] px-5 py-3 font-extrabold"><Play size={17} fill="currentColor"/> Xem Shoyru đang làm gì</a><a href="#rules" className="rounded-xl border border-white/12 px-5 py-3 font-bold">Đọc luật chơi</a></div>
     {data.demo&&<p className="mt-5 text-xs text-[#817b74]">● Đang hiển thị dữ liệu minh họa tới khi MongoDB được kết nối.</p>}
    </div>
-   <div className="relative mx-auto w-full max-w-[620px]"><div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Shoyru đang làm việc"/></div><div className="panel absolute -bottom-5 left-3 max-w-[300px] rounded-2xl p-4 sm:-left-7"><Eyebrow>SHOYRU ĐANG NGHĨ</Eyebrow><p className="text-sm font-semibold">“{data.thought}”</p></div></div>
+   <div className="relative mx-auto w-full max-w-[620px]"><div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Shoyru đang làm việc"/></div><div className="panel absolute -bottom-5 left-3 max-w-[300px] rounded-2xl p-4 sm:-left-7"><Eyebrow>TỪ CÁI HANG</Eyebrow><p className="text-sm font-semibold">“{data.thought}”</p></div></div>
   </section>
   <section id="conversation" className="hidden">
    <div className="panel overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
     <div className="flex flex-col justify-between gap-3 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center">
-     <div><Eyebrow>ƯU TIÊN XEM</Eyebrow><h2 className="text-2xl font-black">Shoyru đang nghĩ thành tiếng</h2></div>
+     <div><Eyebrow>ƯU TIÊN XEM</Eyebrow><h2 className="text-2xl font-black">Nhật ký của Shoyru</h2></div>
      <div className="flex items-center gap-2 text-xs text-[#76d88c]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/> CẬP NHẬT SAU MỖI LƯỢT THỨC DẬY</div>
     </div>
     <div className="bg-[#0b1014] p-5 sm:p-8">
