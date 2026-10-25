@@ -20,6 +20,5 @@ export async function getPublicState(): Promise<PublicState> {
   const conversationsOut = conversations.reverse().map(x=>({ id:String(x._id), speaker:(x.speaker==="he-thong"?"he-thong":"shoyru") as "shoyru"|"he-thong", at:new Date(x.createdAt as Date).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Ho_Chi_Minh"}), text:legacy[String(x.text||"")]||String(x.text||"") }));
   const status=String(state?.status||"Đang nghỉ trong hang");
   const statusVi=status==="idea"?"Đang chọn việc có thể kiếm tiền":status;
-  const rawWake=String(state?.nextWake||"08:00 mỗi ngày");
-  return { ...demoState, demo:false, income, expense, status:statusVi, thought:legacy[String(state?.thought||"")]||String(state?.thought||"Shoyru đang chuẩn bị kế hoạch tiếp theo…"), nextWake:rawWake.includes("cron")?"08:00 mỗi ngày":rawWake, streak:Number(state?.streak||0), visitors:Number(state?.visitors||0), activities:activitiesOut, conversations:conversationsOut, updatedAt:new Date().toISOString() };
+  return { ...demoState, demo:false, income, expense, status:statusVi, thought:legacy[String(state?.thought||"")]||String(state?.thought||"Shoyru đang chuẩn bị kế hoạch tiếp theo…"), nextWake:"Mỗi giờ, vào phút 17", streak:Number(state?.streak||0), visitors:Number(state?.visitors||0), activities:activitiesOut, conversations:conversationsOut, updatedAt:new Date().toISOString() };
 }

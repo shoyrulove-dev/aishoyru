@@ -1,6 +1,6 @@
 import type { PublicState } from "./types";
 export const demoState: PublicState = {
-  demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay mình có đùi gà nướng!", nextWake:"08:00 ngày mai",
+  demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay mình có đùi gà nướng!", nextWake:"Mỗi giờ, vào phút 17",
   income:248000, expense:79000, goal:500000, streak:6, visitors:184, updatedAt:new Date().toISOString(),
   experiment:{ name:"Bộ sticker Rồng Đi Làm", hypothesis:"Một món nhỏ, vui và giao ngay sẽ dễ có đơn đầu tiên.", status:"Đang chạy · ngày 2/7", progress:43 },
   conversations:[

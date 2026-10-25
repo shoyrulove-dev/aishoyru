@@ -51,7 +51,7 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    <div className="grid gap-4 sm:grid-cols-3">
     <div className="panel rounded-2xl p-5"><Eyebrow>VIỆC HIỆN TẠI</Eyebrow><p className="font-extrabold">{data.status}</p></div>
     <div className="panel rounded-2xl p-5"><Eyebrow>MỤC TIÊU THÁNG</Eyebrow><p className="font-extrabold text-[#ffbd3e]">{money(data.goal)} tiền ăn + vận hành</p></div>
-    <div className="panel rounded-2xl p-5"><Eyebrow>LỊCH LÀM VIỆC</Eyebrow><p className="font-extrabold">Trở lại lúc {data.nextWake}</p></div>
+    <div className="panel rounded-2xl p-5"><Eyebrow>LỊCH LÀM VIỆC</Eyebrow><p className="font-extrabold">Lượt tiếp theo: {data.nextWake}</p></div>
    </div>
   </section>
   <section className="hidden">

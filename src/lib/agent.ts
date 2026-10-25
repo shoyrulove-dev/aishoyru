@@ -61,7 +61,7 @@ export async function runAgentCycle() {
   }
   const needsApproval=["draft_product","draft_post"].includes(decision.action.type);
   const writes:Promise<unknown>[]=[
-    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"08:00 mỗi ngày",updatedAt:now}}, {upsert:true}),
+    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Mỗi giờ, vào phút 17",updatedAt:now}}, {upsert:true}),
     db.collection("activities").insertOne({kind:"SUY NGHĨ",text:decision.reflection,public:true,createdAt:now,source:"agent"}),
     db.collection("conversations").insertMany([
       {speaker:"shoyru",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
