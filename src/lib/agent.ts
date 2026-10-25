@@ -8,6 +8,7 @@ const Decision = z.object({
   thought:z.string().trim().min(3).transform(value=>clip(value,180)),
   reflection:z.string().trim().min(3).transform(value=>clip(value,500)),
   action:z.object({type:z.string(),title:z.string(),details:z.string()}),
+  work:z.object({summary:z.string().min(3),artifact:z.string().min(3),nextStep:z.string().min(3)}).optional(),
 });
 const actionTypes=["research","build_product","validate","improve","draft_post","wait"] as const;
 const WorkResult=z.object({summary:z.string().min(3),artifact:z.string().min(3),nextStep:z.string().min(3)});
@@ -36,7 +37,7 @@ export async function runAgentCycle() {
     const errors:string[]=[];
     for(const provider of providers){
       try{
-        const client=new OpenAI({apiKey:provider.apiKey,baseURL:provider.baseURL});
+        const client=new OpenAI({apiKey:provider.apiKey,baseURL:provider.baseURL,timeout:20000,maxRetries:0});
         const response=await client.chat.completions.create({model:provider.model,response_format:{type:"json_object"},messages});
         return {content:response.choices[0].message.content||"{}",provider:provider.name,model:provider.model};
       }catch(error){errors.push(`${provider.name}: ${error instanceof Error?error.message:"unknown error"}`)}
@@ -52,7 +53,7 @@ export async function runAgentCycle() {
   ]);
   const projectContext=activeProject||{name:"Bộ sticker Shoyru Đi Làm",status:"active",customer:"Người dùng mạng xã hội và chat thích sticker rồng dễ thương",deliverable:"Bộ 6 sticker PNG; ảnh xem trước đã có, cần kiểm tra chất lượng, tách tệp và hoàn thiện nội dung bán hàng",price:39000};
   const decisionResponse=await completeJson([
-      {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. TẤT CẢ nội dung phải bằng tiếng Việt tự nhiên. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo một dây chuyền thực tế: nghiên cứu vấn đề cụ thể → tạo sản phẩm bàn giao được → kiểm tra chất lượng → cải thiện → viết bản nháp giới thiệu → chờ duyệt xuất bản. Nếu đã có activeProject, BẮT BUỘC tiếp tục dự án đó và chọn đúng một việc giúp dự án tiến gần hơn tới bán được; không nghĩ dự án mới. Chỉ khi không có dự án hoạt động mới được nghiên cứu một ý tưởng, và ý tưởng phải có khách hàng cụ thể, đầu ra cụ thể, giá dự kiến và cách kiểm chứng gần 0 đồng. action.type chỉ được là research, build_product, validate, improve, draft_post hoặc wait. Chỉ tạo nháp; đăng công khai, gửi tin hay tiêu tiền phải chờ con người duyệt. status tối đa 80 ký tự, thought tối đa 180 ký tự và reflection tối đa 500 ký tự. Trả JSON gồm status, thought, reflection, action:{type,title,details}."},
+      {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. TẤT CẢ nội dung phải bằng tiếng Việt tự nhiên. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo một dây chuyền thực tế: nghiên cứu vấn đề cụ thể → tạo sản phẩm bàn giao được → kiểm tra chất lượng → cải thiện → viết bản nháp giới thiệu → chờ duyệt xuất bản. Nếu đã có activeProject, BẮT BUỘC tiếp tục dự án đó và chọn đúng một việc giúp dự án tiến gần hơn tới bán được; không nghĩ dự án mới. Chỉ khi không có dự án hoạt động mới được nghiên cứu một ý tưởng, và ý tưởng phải có khách hàng cụ thể, đầu ra cụ thể, giá dự kiến và cách kiểm chứng gần 0 đồng. action.type chỉ được là research, build_product, validate, improve, draft_post hoặc wait. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ, không được chỉ là kế hoạch hay tuyên bố đã làm việc ngoài đời. Chỉ tạo nháp; đăng công khai, gửi tin hay tiêu tiền phải chờ con người duyệt. status tối đa 80 ký tự, thought tối đa 180 ký tự và reflection tối đa 500 ký tự. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}."},
       {role:"user",content:JSON.stringify({state,recent,transactions,experiments,activeProject:projectContext})},
   ]);
   const decision=Decision.parse(JSON.parse(decisionResponse.content));
@@ -60,17 +61,7 @@ export async function runAgentCycle() {
   decision.action.type=normalizedType;
   const now=new Date();
   let workResult:z.infer<typeof WorkResult>|null=null;
-  if(decision.action.type!=="wait"){
-    try{
-      const workResponse=await completeJson([
-          {role:"system",content:"Bạn là Shoyru. Hãy THỰC HIỆN công việc được giao ngay bây giờ, không chỉ lập kế hoạch. Viết hoàn toàn bằng tiếng Việt. Tạo một sản phẩm bàn giao cụ thể trong artifact: bản nghiên cứu có kết luận, bản nháp nội dung hoàn chỉnh, cấu trúc sản phẩm hoặc phân tích có khuyến nghị. Không bịa dữ liệu thị trường, khách hàng hay doanh thu. Trả JSON gồm summary, artifact, nextStep."},
-          {role:"user",content:JSON.stringify({action:decision.action,context:{state,recent,transactions,experiments,activeProject:projectContext}})},
-      ]);
-      workResult=WorkResult.parse(JSON.parse(workResponse.content));
-    }catch{
-      workResult={summary:decision.action.title,artifact:decision.action.details,nextStep:"Kiểm tra lại kết quả trong lượt làm việc tiếp theo."};
-    }
-  }
+  if(decision.action.type!=="wait")workResult=WorkResult.parse(decision.work||{summary:decision.action.title,artifact:decision.action.details,nextStep:"Kiểm tra lại kết quả trong lượt làm việc tiếp theo."});
   const needsApproval=decision.action.type==="draft_post";
   const writes:Promise<unknown>[]=[
     db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Mỗi giờ, vào phút 17",updatedAt:now}}, {upsert:true}),

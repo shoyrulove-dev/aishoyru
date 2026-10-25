@@ -35,7 +35,7 @@ jobs:
               --output response.json --write-out "%{http_code}" \
               -H "Authorization: Bearer $oidc_token" \
               https://aishoyru.vercel.app/api/cron/agent) || http_code="000"
-            [ "$http_code" != "401" ] && [ "$http_code" != "000" ] && break
+            [ "$http_code" != "401" ] && [ "$http_code" != "000" ] && [ "$http_code" != "502" ] && [ "$http_code" != "503" ] && [ "$http_code" != "504" ] && break
             sleep 10
           done
           response=$(tr '\n' ' ' < response.json | head -c 1000)
