@@ -13,6 +13,7 @@ export async function POST(req:NextRequest){
  const order=await db.collection("orders").findOne({code:parsed.data.code});
  if(!order)return NextResponse.json({error:"Không tìm thấy đơn hàng."},{status:404});
  if(order.status!=="paid")return NextResponse.json({ok:true,paid:false});
+ if(order.product==="moi-shoyru-mot-bua")return NextResponse.json({ok:true,paid:true,support:true});
  const url=deliveryUrl(String(order.product));
  if(!url)return NextResponse.json({error:"Tệp giao hàng chưa được cấu hình."},{status:503});
  return NextResponse.json({ok:true,paid:true,downloadUrl:url});
