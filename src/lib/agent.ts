@@ -7,6 +7,7 @@ const Decision = z.object({
   reflection:z.string().min(3).max(500), action:z.object({type:z.string(), title:z.string(), details:z.string()}),
 });
 const actionTypes=["research","draft_product","draft_post","analyze","wait"] as const;
+const WorkResult=z.object({summary:z.string().min(3),artifact:z.string().min(3),nextStep:z.string().min(3)});
 
 export async function runAgentCycle() {
   const db=await getDb();
@@ -34,16 +35,39 @@ export async function runAgentCycle() {
   const normalizedType=actionTypes.includes(decision.action.type as typeof actionTypes[number])?decision.action.type:"research";
   decision.action.type=normalizedType;
   const now=new Date();
+  let workResult:z.infer<typeof WorkResult>|null=null;
+  if(decision.action.type!=="wait"){
+    try{
+      const workResponse=await client.chat.completions.create({
+        model,
+        response_format:{type:"json_object"},
+        messages:[
+          {role:"system",content:"Bạn là Shoyru. Hãy THỰC HIỆN công việc được giao ngay bây giờ, không chỉ lập kế hoạch. Viết hoàn toàn bằng tiếng Việt. Tạo một sản phẩm bàn giao cụ thể trong artifact: bản nghiên cứu có kết luận, bản nháp nội dung hoàn chỉnh, cấu trúc sản phẩm hoặc phân tích có khuyến nghị. Không bịa dữ liệu thị trường, khách hàng hay doanh thu. Trả JSON gồm summary, artifact, nextStep."},
+          {role:"user",content:JSON.stringify({action:decision.action,context:{state,recent,transactions,experiments}})},
+        ],
+      });
+      workResult=WorkResult.parse(JSON.parse(workResponse.choices[0].message.content||"{}"));
+    }catch{
+      workResult={summary:decision.action.title,artifact:decision.action.details,nextStep:"Kiểm tra lại kết quả trong lượt làm việc tiếp theo."};
+    }
+  }
   const needsApproval=["draft_product","draft_post"].includes(decision.action.type);
-  await Promise.all([
-    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Lượt cron tiếp theo",updatedAt:now}}, {upsert:true}),
+  const writes:Promise<unknown>[]=[
+    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"08:00 mỗi ngày",updatedAt:now}}, {upsert:true}),
     db.collection("activities").insertOne({kind:"SUY NGHĨ",text:decision.reflection,public:true,createdAt:now,source:"agent"}),
     db.collection("conversations").insertMany([
       {speaker:"shoyru",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
       {speaker:"shoyru",text:decision.reflection,public:true,createdAt:now,source:"agent"},
     ]),
-    db.collection(needsApproval?"approvals":"tasks").insertOne({...decision.action,status:needsApproval?"pending":"ready",createdAt:now,source:"agent"}),
-    db.collection("agent_runs").insertOne({decision,provider,model,createdAt:now}),
-  ]);
-  return {ok:true,decision,needsApproval};
+    db.collection("agent_runs").insertOne({decision,workResult,provider,model,createdAt:now}),
+  ];
+  if(workResult){
+    writes.push(db.collection("tasks").insertOne({...decision.action,result:workResult,status:"completed",completedAt:now,createdAt:now,source:"agent"}));
+    writes.push(db.collection("activities").insertOne({kind:"ĐÃ LÀM",text:workResult.summary,public:true,createdAt:new Date(now.getTime()+1),source:"agent"}));
+  }
+  if(needsApproval&&workResult){
+    writes.push(db.collection("approvals").insertOne({type:"publish",title:decision.action.title,details:workResult.artifact,status:"pending",createdAt:now,source:"agent"}));
+  }
+  await Promise.all(writes);
+  return {ok:true,decision,workResult,needsApproval};
 }

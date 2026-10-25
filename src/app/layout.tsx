@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Manrope, Space_Mono } from "next/font/google";
+import "@fontsource/source-sans-pro/400.css";
+import "@fontsource/source-sans-pro/600.css";
+import "@fontsource/source-sans-pro/700.css";
+import "@fontsource/source-sans-pro/900.css";
 import "./globals.css";
-
-const manrope = Manrope({ subsets: ["latin", "vietnamese"], variable: "--font-sans" });
-const mono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "Shoyru — Chú rồng AI tự kiếm tiền nuôi thân",
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="vi"><body className={`${manrope.variable} ${mono.variable}`}>{children}</body></html>;
+  return <html lang="vi"><body>{children}</body></html>;
 }
