@@ -47,6 +47,8 @@ export async function runAgentCycle() {
   await Promise.all([
     db.collection("conversations").deleteMany({text:{$in:legacyEnglish}}),
     db.collection("activities").deleteMany({text:{$in:legacyEnglish}}),
+    db.collection("transactions").deleteMany({provider:"sepay",note:{$not:/SHO-[A-F0-9]{6}/i}}),
+    db.collection("activities").deleteMany({source:"sepay",orderCode:{$exists:false}}),
   ]);
   const providers=[
     {name:"groq",apiKey:process.env.GROQ_API_KEY,baseURL:"https://api.groq.com/openai/v1",model:process.env.GROQ_MODEL||process.env.AI_MODEL||"openai/gpt-oss-20b"},

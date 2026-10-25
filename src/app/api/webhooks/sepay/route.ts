@@ -8,14 +8,15 @@ export async function POST(req:NextRequest){
  const parsed=Payload.safeParse(await req.json()); if(!parsed.success)return NextResponse.json({error:"Invalid payload"},{status:400});
  const db=await getDb(); if(!db)return NextResponse.json({error:"Database unavailable"},{status:503});
  const p=parsed.data,kind=p.transferType.toLowerCase().includes("in")?"income":"expense",createdAt=p.transactionDate?new Date(p.transactionDate):new Date();
+ if(kind!=="income")return NextResponse.json({success:true,ignored:"outgoing"});
+ const orderCode=(p.content||"").toUpperCase().match(/SHO-[A-F0-9]{6}/)?.[0];
+ if(!orderCode)return NextResponse.json({success:true,ignored:"missing_order_code"});
+ const order=await db.collection("orders").findOne({code:orderCode,status:"pending"});
+ if(!order||Number(order.amount)!==p.transferAmount)return NextResponse.json({success:true,ignored:"order_or_amount_mismatch"});
  const result=await db.collection("transactions").updateOne({provider:"sepay",externalId:String(p.id)},{$setOnInsert:{provider:"sepay",externalId:String(p.id),kind,amount:p.transferAmount,note:p.content||"",channel:p.gateway||"bank",verified:true,createdAt,receivedAt:new Date()}},{upsert:true});
- if(result.upsertedCount&&kind==="income"){
-  const orderCode=(p.content||"").toUpperCase().match(/SHO-[A-F0-9]{6}/)?.[0];
-  if(orderCode){
-   const order=await db.collection("orders").findOne({code:orderCode,status:"pending"});
-   if(order&&Number(order.amount)===p.transferAmount)await db.collection("orders").updateOne({_id:order._id},{$set:{status:"paid",paidAt:new Date(),transactionId:String(p.id)}});
-  }
-  await db.collection("activities").insertOne({kind:"CÓ VÀNG",text:`Kho vàng vừa nhận một giao dịch đã xác minh.`,amount:p.transferAmount,public:true,createdAt:new Date(),source:"sepay"});
+ if(result.upsertedCount){
+  await db.collection("orders").updateOne({_id:order._id,status:"pending"},{$set:{status:"paid",paidAt:new Date(),transactionId:String(p.id)}});
+  await db.collection("activities").insertOne({kind:"CÓ VÀNG",text:`Shoyru vừa nhận thanh toán cho đơn ${orderCode}.`,amount:p.transferAmount,orderCode,public:true,createdAt:new Date(),source:"sepay"});
  }
  return NextResponse.json({success:true,duplicate:!result.upsertedCount});
 }

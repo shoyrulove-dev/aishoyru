@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow-file updates start an end-to-end check; scheduled runs also inspect one official funding source.
+# Workflow-file updates start an end-to-end check; scheduled runs inspect funding and clean test-only ledger entries.
 
 on:
   schedule:
