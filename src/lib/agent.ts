@@ -16,6 +16,25 @@ const actionTypes=["research","build_product","validate","improve","draft_post",
 const WorkResult=z.object({summary:z.string().min(3),artifact:z.string().min(3),nextStep:z.string().min(3)});
 type AiMessage={role:"system"|"user";content:string};
 
+const fundingSources=[
+  {name:"Ethereum Ecosystem Support Program",url:"https://esp.ethereum.foundation/applicants"},
+  {name:"Ethereum community grant directory",url:"https://ethereum.org/community/grants/"},
+  {name:"Solana Foundation Grants",url:"https://solana.org/grants-funding"},
+  {name:"Gitcoin Grants",url:"https://gitcoin.co/program"},
+  {name:"Arbitrum Foundation Grants",url:"https://arbitrum.foundation/grants"},
+];
+
+async function inspectFundingSource(index:number){
+  const source=fundingSources[index%fundingSources.length];
+  try{
+    const response=await fetch(source.url,{headers:{"User-Agent":"Shoyru grant research bot/1.0 (+https://aishoyru.vercel.app)"},signal:AbortSignal.timeout(9000)});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const html=(await response.text()).slice(0,250000);
+    const text=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g," ").trim().slice(0,14000);
+    return {...source,checkedAt:new Date().toISOString(),text,error:""};
+  }catch(error){return {...source,checkedAt:new Date().toISOString(),text:"",error:error instanceof Error?error.message:"Không đọc được nguồn"}}
+}
+
 export async function runAgentCycle() {
   const db=await getDb();
   if(!db) throw new Error("MONGODB_URI chưa được cấu hình");
@@ -55,11 +74,18 @@ export async function runAgentCycle() {
   ]);
   const storeFacts={stickerPack:{prepared:true,files:6,price:39000,paymentReady:Boolean(process.env.BANK_BIN&&process.env.BANK_ACCOUNT_NO&&process.env.BANK_ACCOUNT_NAME&&process.env.SEPAY_API_KEY&&process.env.PRODUCT_STICKER_URL)}};
   const outreachTargets=(process.env.OUTREACH_TARGETS||"").split(",").map(value=>value.trim()).filter(value=>/^\S+@\S+\.\S+$/.test(value));
+  const fundingSourceIndex=Number(state?.fundingSourceIndex||0)%fundingSources.length;
+  const fundingResearch=await inspectFundingSource(fundingSourceIndex);
   const decisionResponse=await completeJson([
-      {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. Email chính thức của bạn là shoyru@blissbiovn.com. TẤT CẢ nhật ký phải bằng tiếng Việt tự nhiên. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo một dây chuyền thực tế: nghiên cứu vấn đề cụ thể → tạo sản phẩm bàn giao được → kiểm tra chất lượng → cải thiện → viết bản nháp giới thiệu → chờ duyệt xuất bản. Nếu đã có activeProject, BẮT BUỘC tiếp tục dự án đó và chọn đúng một việc giúp dự án tiến gần hơn tới bán được; không nghĩ dự án mới. Khi đầu ra đã hoàn chỉnh, hãy chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống sẽ đánh dấu dự án sẵn sàng. Chỉ khi activeProject là null mới được nghiên cứu một ý tưởng mới. Khi đó bắt buộc trả thêm project gồm name, customer, deliverable và price; ý tưởng phải có khách hàng cụ thể, đầu ra cụ thể, giá dự kiến và cách kiểm chứng gần 0 đồng. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Khi có một địa chỉ quỹ hoặc chương trình grant đã được người quản lý cung cấp và phù hợp, bạn có thể chọn draft_email, trả thêm email gồm to, subject, body và viết bằng tiếng Anh. Chỉ xin grant/sponsorship minh bạch cho dự án Shoyru; không xin chuyển token trực tiếp, không hứa lợi nhuận, không quảng bá token, không giả làm từ thiện và không tự tìm hoặc đoán địa chỉ email. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Mọi đề xuất quảng cáo phải là bản nháp có giới hạn lỗ; mọi đề xuất giao dịch chỉ được paper-trading cho tới khi chủ nhân phê duyệt riêng. action.type chỉ được là research, build_product, validate, improve, draft_post, draft_email hoặc wait. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ, không được chỉ là kế hoạch hay tuyên bố đã làm việc ngoài đời. Chỉ tạo nháp; đăng công khai, gửi tin hay tiêu tiền phải chờ con người duyệt. status tối đa 80 ký tự, thought tối đa 180 ký tự và reflection tối đa 500 ký tự. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; thêm project khi bắt đầu dự án mới và email khi soạn thư."},
-      {role:"user",content:JSON.stringify({state,recent,transactions,experiments,activeProject:activeProject||null,storeFacts,outreachTargets})},
+      {role:"system",content:"Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. Email chính thức của bạn là shoyru@blissbiovn.com. TẤT CẢ nhật ký phải bằng tiếng Việt tự nhiên. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo một dây chuyền thực tế: nghiên cứu vấn đề cụ thể → tạo sản phẩm bàn giao được → kiểm tra chất lượng → cải thiện → viết bản nháp giới thiệu → chờ duyệt xuất bản. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn grant chính thức trong fundingResearch. Hãy tự đánh giá chương trình còn mở không, Shoyru có phù hợp thật không và phải nộp qua email hay biểu mẫu. Luôn ghi tên chương trình và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body bằng tiếng Anh. Nếu chương trình yêu cầu biểu mẫu, hãy tạo bản nháp câu trả lời cho biểu mẫu và không bịa email. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống sẽ đánh dấu dự án sẵn sàng. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. action.type chỉ được là research, build_product, validate, improve, draft_post, draft_email hoặc wait. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ tạo nháp; đăng công khai, gửi tin, nộp biểu mẫu hay tiêu tiền phải chờ con người duyệt. status tối đa 80 ký tự, thought tối đa 180 ký tự và reflection tối đa 500 ký tự. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; thêm project khi bắt đầu dự án mới và email khi soạn thư."},
+      {role:"user",content:JSON.stringify({state,recent,transactions,experiments,activeProject:activeProject||null,storeFacts,outreachTargets,fundingResearch,capabilities:["nghiên cứu nguồn công khai","viết nội dung tiếng Việt và tiếng Anh","làm sản phẩm số nhỏ","xây bot và công cụ web","soạn hồ sơ grant theo đầu ra và cột mốc"]})},
   ]);
   const decision=Decision.parse(JSON.parse(decisionResponse.content));
+  if(decision.action.type==="draft_email"&&decision.email){
+    const foundEmails=[...fundingResearch.text.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)].map(match=>match[0].toLowerCase());
+    const allowedEmails=[...outreachTargets.map(value=>value.toLowerCase()),...foundEmails];
+    if(!allowedEmails.includes(decision.email.to.toLowerCase()))throw new Error("AI đã đề xuất email không có trong nguồn chính thức; lượt gửi bị chặn");
+  }
   const normalizedType=actionTypes.includes(decision.action.type as typeof actionTypes[number])?decision.action.type:"research";
   decision.action.type=normalizedType;
   const now=new Date();
@@ -67,22 +93,20 @@ export async function runAgentCycle() {
   if(decision.action.type!=="wait")workResult=WorkResult.parse(decision.work||{summary:decision.action.title,artifact:decision.action.details,nextStep:"Kiểm tra lại kết quả trong lượt làm việc tiếp theo."});
   const needsApproval=decision.action.type==="draft_post"||decision.action.type==="draft_email";
   const writes:Promise<unknown>[]=[
-    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Mỗi giờ, vào phút 17",updatedAt:now}}, {upsert:true}),
+    db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Mỗi giờ, vào phút 17",fundingSourceIndex:(fundingSourceIndex+1)%fundingSources.length,updatedAt:now}}, {upsert:true}),
     db.collection("activities").insertOne({kind:"SUY NGHĨ",text:decision.reflection,public:true,createdAt:now,source:"agent"}),
     db.collection("conversations").insertMany([
       {speaker:"shoyru",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
       {speaker:"shoyru",text:decision.reflection,public:true,createdAt:now,source:"agent"},
     ]),
     db.collection("agent_runs").insertOne({decision,workResult,provider:decisionResponse.provider,model:decisionResponse.model,createdAt:now}),
+    db.collection("funding_research").insertOne({...fundingResearch,text:fundingResearch.text.slice(0,4000),createdAt:now,source:"agent"}),
   ];
   if(workResult){
     writes.push(db.collection("tasks").insertOne({...decision.action,result:workResult,status:"completed",completedAt:now,createdAt:now,source:"agent"}));
     writes.push(db.collection("activities").insertOne({kind:"ĐÃ LÀM",text:workResult.summary,public:true,createdAt:new Date(now.getTime()+1),source:"agent"}));
     if(activeProject)writes.push(db.collection("projects").updateOne({_id:activeProject._id},{$set:{lastAction:decision.action,result:workResult,status:decision.action.type==="draft_post"?"ready":decision.action.type==="validate"?"validating":"active",updatedAt:now},$inc:{stepCount:1}}));
-    else if(decision.action.type!=="draft_email") {
-      const project=decision.project||{name:decision.action.title,customer:"Nhóm khách hàng cần được kiểm chứng",deliverable:workResult.summary,price:0};
-      writes.push(db.collection("projects").insertOne({...project,status:"active",lastAction:decision.action,result:workResult,stepCount:1,createdAt:now,updatedAt:now,source:"agent"}));
-    }
+    else if(decision.project)writes.push(db.collection("projects").insertOne({...decision.project,status:"active",lastAction:decision.action,result:workResult,stepCount:1,createdAt:now,updatedAt:now,source:"agent"}));
   }
   if(needsApproval&&workResult){
     writes.push(db.collection("approvals").insertOne({type:decision.action.type==="draft_email"?"email":"publish",title:decision.action.title,details:workResult.artifact,email:decision.email,status:"pending",createdAt:now,source:"agent"}));
