@@ -13,7 +13,7 @@ export async function getPublicState(): Promise<PublicState> {
   const legacyTexts=Object.keys(legacy);
   const activeProject=await db.collection("projects").findOne({status:{$in:["active","validating","ready"]}},{sort:{updatedAt:-1}});
   const conversationFilter:Record<string,unknown>={public:true,text:{$nin:legacyTexts}};
-  if(activeProject?.createdAt)conversationFilter.createdAt={$gte:activeProject.createdAt};
+  if(activeProject?.createdAt)conversationFilter.createdAt={$gte:new Date(new Date(activeProject.createdAt as Date).getTime()-5000)};
   const [state, activities, transactions, conversations] = await Promise.all([
     db.collection("agent_state").findOne({ key:"main" }),
     db.collection("activities").find({ public:true,text:{$nin:legacyTexts} }).sort({ createdAt:-1 }).limit(12).toArray(),
