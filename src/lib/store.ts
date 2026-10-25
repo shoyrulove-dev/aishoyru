@@ -31,10 +31,10 @@ export function productReady(slug:string){
 
 export function affiliateOffers(){
  const offers=[
-  {name:process.env.AFFILIATE_1_NAME,url:process.env.AFFILIATE_1_URL},
-  {name:process.env.AFFILIATE_2_NAME,url:process.env.AFFILIATE_2_URL},
+  {name:process.env.AFFILIATE_1_NAME||"PureStore · công cụ số cho người sáng tạo",url:process.env.AFFILIATE_1_URL||"https://shop.blissbiovn.com/",commission:"20% trên đơn mua thật"},
+  {name:process.env.AFFILIATE_2_NAME,url:process.env.AFFILIATE_2_URL,commission:"Hoa hồng theo chương trình đối tác"},
  ];
- return offers.filter((offer):offer is {name:string;url:string}=>Boolean(offer.name&&offer.url));
+ return offers.filter((offer):offer is {name:string;url:string;commission:string}=>Boolean(offer.name&&offer.url));
 }
 
 export function deliveryUrl(slug:string){
