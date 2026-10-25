@@ -22,7 +22,14 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          test -n "$CRON_SECRET" || { echo "Missing repository secret CRON_SECRET"; exit 1; }
-          curl --fail-with-body --retry 2 --max-time 90 \
+          test -n "$CRON_SECRET" || { echo "::error::Missing repository secret CRON_SECRET"; exit 1; }
+          http_code=$(curl --silent --show-error --retry 2 --max-time 90 \
+            --output response.json --write-out "%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            https://aishoyru.vercel.app/api/cron/agent
+            https://aishoyru.vercel.app/api/cron/agent)
+          response=$(tr '\n' ' ' < response.json | head -c 1000)
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Agent endpoint returned HTTP $http_code: $response"
+            exit 1
+          fi
+          echo "::notice::Agent cycle completed (HTTP $http_code): $response"
