@@ -31,12 +31,12 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
      <div className="glow overflow-hidden rounded-[2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Shoyru đang làm việc"/></div>
      <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-[#77d78e]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/>{data.status}</div>
     </div>
-    <div className="panel overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
-     <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+    <div className="panel flex h-[min(620px,72vh)] min-h-[460px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
+     <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-5 py-4">
       <div><Eyebrow>TRỰC TIẾP TỪ CÁI HANG</Eyebrow><h1 className="text-2xl font-black sm:text-3xl">Shoyru đang kiếm sống</h1></div>
       <div className="flex items-center gap-2 text-xs text-[#76d88c]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/> LIVE</div>
      </div>
-     <LiveFeed key={data.conversations[0]?.id||"empty"} messages={data.conversations} nextWake={data.nextWake}/>
+     <LiveFeed key={data.conversations.at(-1)?.id||"empty"} messages={data.conversations} nextWake={data.nextWake}/>
     </div>
    </div>
   </section>
@@ -110,9 +110,9 @@ function LiveFeed({messages,nextWake}:{messages:PublicState["conversations"];nex
  },[paused,current,target,typed]);
  useEffect(()=>{if(screen.current)screen.current.scrollTop=screen.current.scrollHeight},[typed,index]);
  const shown=messages.slice(0,index);
- return <div className="bg-[#0b1014] p-4 sm:p-5">
-  <div className="mb-3 flex items-center gap-2 rounded-t-xl bg-[#202b3b] px-4 py-3 text-xs text-[#aab2be]"><span className="h-3 w-3 rounded-full bg-[#ff6b6b]"/><span className="h-3 w-3 rounded-full bg-[#ffbd3e]"/><span className="h-3 w-3 rounded-full bg-[#55d88a]"/><span className="flex-1 text-center">Màn hình làm việc của Shoyru</span><button onClick={()=>setPaused(value=>!value)} className="rounded-lg bg-white/10 px-3 py-1.5 font-bold text-[#e8e3dc]">{paused?"▶ Tiếp tục":"Ⅱ Tạm dừng"}</button></div>
-  <div ref={screen} className="h-[430px] overflow-y-auto rounded-b-xl bg-[#07101f] p-4 font-mono text-sm leading-7 text-[#d3d9e2] sm:p-5">
+ return <div className="flex min-h-0 flex-1 flex-col bg-[#0b1014] p-4 sm:p-5">
+  <div className="mb-3 flex shrink-0 items-center gap-2 rounded-t-xl bg-[#202b3b] px-4 py-3 text-xs text-[#aab2be]"><span className="h-3 w-3 rounded-full bg-[#ff6b6b]"/><span className="h-3 w-3 rounded-full bg-[#ffbd3e]"/><span className="h-3 w-3 rounded-full bg-[#55d88a]"/><span className="flex-1 text-center">Màn hình làm việc của Shoyru</span><button onClick={()=>setPaused(value=>!value)} className="rounded-lg bg-white/10 px-3 py-1.5 font-bold text-[#e8e3dc]">{paused?"▶ Tiếp tục":"Ⅱ Tạm dừng"}</button></div>
+  <div ref={screen} className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-b-xl bg-[#07101f] p-4 font-mono text-sm leading-7 text-[#d3d9e2] [scrollbar-gutter:stable] sm:p-5">
    {!messages.length&&<p className="text-[#657080]">Đang chờ Shoyru bắt đầu lượt làm việc tiếp theo<span className="animate-pulse">_</span></p>}
    {[...shown,current].filter(Boolean).map((message,position)=>{const active=position===shown.length&&Boolean(current);return <p key={message!.id} className="mb-4 whitespace-pre-wrap break-words"><span className="text-[#ffbd3e]">{message!.at}</span>{" "}<span className={message!.speaker==="he-thong"?"text-[#8c96a5]":"text-[#55e38b]"}>[{message!.speaker==="he-thong"?"Hệ thống":"Shoyru"}]</span>{" "}<span>{active?typed:message!.text}</span>{active&&!paused&&<span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-[#ffbd3e] align-middle"/>}</p>})}
    {index>=messages.length&&messages.length>0&&<p className="text-xs text-[#596475]">— Đã ghi xong · lượt tiếp theo {nextWake} —</p>}
