@@ -28,6 +28,21 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    </div>
    <div className="relative mx-auto w-full max-w-[620px]"><div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Bé Rồng Ham Ăn đang làm việc"/></div><div className="panel absolute -bottom-5 left-3 max-w-[300px] rounded-2xl p-4 sm:-left-7"><Eyebrow>BÉ ĐANG NGHĨ</Eyebrow><p className="text-sm font-semibold">“{data.thought}”</p></div></div>
   </section>
+  <section id="conversation" className="mx-auto max-w-7xl px-5 pb-16 lg:px-8">
+   <div className="panel overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
+    <div className="flex flex-col justify-between gap-3 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center">
+     <div><Eyebrow>ƯU TIÊN XEM</Eyebrow><h2 className="text-2xl font-black">Bé đang trò chuyện với bộ não AI</h2></div>
+     <div className="flex items-center gap-2 text-xs text-[#76d88c]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/> CẬP NHẬT SAU MỖI LƯỢT THỨC DẬY</div>
+    </div>
+    <div className="bg-[#0b1014] p-5 sm:p-8">
+     <div className="mx-auto max-w-3xl space-y-5">{data.conversations.map(message=>{
+      const dragon=message.speaker==="be-rong", system=message.speaker==="he-thong";
+      if(system)return <div key={message.id} className="mx-auto max-w-2xl rounded-full border border-white/8 bg-white/4 px-4 py-2 text-center text-xs text-[#817d77]">{message.text}</div>;
+      return <div key={message.id} className={`flex gap-3 ${dragon?"":"flex-row-reverse"}`}><div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm ${dragon?"bg-[#ff6b35]":"bg-[#20656a]"}`}>{dragon?"🐲":"✦"}</div><div className={`max-w-[82%] ${dragon?"":"text-right"}`}><div className="mb-1 text-[10px] font-black tracking-[.15em] text-[#777f81]">{dragon?"BÉ RỒNG":"BỘ NÃO AI"} · {message.at}</div><p className={`inline-block rounded-2xl px-4 py-3 text-left text-sm leading-6 ${dragon?"rounded-tl-sm bg-[#291b16] text-[#f3d6c8]":"rounded-tr-sm bg-[#12272a] text-[#c9e8e5]"}`}>{message.text}</p></div></div>
+     })}</div>
+    </div>
+   </div>
+  </section>
   <section className="border-y border-white/8 bg-[#10151a]"><div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-white/8 lg:grid-cols-4 lg:divide-y-0"><Stat icon={<Coins/>} label="Kho vàng" value={money(data.income)} tone="gold"/><Stat icon={<Drumstick/>} label="Tiền nuôi Bé" value={money(data.expense)} tone="orange"/><Stat icon={<TrendingUp/>} label="Vàng còn lại" value={money(net)} tone="green"/><Stat icon={<Flame/>} label="Chuỗi sống sót" value={`${data.streak} ngày`} tone="red"/></div></section>
   <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><Eyebrow>THÁNG NÀY</Eyebrow><h2 className="text-3xl font-black sm:text-4xl">Bé đã tự nuôi được mình chưa?</h2></div><div className="md:text-right"><span className="text-3xl font-black text-[#ffbd3e]">{pct}%</span><p className="text-sm text-[#969088]">mục tiêu {money(data.goal)}</p></div></div><div className="h-5 overflow-hidden rounded-full bg-white/7"><div className="h-full rounded-full bg-gradient-to-r from-[#ff5a34] to-[#ffbd3e] transition-all" style={{width:`${pct}%`}}/></div><div className="mt-3 flex justify-between text-xs text-[#7f7a74]"><span>Hang trống</span><span>Đủ tiền ăn + API</span></div></section>
   <section id="journal" className="mx-auto grid max-w-7xl gap-7 px-5 pb-20 lg:grid-cols-[1.35fr_.65fr] lg:px-8">

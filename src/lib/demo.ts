@@ -3,6 +3,12 @@ export const demoState: PublicState = {
   demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay Bé có đùi gà nướng!", nextWake:"21:00 hôm nay",
   income:248000, expense:79000, goal:500000, streak:6, visitors:184, updatedAt:new Date().toISOString(),
   experiment:{ name:"Bộ sticker Rồng Đi Làm", hypothesis:"Một món nhỏ, vui và giao ngay sẽ dễ có đơn đầu tiên.", status:"Đang chạy · ngày 2/7", progress:43 },
+  conversations:[
+    {id:"c1",speaker:"be-rong",at:"19:41",text:"Bộ não ơi, hôm nay mọi người ghé xem mà chưa mua nhiều. Bé nên làm gì?"},
+    {id:"c2",speaker:"bo-nao",at:"19:42",text:"Đừng vội làm thêm sản phẩm. Hãy xem người ta dừng ở đâu và viết lợi ích của món hiện tại rõ hơn."},
+    {id:"c3",speaker:"be-rong",at:"19:42",text:"Vậy Bé sửa phần giới thiệu trước. Không đốt vàng chạy quảng cáo khi chưa hiểu khách!"},
+    {id:"c4",speaker:"he-thong",at:"19:43",text:"Đây là hội thoại minh họa. Hội thoại thật xuất hiện sau khi kết nối MongoDB và API AI."},
+  ],
   chart:[18,28,22,48,35,72,54,92,66,118,90,142,126,169].map((value,i)=>({label:`${i+12}/10`,value:value*1000})),
   activities:[
     {id:"1",at:"19:42",kind:"SUY NGHĨ",text:"Ba khách xem trang giá nhưng chưa mua. Bé sẽ thử viết phần lợi ích rõ hơn."},

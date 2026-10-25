@@ -32,6 +32,10 @@ export async function runAgentCycle() {
   await Promise.all([
     db.collection("agent_state").updateOne({key:"main"},{$set:{status:decision.status,thought:decision.thought,lastRunAt:now,nextWake:"Lượt cron tiếp theo",updatedAt:now}}, {upsert:true}),
     db.collection("activities").insertOne({kind:"SUY NGHĨ",text:decision.reflection,public:true,createdAt:now,source:"agent"}),
+    db.collection("conversations").insertMany([
+      {speaker:"be-rong",text:decision.thought,public:true,createdAt:new Date(now.getTime()-1000),source:"agent"},
+      {speaker:"bo-nao",text:decision.reflection,public:true,createdAt:now,source:"agent"},
+    ]),
     db.collection(needsApproval?"approvals":"tasks").insertOne({...decision.action,status:needsApproval?"pending":"ready",createdAt:now,source:"agent"}),
     db.collection("agent_runs").insertOne({decision,model:process.env.OPENAI_MODEL||"gpt-5-mini",createdAt:now}),
   ]);
