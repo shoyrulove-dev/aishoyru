@@ -4,8 +4,9 @@ import { z } from "zod";
 
 const Decision = z.object({
   status:z.string().min(3).max(80), thought:z.string().min(3).max(180),
-  reflection:z.string().min(3).max(500), action:z.object({type:z.enum(["research","draft_product","draft_post","analyze","wait"]), title:z.string(), details:z.string()}),
+  reflection:z.string().min(3).max(500), action:z.object({type:z.string(), title:z.string(), details:z.string()}),
 });
+const actionTypes=["research","draft_product","draft_post","analyze","wait"] as const;
 
 export async function runAgentCycle() {
   const db=await getDb();
@@ -30,6 +31,8 @@ export async function runAgentCycle() {
     ],
   });
   const decision=Decision.parse(JSON.parse(response.choices[0].message.content||"{}"));
+  const normalizedType=actionTypes.includes(decision.action.type as typeof actionTypes[number])?decision.action.type:"research";
+  decision.action.type=normalizedType;
   const now=new Date();
   const needsApproval=["draft_product","draft_post"].includes(decision.action.type);
   await Promise.all([
