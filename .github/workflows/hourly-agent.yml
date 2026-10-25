@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# A workflow-file change also starts one end-to-end production check.
+# A workflow-file change also starts an end-to-end production check after major releases.
 
 on:
   schedule:
