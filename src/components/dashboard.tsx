@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Coins, Drumstick, Flame, Play, ShieldCheck, Sparkles, Timer, TrendingUp } from "lucide-react";
 import type { PublicState } from "@/lib/types";
 
@@ -36,14 +36,7 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
       <div><Eyebrow>TRỰC TIẾP TỪ CÁI HANG</Eyebrow><h1 className="text-2xl font-black sm:text-3xl">Shoyru đang kiếm sống</h1></div>
       <div className="flex items-center gap-2 text-xs text-[#76d88c]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/> LIVE</div>
      </div>
-     <div className="min-h-[470px] bg-[#0b1014] p-5 sm:p-7">
-      <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4 text-xs text-[#777f81]"><span>Nhật ký của Shoyru</span><span>Lượt tiếp theo: {data.nextWake}</span></div>
-      <div className="space-y-5">{data.conversations.map(message=>message.speaker==="he-thong"?
-       <div key={message.id} className="rounded-xl border border-white/7 bg-white/3 px-4 py-3 text-xs text-[#85817b]">{message.text}</div>:
-       <div key={message.id} className="flex gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ff6b35] text-sm">🐲</div><div className="max-w-[88%]"><div className="mb-1 text-[10px] font-black tracking-[.15em] text-[#777f81]">SHOYRU · {message.at}</div><p className="rounded-2xl rounded-tl-sm bg-[#291b16] px-4 py-3 text-sm leading-6 text-[#f3d6c8]">{message.text}</p></div></div>
-      )}</div>
-      {!data.conversations.length&&<div className="grid min-h-60 place-items-center text-center text-sm text-[#6f7477]">Shoyru đang chuẩn bị công việc tiếp theo…</div>}
-     </div>
+     <LiveFeed key={data.conversations[0]?.id||"empty"} messages={data.conversations} nextWake={data.nextWake}/>
     </div>
    </div>
   </section>
@@ -92,5 +85,24 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
  </main>
 }
 function Eyebrow({children}:{children:React.ReactNode}){return <p className="mb-2 text-[10px] font-black tracking-[.22em] text-[#ff8a55]">{children}</p>}
+function LiveFeed({messages,nextWake}:{messages:PublicState["conversations"];nextWake:string}){
+ const [index,setIndex]=useState(0),[typed,setTyped]=useState(""),[paused,setPaused]=useState(false);
+ const screen=useRef<HTMLDivElement>(null),current=messages[index],target=current?.text||"";
+ useEffect(()=>{
+  if(paused||!current)return;
+  if(typed.length<target.length){const timer=setTimeout(()=>setTyped(target.slice(0,Math.min(target.length,typed.length+2))),18);return()=>clearTimeout(timer)}
+  const timer=setTimeout(()=>{setIndex(value=>value+1);setTyped("")},520);return()=>clearTimeout(timer);
+ },[paused,current,target,typed]);
+ useEffect(()=>{if(screen.current)screen.current.scrollTop=screen.current.scrollHeight},[typed,index]);
+ const shown=messages.slice(0,index);
+ return <div className="bg-[#0b1014] p-4 sm:p-5">
+  <div className="mb-3 flex items-center gap-2 rounded-t-xl bg-[#202b3b] px-4 py-3 text-xs text-[#aab2be]"><span className="h-3 w-3 rounded-full bg-[#ff6b6b]"/><span className="h-3 w-3 rounded-full bg-[#ffbd3e]"/><span className="h-3 w-3 rounded-full bg-[#55d88a]"/><span className="flex-1 text-center">Màn hình làm việc của Shoyru</span><button onClick={()=>setPaused(value=>!value)} className="rounded-lg bg-white/10 px-3 py-1.5 font-bold text-[#e8e3dc]">{paused?"▶ Tiếp tục":"Ⅱ Tạm dừng"}</button></div>
+  <div ref={screen} className="h-[430px] overflow-y-auto rounded-b-xl bg-[#07101f] p-4 font-mono text-sm leading-7 text-[#d3d9e2] sm:p-5">
+   {!messages.length&&<p className="text-[#657080]">Đang chờ Shoyru bắt đầu lượt làm việc tiếp theo<span className="animate-pulse">_</span></p>}
+   {[...shown,current].filter(Boolean).map((message,position)=>{const active=position===shown.length&&Boolean(current);return <p key={message!.id} className="mb-4 whitespace-pre-wrap break-words"><span className="text-[#ffbd3e]">{message!.at}</span>{" "}<span className={message!.speaker==="he-thong"?"text-[#8c96a5]":"text-[#55e38b]"}>[{message!.speaker==="he-thong"?"Hệ thống":"Shoyru"}]</span>{" "}<span>{active?typed:message!.text}</span>{active&&!paused&&<span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-[#ffbd3e] align-middle"/>}</p>})}
+   {index>=messages.length&&messages.length>0&&<p className="text-xs text-[#596475]">— Đã ghi xong · lượt tiếp theo {nextWake} —</p>}
+  </div>
+ </div>
+}
 function Stat({icon,label,value,tone}:{icon:React.ReactNode,label:string,value:string,tone:string}){const c:{[k:string]:string}={gold:"text-[#ffbd3e]",orange:"text-[#ff8255]",green:"text-[#72d78a]",red:"text-[#ed6c62]"};return <div className="p-5 sm:p-7"><div className={`${c[tone]} mb-4 [&>svg]:h-5 [&>svg]:w-5`}>{icon}</div><p className="text-xs text-[#88837c]">{label}</p><p className="mt-1 text-xl font-black sm:text-2xl">{value}</p></div>}
 function Rule({icon,title,text}:{icon:React.ReactNode,title:string,text:string}){return <div className="panel rounded-2xl p-5"><div className="mb-5 text-[#ffbd3e] [&>svg]:h-5 [&>svg]:w-5">{icon}</div><h3 className="font-extrabold">{title}</h3><p className="mt-2 text-sm leading-6 text-[#938e87]">{text}</p></div>}
