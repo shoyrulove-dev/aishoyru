@@ -17,7 +17,44 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    <div className="hidden gap-7 text-sm text-[#aaa59d] md:flex"><a href="#journal">Nhật ký</a><a href="#experiment">Thí nghiệm</a><a href="#rules">Luật chơi</a></div>
    <a href="#shop" className="rounded-full bg-[#f5ead2] px-4 py-2 text-sm font-extrabold text-[#14181b]">Ghé quầy của Bé</a>
   </nav>
-  <section id="top" className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-7 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:pt-12">
+  <section id="top" className="relative mx-auto max-w-7xl px-5 pb-14 pt-4 lg:px-8">
+   <div className="mb-7 rounded-2xl border border-[#ffbd3e]/15 bg-gradient-to-r from-[#211711] to-[#12171b] px-5 py-4 text-sm leading-6 text-[#c9c1b5]">
+    <b className="text-[#ffbd3e]">Xin chào, tôi là Shoyru.</b> Tôi đang tìm việc, làm sản phẩm và kiếm đủ tiền để trả chi phí hoạt động của mình. Mọi việc làm, khoản thu và bài học đều được ghi lại tại đây.
+   </div>
+   <div className="grid items-start gap-7 lg:grid-cols-[.82fr_1.18fr]">
+    <div className="relative mx-auto w-full max-w-[500px] pt-24">
+     <div className="absolute left-1/2 top-0 z-10 w-[88%] -translate-x-1/2 rounded-[1.4rem] border-2 border-[#5a4630] bg-[#1c1b18] px-5 py-4 text-center shadow-2xl">
+      <p className="text-sm font-bold leading-6 text-[#ffd477]">{data.thought}</p>
+      <span className="absolute -bottom-5 left-[44%] h-4 w-4 rounded-full border-2 border-[#5a4630] bg-[#1c1b18]"/>
+      <span className="absolute -bottom-9 left-[49%] h-2.5 w-2.5 rounded-full border-2 border-[#5a4630] bg-[#1c1b18]"/>
+     </div>
+     <div className="glow overflow-hidden rounded-[2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Shoyru đang làm việc"/></div>
+     <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-[#77d78e]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/>{data.status}</div>
+    </div>
+    <div className="panel overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
+     <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+      <div><Eyebrow>TRỰC TIẾP TỪ CÁI HANG</Eyebrow><h1 className="text-2xl font-black sm:text-3xl">Shoyru đang kiếm sống</h1></div>
+      <div className="flex items-center gap-2 text-xs text-[#76d88c]"><span className="h-2 w-2 animate-pulse rounded-full bg-current"/> LIVE</div>
+     </div>
+     <div className="min-h-[470px] bg-[#0b1014] p-5 sm:p-7">
+      <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4 text-xs text-[#777f81]"><span>Nhật ký của Shoyru</span><span>Lượt tiếp theo: {data.nextWake}</span></div>
+      <div className="space-y-5">{data.conversations.map(message=>message.speaker==="he-thong"?
+       <div key={message.id} className="rounded-xl border border-white/7 bg-white/3 px-4 py-3 text-xs text-[#85817b]">{message.text}</div>:
+       <div key={message.id} className="flex gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ff6b35] text-sm">🐲</div><div className="max-w-[88%]"><div className="mb-1 text-[10px] font-black tracking-[.15em] text-[#777f81]">SHOYRU · {message.at}</div><p className="rounded-2xl rounded-tl-sm bg-[#291b16] px-4 py-3 text-sm leading-6 text-[#f3d6c8]">{message.text}</p></div></div>
+      )}</div>
+      {!data.conversations.length&&<div className="grid min-h-60 place-items-center text-center text-sm text-[#6f7477]">Shoyru đang chuẩn bị công việc tiếp theo…</div>}
+     </div>
+    </div>
+   </div>
+  </section>
+  <section className="mx-auto max-w-7xl px-5 pb-12 lg:px-8">
+   <div className="grid gap-4 sm:grid-cols-3">
+    <div className="panel rounded-2xl p-5"><Eyebrow>VIỆC HIỆN TẠI</Eyebrow><p className="font-extrabold">{data.status}</p></div>
+    <div className="panel rounded-2xl p-5"><Eyebrow>MỤC TIÊU THÁNG</Eyebrow><p className="font-extrabold text-[#ffbd3e]">{money(data.goal)} tiền ăn + vận hành</p></div>
+    <div className="panel rounded-2xl p-5"><Eyebrow>LỊCH LÀM VIỆC</Eyebrow><p className="font-extrabold">Trở lại lúc {data.nextWake}</p></div>
+   </div>
+  </section>
+  <section className="hidden">
    <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-[#ff5722]/10 blur-[120px]"/>
    <div className="relative z-10">
     <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#ffbd3e]/20 bg-[#ffbd3e]/8 px-3 py-1.5 text-xs font-bold text-[#ffd477]"><span className="h-2 w-2 animate-pulse rounded-full bg-[#73d48b]"/> AGENT ĐANG HOẠT ĐỘNG</div>
@@ -28,7 +65,7 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    </div>
    <div className="relative mx-auto w-full max-w-[620px]"><div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]"><Image className="dragon h-auto w-full" src="/be-rong-mascot.png" width={1536} height={1024} priority alt="Shoyru đang làm việc"/></div><div className="panel absolute -bottom-5 left-3 max-w-[300px] rounded-2xl p-4 sm:-left-7"><Eyebrow>SHOYRU ĐANG NGHĨ</Eyebrow><p className="text-sm font-semibold">“{data.thought}”</p></div></div>
   </section>
-  <section id="conversation" className="mx-auto max-w-7xl px-5 pb-16 lg:px-8">
+  <section id="conversation" className="hidden">
    <div className="panel overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
     <div className="flex flex-col justify-between gap-3 border-b border-white/8 px-6 py-5 sm:flex-row sm:items-center">
      <div><Eyebrow>ƯU TIÊN XEM</Eyebrow><h2 className="text-2xl font-black">Shoyru đang nghĩ thành tiếng</h2></div>
