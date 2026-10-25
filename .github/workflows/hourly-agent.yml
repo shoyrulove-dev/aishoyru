@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# A workflow-file change also starts an end-to-end production check after major releases.
+# Workflow-file updates start an end-to-end check; scheduled runs continue the active project.
 
 on:
   schedule:
