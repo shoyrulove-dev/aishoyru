@@ -13,20 +13,30 @@ concurrency:
   group: shoyru-agent-cycle
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   wake-shoyru:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Run one Shoyru work cycle
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          test -n "$CRON_SECRET" || { echo "::error::Missing repository secret CRON_SECRET"; exit 1; }
-          http_code=$(curl --silent --show-error --retry 2 --max-time 90 \
-            --output response.json --write-out "%{http_code}" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            https://aishoyru.vercel.app/api/cron/agent)
+          oidc_response=$(curl --silent --show-error --fail \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=aishoyru-agent")
+          oidc_token=$(echo "$oidc_response" | jq -r '.value')
+          test -n "$oidc_token" && test "$oidc_token" != "null" || { echo "::error::Could not obtain GitHub OIDC token"; exit 1; }
+          for attempt in {1..18}; do
+            http_code=$(curl --silent --show-error --max-time 90 \
+              --output response.json --write-out "%{http_code}" \
+              -H "Authorization: Bearer $oidc_token" \
+              https://aishoyru.vercel.app/api/cron/agent) || http_code="000"
+            [ "$http_code" != "401" ] && [ "$http_code" != "000" ] && break
+            sleep 10
+          done
           response=$(tr '\n' ' ' < response.json | head -c 1000)
           if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
             echo "::error::Agent endpoint returned HTTP $http_code: $response"
