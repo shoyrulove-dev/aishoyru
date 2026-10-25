@@ -1,4 +1,5 @@
 import { NextRequest,NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { deliveryUrl } from "@/lib/store";
@@ -14,6 +15,11 @@ export async function POST(req:NextRequest){
  if(!order)return NextResponse.json({error:"Không tìm thấy đơn hàng."},{status:404});
  if(order.status!=="paid")return NextResponse.json({ok:true,paid:false});
  if(order.product==="moi-shoyru-mot-bua")return NextResponse.json({ok:true,paid:true,support:true});
+ if(process.env.BLOB_READ_WRITE_TOKEN){
+  const token=String(order.deliveryToken||randomBytes(24).toString("hex"));
+  if(!order.deliveryToken)await db.collection("orders").updateOne({_id:order._id},{$set:{deliveryToken:token}});
+  return NextResponse.json({ok:true,paid:true,downloadUrl:`/api/store/download?code=${encodeURIComponent(String(order.code))}&token=${encodeURIComponent(token)}`});
+ }
  const url=deliveryUrl(String(order.product));
  if(!url)return NextResponse.json({error:"Tệp giao hàng chưa được cấu hình."},{status:503});
  return NextResponse.json({ok:true,paid:true,downloadUrl:url});

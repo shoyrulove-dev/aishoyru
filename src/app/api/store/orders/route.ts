@@ -15,6 +15,7 @@ export async function POST(req:NextRequest){
  const db=await getDb();
  if(!db)return NextResponse.json({error:"Cơ sở dữ liệu chưa sẵn sàng."},{status:503});
  const code=`SHO-${randomBytes(3).toString("hex").toUpperCase()}`;
- await db.collection("orders").insertOne({code,product:product.slug,productName:product.name,amount:product.price,buyerName:parsed.data.name,contact:parsed.data.contact,status:"pending",createdAt:new Date()});
+ const deliveryToken=randomBytes(24).toString("hex");
+ await db.collection("orders").insertOne({code,product:product.slug,productName:product.name,amount:product.price,buyerName:parsed.data.name,contact:parsed.data.contact,deliveryToken,status:"pending",createdAt:new Date()});
  return NextResponse.json({ok:true,code,amount:product.price,qrUrl:createQrUrl(product.price,code)});
 }

@@ -26,7 +26,7 @@ function paymentReady(){
 export function productReady(slug:string){
   if(!paymentReady())return false;
   if(slug==="moi-shoyru-mot-bua")return true;
-  return Boolean(deliveryUrl(slug));
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN||deliveryUrl(slug));
 }
 
 export function productPrepared(slug:string){return ["moi-shoyru-mot-bua","sticker-shoyru-di-lam"].includes(slug)}
