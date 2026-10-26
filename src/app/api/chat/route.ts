@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
   });
 
   let reply = usefulFallback(parsed.data.text);
+  let providerUsed = "built-in";
   const history = await db
     .collection("visitor_messages")
     .find({ sessionId: parsed.data.sessionId })
@@ -94,26 +95,30 @@ export async function POST(request: NextRequest) {
     .toArray();
   const providers = [
     process.env.GROQ_API_KEY && {
+      name: "groq",
       apiKey: process.env.GROQ_API_KEY,
       baseURL: "https://api.groq.com/openai/v1",
       model: process.env.GROQ_MODEL || process.env.AI_MODEL || "openai/gpt-oss-20b",
     },
     process.env.OPENROUTER_API_KEY && {
+      name: "openrouter",
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: "https://openrouter.ai/api/v1",
       model: process.env.OPENROUTER_MODEL || "openrouter/free",
     },
     process.env.KILO_API_KEY && {
+      name: "kilo-auto",
       apiKey: process.env.KILO_API_KEY,
       baseURL: "https://ai-gateway.kilo.ai/api/v1",
       model: process.env.KILO_MODEL || "kilo-auto/free",
     },
     process.env.KILO_API_KEY && {
+      name: "kilo-fallback",
       apiKey: process.env.KILO_API_KEY,
       baseURL: "https://ai-gateway.kilo.ai/api/v1",
       model: "cohere/north-mini-code:free",
     },
-  ].filter(Boolean) as Array<{ apiKey: string; baseURL: string; model: string }>;
+  ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
   for (const provider of providers) {
     try {
       const client = new OpenAI({
@@ -140,6 +145,7 @@ export async function POST(request: NextRequest) {
       const naturalVietnamese = /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
       if (answer && naturalVietnamese.test(answer) && !/user safety|policy|moderation/i.test(answer)) {
         reply = compactReply(answer);
+        providerUsed = provider.name;
         break;
       }
     } catch {}
@@ -152,5 +158,5 @@ export async function POST(request: NextRequest) {
     read: true,
     createdAt: new Date(now.getTime() + 1),
   });
-  return NextResponse.json({ ok: true, reply });
+  return NextResponse.json({ ok: true, reply, provider: providerUsed });
 }
