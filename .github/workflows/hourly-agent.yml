@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow-file updates run a production smoke cycle; scheduled runs inspect funding and clean test-only ledger entries.
+# Workflow-file updates run a production pipeline cycle; scheduled runs discover, qualify and pursue real opportunities.
 
 on:
   schedule:
