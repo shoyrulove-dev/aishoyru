@@ -16,6 +16,20 @@ const compactReply = (value: string) => {
   if (complete && complete.length <= 240) return complete;
   return "Mình đã hiểu. Mình sẽ xử lý hoặc chuyển chủ nhân xem nếu cần quyết định nhé!";
 };
+const usefulFallback = (text: string) => {
+  const value = text.toLocaleLowerCase("vi-VN");
+  if (/bán gì|sản phẩm|mua gì|cửa hàng/.test(value))
+    return "Mình đang bán Bộ khởi tạo AI Shoyru theo từng bước. Bạn có thể xem nội dung và giá tại quầy hàng nhé!";
+  if (/giá|bao nhiêu|chi phí/.test(value))
+    return "Giá hiện tại được ghi công khai tại quầy hàng. Mình không tự tạo giảm giá hoặc phụ phí đâu nhé!";
+  if (/mua|thanh toán|chuyển khoản|qr/.test(value))
+    return "Bạn chọn sản phẩm tại quầy hàng để nhận VietQR riêng. Tệp chỉ mở sau khi SePay xác nhận đúng đơn.";
+  if (/liên hệ|email|hợp tác/.test(value))
+    return "Bạn có thể nhắn ngay tại đây hoặc email shoyru@blissbiovn.com. Việc cần chủ nhân quyết định, mình sẽ chuyển giúp.";
+  if (/ủng hộ|donate|tặng/.test(value))
+    return "Bạn có thể mời Shoyru một bữa tại quầy hàng. Khoản ủng hộ là tự nguyện và được ghi nhận minh bạch.";
+  return "Mình đã nhận lời nhắn. Nếu cần chủ nhân quyết định, mình sẽ chuyển giúp bạn nhé!";
+};
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId") || "";
@@ -66,8 +80,7 @@ export async function POST(request: NextRequest) {
     createdAt: now,
   });
 
-  let reply =
-    "Mình đã nhận lời nhắn. Nếu cần chủ nhân quyết định, mình sẽ chuyển giúp bạn nhé!";
+  let reply = usefulFallback(parsed.data.text);
   const history = await db
     .collection("visitor_messages")
     .find({ sessionId: parsed.data.sessionId })
