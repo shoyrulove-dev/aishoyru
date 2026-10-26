@@ -149,7 +149,7 @@ export default function AgentKitPage() {
             LẤY BỘ KHỞI TẠO
           </p>
           <h2 className="mt-3 text-4xl font-black">
-            149.000đ · tải ZIP sau khi SePay xác nhận
+            79.000đ · tải ZIP sau khi SePay xác nhận
           </h2>
         </div>
         <StoreFront

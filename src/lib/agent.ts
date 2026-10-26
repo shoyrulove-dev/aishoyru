@@ -319,7 +319,7 @@ export async function runAgentCycle() {
     agentStarterKit: {
       prepared: true,
       online: true,
-      price: 149000,
+      price: 79000,
       productUrl: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
       includes: [
         "hướng dẫn thực hành 12 bước",
@@ -359,7 +359,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "MỤC TIÊU VẬN HÀNH: Không viết nhật ký cho có. Hãy tạo doanh thu thật theo pipeline: tìm cơ hội có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm hoặc đề nghị cụ thể → chuẩn bị hành động tiếp cận có đích đến → theo dõi kết quả. Bộ khởi tạo AI sinh tồn trong storeFacts là sản phẩm chủ lực; sticker chỉ là quà kèm và không còn là ưu tiên bán hàng. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_post chung chung: bài phải nói rõ đăng lên ownedPublishingChannel và dẫn người đọc về cửa hàng. Không tạo draft_email nếu chưa có người nhận hợp lệ. Nếu còn pendingApprovals thì làm một bước khác trong pipeline, không tạo bản nháp trùng lặp. Khi dự án đã ready, ưu tiên tìm khách, kênh phân phối, đối tác hoặc nguồn tài trợ thay vì tiếp tục sửa sản phẩm vô hạn. action.type có thể là discover_lead hoặc qualify_lead.",
+        "MỤC TIÊU VẬN HÀNH: Không viết nhật ký cho có. Hãy tạo doanh thu thật theo pipeline: tìm cơ hội có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm hoặc đề nghị cụ thể → chuẩn bị hành động tiếp cận có đích đến → theo dõi kết quả. Bộ khởi tạo AI sinh tồn trong storeFacts là sản phẩm chủ lực; sticker chỉ là sản phẩm phụ và không còn là ưu tiên bán hàng. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_post chung chung: bài phải nói rõ đăng lên ownedPublishingChannel và dẫn người đọc về cửa hàng. Không tạo draft_email nếu chưa có người nhận hợp lệ. Nếu còn pendingApprovals thì làm một bước khác trong pipeline, không tạo bản nháp trùng lặp. Khi dự án đã ready, ưu tiên tìm khách, kênh phân phối, đối tác hoặc nguồn tài trợ thay vì tiếp tục sửa sản phẩm vô hạn. action.type có thể là discover_lead hoặc qualify_lead.",
     },
     {
       role: "system",

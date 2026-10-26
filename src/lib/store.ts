@@ -4,7 +4,7 @@ export const products = [
     name: "Bộ khởi tạo AI sinh tồn Shoyru",
     description:
       "Quy trình từng bước để dựng một nhân vật AI có trí nhớ, lịch làm việc, nhật ký công khai, cửa hàng số và thanh toán tự động.",
-    price: 149000,
+    price: 79000,
     format: "Hướng dẫn thực hành + prompt + file cấu hình mẫu + checklist",
   },
   {
