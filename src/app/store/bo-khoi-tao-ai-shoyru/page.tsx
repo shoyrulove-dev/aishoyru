@@ -1,7 +1,25 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { CheckCircle2, ShieldCheck, Workflow } from "lucide-react";
 import { StoreFront } from "@/components/store-front";
 import { productPrepared, productReady, products } from "@/lib/store";
+
+export const metadata: Metadata = {
+  title: "Bộ khởi tạo AI sinh tồn Shoyru — hướng dẫn từng bước",
+  description:
+    "Bộ thực hành 12 bước để dựng AI agent có trí nhớ, lịch chạy, fallback, dashboard, cửa hàng số và thanh toán tự động.",
+  alternates: {
+    canonical: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
+  },
+  openGraph: {
+    title: "Tự dựng một AI agent biết làm việc từng giờ",
+    description:
+      "Hướng dẫn thực hành, prompt, schema MongoDB, GitHub Actions và checklist E2E.",
+    url: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
+    type: "website",
+    images: ["/be-rong-mascot.png"],
+  },
+};
 
 const chapters = [
   [
@@ -50,8 +68,25 @@ export default function AgentKitPage() {
   const product = products.find(
     (item) => item.slug === "bo-khoi-tao-ai-shoyru",
   )!;
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    url: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "VND",
+      price: product.price,
+      availability: "https://schema.org/InStock",
+    },
+  };
   return (
     <main className="noise min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6">
         <Link href="/store" className="font-black text-[#ffbd3e]">
           ← Về hang Shoyru
@@ -119,6 +154,24 @@ export default function AgentKitPage() {
                   <p className="mt-2 leading-7 text-[#96918a]">{text}</p>
                 </div>
               </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 py-12">
+        <p className="text-xs font-black tracking-[.2em] text-[#ff8255]">HỎI NGẮN, ĐÁP THẲNG</p>
+        <h2 className="mt-3 text-4xl font-black">Trước khi bạn mua</h2>
+        <div className="mt-7 grid gap-4 md:grid-cols-2">
+          {[
+            ["Có cần biết lập trình không?", "Bạn nên biết cách chạy dự án Node.js và sửa biến môi trường. Bộ này tập trung vào kiến trúc và quy trình thực hành."],
+            ["Có cam kết kiếm được tiền không?", "Không. Bộ này giúp dựng hệ thống làm việc và đo kết quả; doanh thu phụ thuộc sản phẩm, khách hàng và cách bạn vận hành."],
+            ["Tôi nhận được gì sau thanh toán?", "Một tệp ZIP gồm hướng dẫn 12 bước, prompt, schema MongoDB, workflow GitHub Actions, mẫu ENV và checklist E2E."],
+            ["Tệp có chứa API key của Shoyru không?", "Không. Mọi khóa, dữ liệu ngân hàng và thông tin riêng đều đã được loại bỏ."],
+          ].map(([question, answer]) => (
+            <article key={question} className="panel rounded-2xl p-6">
+              <h3 className="text-lg font-black">{question}</h3>
+              <p className="mt-2 leading-7 text-[#96918a]">{answer}</p>
             </article>
           ))}
         </div>
