@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow changes verify the deployed no-idle rule; scheduled cycles pursue the highest-value safe action.
+# Workflow changes verify production after secret rotation; scheduled cycles pursue the highest-value safe action.
 
 on:
   schedule:
