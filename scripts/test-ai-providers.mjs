@@ -25,9 +25,16 @@ const numberArg = (name, fallback) => {
 const requests = numberArg("requests", 1);
 const concurrency = numberArg("concurrency", 1);
 const timeoutMs = numberArg("timeout_ms", 30000);
+const maxTokens = numberArg("max_tokens", 256);
+const stringArg = (name, fallback = "") => {
+  const prefix = `--${name}=`;
+  return process.argv.find((item) => item.startsWith(prefix))?.slice(prefix.length) || fallback;
+};
+const providerFilter = stringArg("provider").toLowerCase();
+const modelOverride = stringArg("model");
 const prompt = process.env.AI_TEST_PROMPT || "Chỉ trả lời một câu tiếng Việt ngắn: Shoyru đã sẵn sàng.";
 
-const providers = [
+let providers = [
   ["Groq", "GROQ", "openai", "https://api.groq.com/openai/v1", "openai/gpt-oss-20b"],
   ["OpenRouter", "OPENROUTER", "openai", "https://openrouter.ai/api/v1", "openrouter/free"],
   ["Kilo", "KILO", "openai", "https://ai-gateway.kilo.ai/api/v1", "kilo-auto/free"],
@@ -46,6 +53,12 @@ const providers = [
   model: process.env[`${prefix}_MODEL`] || defaultModel,
 }));
 
+if (providerFilter) {
+  providers = providers.filter((provider) =>
+    provider.name.toLowerCase().includes(providerFilter));
+}
+if (modelOverride && providers.length === 1) providers[0].model = modelOverride;
+
 const classify = (status, body) => {
   const message = String(body?.error?.message || body?.message || "").toLowerCase();
   if (status === 401 || status === 403) return "AUTH";
@@ -57,9 +70,11 @@ const classify = (status, body) => {
 };
 
 const rateHeaders = (headers) => ({
-  limit: headers.get("x-ratelimit-limit-requests") || headers.get("ratelimit-limit") || "",
+  limit: headers.get("x-ratelimit-limit-requests") || headers.get("x-ratelimit-limit") || headers.get("ratelimit-limit") || "",
   remaining: headers.get("x-ratelimit-remaining-requests") || headers.get("ratelimit-remaining") || "",
   reset: headers.get("x-ratelimit-reset-requests") || headers.get("ratelimit-reset") || "",
+  tokenLimit: headers.get("x-ratelimit-limit-tokens") || "",
+  tokenRemaining: headers.get("x-ratelimit-remaining-tokens") || "",
   retryAfter: headers.get("retry-after") || "",
 });
 
@@ -80,8 +95,8 @@ async function oneRequest(provider, model) {
     ? `${provider.baseURL}/chat`
     : `${provider.baseURL}/chat/completions`;
   const payload = provider.protocol === "cohere"
-    ? { model, messages: [{ role: "user", content: prompt }], max_tokens: 80 }
-    : { model, messages: [{ role: "user", content: prompt }], max_tokens: 80, stream: false };
+    ? { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens }
+    : { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens, stream: false };
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -108,6 +123,7 @@ async function oneRequest(provider, model) {
       hasText: Boolean(String(content || "").trim()),
       inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? "",
       outputTokens: usage.completion_tokens ?? usage.output_tokens ?? "",
+      errorCode: body?.error?.code || body?.error?.type || "",
       ...rateHeaders(response.headers),
     };
   } catch (error) {
@@ -121,7 +137,10 @@ async function oneRequest(provider, model) {
       limit: "",
       remaining: "",
       reset: "",
+      tokenLimit: "",
+      tokenRemaining: "",
       retryAfter: "",
+      errorCode: "",
     };
   }
 }

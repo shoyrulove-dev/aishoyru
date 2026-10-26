@@ -56,3 +56,9 @@ npm run ai:bench
 
 `ai:test` gửi một yêu cầu an toàn tới từng provider. `ai:bench` gửi 10 yêu cầu/provider với concurrency 2 để đo độ trễ và quan sát rate limit. Script không in API key hoặc nội dung trả lời. Không tăng số request quá cao khi dùng gói miễn phí.
 
+Có thể kiểm tra riêng một provider/model mà không sửa file chứa key:
+
+```bash
+node scripts/test-ai-providers.mjs --provider=Gemini --model=gemini-3.5-flash-lite --requests=3 --max_tokens=256
+```
+
