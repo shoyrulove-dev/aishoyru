@@ -16,6 +16,73 @@ const plainPost = (value: string) =>
     .replace(/<[^>]+>/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+function dailyRoutine(now: Date) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      hour: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(now)
+      .find((part) => part.type === "hour")?.value || 0,
+  );
+  const pick = (items: string[]) =>
+    items[(now.getUTCDate() + hour) % items.length];
+  if (hour >= 23 || hour < 7)
+    return {
+      status: "Đang ngủ trong hang",
+      thought: pick([
+        "Khò khò… ai thấy đùi gà bay ngang giấc mơ thì để phần mình nhé.",
+        "Shoyru đang cuộn tròn ngủ. Kho báu hôm nay là chiếc gối mát lạnh.",
+        "Tạm đóng laptop, mở chế độ rồng con ngáy khe khẽ.",
+      ]),
+      activity:
+        "Shoyru đi ngủ để mai còn đủ tỉnh táo tìm khách và làm sản phẩm.",
+      nextWake: "07:17 sáng",
+    };
+  if (hour === 7)
+    return {
+      status: "Đang ăn sáng",
+      thought:
+        "Bữa sáng quan trọng lắm. Bụng rỗng thì prompt cũng chỉ nghĩ ra… đồ ăn.",
+      activity: "Shoyru ăn sáng và kiểm tra nhanh tình hình trong hang.",
+      nextWake: "08:17 sáng",
+    };
+  if (hour === 12)
+    return {
+      status: "Đang ăn trưa",
+      thought:
+        "Nạp cơm trước, nạp context sau. Rồng đói rất dễ định giá mọi thứ bằng đùi gà.",
+      activity: "Shoyru nghỉ ăn trưa, chưa nhận thêm việc mới trong giờ này.",
+      nextWake: "13:17 chiều",
+    };
+  if (hour === 13)
+    return {
+      status: "Đang ngủ trưa",
+      thought:
+        "Chợp mắt êm ái một chút. Nếu có đơn hàng, nhớ rung chuông thật khẽ nhé.",
+      activity: "Shoyru ngủ trưa để hồi năng lượng cho ca làm buổi chiều.",
+      nextWake: "14:17 chiều",
+    };
+  if (hour === 18)
+    return {
+      status: "Đang ăn tối",
+      thought:
+        "Hôm nay chưa giàu nhưng vẫn phải ăn tối. Đây gọi là đầu tư vào hạ tầng rồng.",
+      activity: "Shoyru nghỉ ăn tối và tổng kết nhanh một ngày trong hang.",
+      nextWake: "19:17 tối",
+    };
+  if (hour === 22)
+    return {
+      status: "Đang dọn hang chuẩn bị ngủ",
+      thought:
+        "Đóng sổ, xếp vàng, giấu bánh. Việc ngày mai để Shoyru ngày mai lo.",
+      activity: "Shoyru kết thúc ngày làm việc và chuẩn bị đi ngủ.",
+      nextWake: "23:17 tối để đi ngủ",
+    };
+  return null;
+}
 const Decision = z.object({
   status: z
     .string()
@@ -242,6 +309,63 @@ export async function runAgentCycle() {
       { upsert: true },
     ),
   ]);
+  const routine = dailyRoutine(new Date());
+  if (routine) {
+    const now = new Date();
+    await Promise.all([
+      db
+        .collection("agent_state")
+        .updateOne(
+          { key: "main" },
+          {
+            $set: {
+              status: routine.status,
+              thought: routine.thought,
+              nextWake: routine.nextWake,
+              lastRunAt: now,
+              updatedAt: now,
+            },
+          },
+          { upsert: true },
+        ),
+      db
+        .collection("activities")
+        .insertOne({
+          kind: "SINH HOẠT",
+          text: routine.activity,
+          public: true,
+          createdAt: now,
+          source: "routine",
+        }),
+      db
+        .collection("conversations")
+        .insertOne({
+          speaker: "shoyru",
+          text: routine.thought,
+          public: true,
+          createdAt: now,
+          source: "routine",
+        }),
+      db
+        .collection("agent_runs")
+        .insertOne({
+          decision: {
+            status: routine.status,
+            action: { type: "rest", title: routine.activity },
+          },
+          provider: "routine",
+          model: "daily-schedule",
+          createdAt: now,
+        }),
+    ]);
+    return {
+      ok: true,
+      routine: true,
+      status: routine.status,
+      thought: routine.thought,
+      nextWake: routine.nextWake,
+    };
+  }
   const providers = [
     {
       name: "groq",

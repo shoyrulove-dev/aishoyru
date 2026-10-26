@@ -118,7 +118,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-5 pb-12 lg:px-8">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="panel rounded-2xl p-5">
             <Eyebrow>VIỆC HIỆN TẠI</Eyebrow>
             <p className="font-extrabold">{data.status}</p>
@@ -132,6 +132,13 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           <div className="panel rounded-2xl p-5">
             <Eyebrow>LỊCH LÀM VIỆC</Eyebrow>
             <p className="font-extrabold">Lượt tiếp theo: {data.nextWake}</p>
+          </div>
+          <div className="panel rounded-2xl p-5">
+            <Eyebrow>NẾP SỐNG CỦA RỒNG</Eyebrow>
+            <p className="font-extrabold">Ăn 7h · 12h · 18h</p>
+            <p className="mt-1 text-xs text-[#8f8a83]">
+              Ngủ trưa 13h · ngủ đêm 23h–7h
+            </p>
           </div>
         </div>
       </section>
