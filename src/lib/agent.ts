@@ -353,7 +353,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được hệ thống đăng tự động lên /updates. Không lặp lại nội dung trong recentPublished. Email ra ngoài vẫn cần chủ nhân duyệt. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
+        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được hệ thống đăng tự động lên /updates. Không lặp lại nội dung trong recentPublished. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh, không được chỉ là tên tệp. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tìm khách hàng hoặc kênh phân phối thay vì đăng lặp. Email ra ngoài vẫn cần chủ nhân duyệt. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
       role: "user",
@@ -519,6 +519,32 @@ export async function runAgentCycle() {
     ? decision.action.type
     : "research";
   decision.action.type = normalizedType;
+  if (decision.action.type === "draft_post") {
+    const latestProductPost = recentPublished.find(
+      (item) =>
+        /sticker/i.test(String(item.title || "")) &&
+        Date.now() - new Date(item.publishedAt as Date).getTime() <
+          24 * 60 * 60 * 1000,
+    );
+    if (latestProductPost) {
+      decision.status = "Đang tìm kênh đưa sản phẩm đến khách hàng";
+      decision.thought =
+        "Bài giới thiệu sticker đã được đăng gần đây, mình chuyển sang tìm nơi có khách hàng phù hợp.";
+      decision.reflection =
+        "Đăng lặp trên cùng một kênh không tạo thêm nhiều giá trị. Lượt này Shoyru nghiên cứu kênh phân phối hoặc khách hàng tiềm năng mới.";
+      decision.action = {
+        type: "research",
+        title: "Tìm kênh phân phối mới cho bộ sticker",
+        details: `Đánh giá nguồn ${fundingResearch.name} và các dấu hiệu phù hợp với sản phẩm số tại ${fundingResearch.url}.`,
+      };
+      decision.work = {
+        summary: `Đã kiểm tra ${fundingResearch.name} như một nguồn cơ hội tiềm năng.`,
+        artifact: `Nguồn: ${fundingResearch.url}. ${fundingResearch.error ? `Chưa đọc được nội dung vì ${fundingResearch.error}.` : "Nội dung nguồn đã được lưu để đánh giá mức phù hợp và cách tiếp cận hợp lệ."}`,
+        nextStep:
+          "Chỉ tạo cơ hội tiếp cận khi tìm được URL và đầu mối công khai phù hợp.",
+      };
+    }
+  }
   const now = new Date();
   let workResult: z.infer<typeof WorkResult> | null = null;
   if (decision.action.type !== "wait")
@@ -657,11 +683,31 @@ export async function runAgentCycle() {
     );
   if (decision.action.type === "draft_post" && workResult) {
     const slug = `${now.toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`;
+    let postContent = workResult.artifact;
+    try {
+      const details = JSON.parse(decision.action.details) as {
+        content?: unknown;
+      };
+      if (typeof details.content === "string" && details.content.trim())
+        postContent = details.content.trim();
+    } catch {}
+    if (/\.(json|md|txt)$/i.test(postContent.trim()))
+      postContent = decision.action.details;
+    const inventedOffer =
+      /(giảm\s*giá|khuyến\s*mãi|\b\d+%\b|\b\d+\s*(giờ|ngày)\b|số lượng có hạn|miễn phí)/i.test(
+        `${decision.action.title} ${postContent}`,
+      );
+    const postTitle = inventedOffer
+      ? "Bộ sticker Shoyru Đi Làm đã mở bán"
+      : decision.action.title;
+    if (inventedOffer)
+      postContent =
+        "Bộ sticker Shoyru Đi Làm gồm 6 hình PNG đang được bán với giá 39.000đ. Mỗi đơn có mã thanh toán riêng; sau khi SePay xác nhận đúng giao dịch, khách hàng có thể tải tệp ZIP tự động. Xem sản phẩm tại: https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam";
     writes.push(
       db.collection("published_posts").insertOne({
         slug,
-        title: decision.action.title,
-        content: workResult.artifact,
+        title: postTitle,
+        content: postContent,
         channel: "website",
         publishedAt: now,
         createdAt: now,
