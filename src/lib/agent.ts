@@ -9,6 +9,13 @@ const clip = (value: string, max: number) =>
         .slice(0, max + 1)
         .replace(/\s+\S*$/, "")
         .replace(/[,:;\-]+$/, "") + "…";
+const plainPost = (value: string) =>
+  value
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, "$2 ($1)")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 const Decision = z.object({
   status: z
     .string()
@@ -193,6 +200,21 @@ export async function runAgentCycle() {
       },
     ),
   ]);
+  const htmlPosts = await db
+    .collection("published_posts")
+    .find({ content: /<br|<a\s/i })
+    .project({ content: 1 })
+    .toArray();
+  await Promise.all(
+    htmlPosts.map((post) =>
+      db
+        .collection("published_posts")
+        .updateOne(
+          { _id: post._id },
+          { $set: { content: plainPost(String(post.content || "")) } },
+        ),
+    ),
+  );
   const migrationTime = new Date();
   await Promise.all([
     db.collection("projects").updateMany(
@@ -564,21 +586,29 @@ export async function runAgentCycle() {
   decision.action.type = normalizedType;
   if (decision.action.type === "draft_post") {
     const proposedPost = `${decision.action.title} ${decision.action.details} ${decision.work?.artifact || ""}`;
+    const isStickerPost = /sticker/i.test(proposedPost);
+    const isAgentKitPost = /(khởi tạo AI|agent starter|AI sinh tồn)/i.test(
+      proposedPost,
+    );
     const latestProductPost = recentPublished.find(
       (item) =>
-        /sticker/i.test(String(item.title || "")) &&
+        ((isStickerPost && /sticker/i.test(String(item.title || ""))) ||
+          (isAgentKitPost &&
+            /(khởi tạo AI|agent starter|AI sinh tồn)/i.test(
+              String(item.title || ""),
+            ))) &&
         Date.now() - new Date(item.publishedAt as Date).getTime() <
           24 * 60 * 60 * 1000,
     );
-    if (/sticker/i.test(proposedPost) && latestProductPost) {
+    if (latestProductPost) {
       decision.status = "Đang tìm kênh đưa sản phẩm đến khách hàng";
       decision.thought =
-        "Bài giới thiệu sticker đã được đăng gần đây, mình chuyển sang tìm nơi có khách hàng phù hợp.";
+        "Bài giới thiệu sản phẩm đã được đăng gần đây, mình chuyển sang tìm nơi có khách hàng phù hợp.";
       decision.reflection =
         "Đăng lặp trên cùng một kênh không tạo thêm nhiều giá trị. Lượt này Shoyru nghiên cứu kênh phân phối hoặc khách hàng tiềm năng mới.";
       decision.action = {
         type: "research",
-        title: "Tìm kênh phân phối mới cho bộ sticker",
+        title: "Tìm kênh phân phối mới cho bộ AI sinh tồn",
         details: `Đánh giá nguồn ${fundingResearch.name} và các dấu hiệu phù hợp với sản phẩm số tại ${fundingResearch.url}.`,
       };
       decision.work = {
@@ -755,6 +785,7 @@ export async function runAgentCycle() {
     } catch {}
     if (/\.(json|md|txt)$/i.test(postContent.trim()))
       postContent = decision.action.details;
+    postContent = plainPost(postContent);
     const inventedOffer =
       /(giảm\s*giá|khuyến\s*mãi|\b\d+%\b|\b\d+\s*(giờ|ngày)\b|số lượng có hạn|miễn phí)/i.test(
         `${decision.action.title} ${postContent}`,
