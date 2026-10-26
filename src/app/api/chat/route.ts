@@ -108,13 +108,18 @@ export async function POST(request: NextRequest) {
       baseURL: "https://ai-gateway.kilo.ai/api/v1",
       model: process.env.KILO_MODEL || "kilo-auto/free",
     },
+    process.env.KILO_API_KEY && {
+      apiKey: process.env.KILO_API_KEY,
+      baseURL: "https://ai-gateway.kilo.ai/api/v1",
+      model: "cohere/north-mini-code:free",
+    },
   ].filter(Boolean) as Array<{ apiKey: string; baseURL: string; model: string }>;
   for (const provider of providers) {
     try {
       const client = new OpenAI({
         apiKey: provider.apiKey,
         baseURL: provider.baseURL,
-        timeout: 8000,
+        timeout: 12000,
       });
       const result = await client.chat.completions.create({
         model: provider.model,

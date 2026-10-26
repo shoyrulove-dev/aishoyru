@@ -404,6 +404,12 @@ export async function runAgentCycle() {
       model: process.env.KILO_MODEL || "kilo-auto/free",
     },
     {
+      name: "kilo-fallback",
+      apiKey: process.env.KILO_API_KEY,
+      baseURL: "https://ai-gateway.kilo.ai/api/v1",
+      model: "cohere/north-mini-code:free",
+    },
+    {
       name: "openai",
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: "https://api.openai.com/v1",
