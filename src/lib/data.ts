@@ -3,6 +3,19 @@ import { getDb } from "./mongodb";
 import type { PublicState } from "./types";
 const vietnameseText =
   /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
+const publicSentence = (value: unknown, max = 190) => {
+  const clean = String(value || "").replace(/\s+/g, " ").trim();
+  if (clean.length <= max && !clean.endsWith("…") && !clean.endsWith("...")) return clean;
+  const candidates = clean.match(/[^.!?]+[.!?]+/g) || [];
+  let result = "";
+  for (const sentence of candidates) {
+    if ((result + sentence).trim().length > max) break;
+    result = (result + " " + sentence).trim();
+  }
+  if (result) return result;
+  const short = clean.slice(0, max).replace(/\s+\S*$/, "").replace(/[,:;.…\-]+$/, "");
+  return short ? short + "." : "Shoyru đang tiếp tục công việc.";
+};
 export async function getPublicState(): Promise<PublicState> {
   const db = await getDb();
   if (!db) return { ...demoState, updatedAt: new Date().toISOString() };
@@ -85,7 +98,7 @@ export async function getPublicState(): Promise<PublicState> {
         minute: "2-digit",
         timeZone: "Asia/Ho_Chi_Minh",
       }),
-      text: legacy[String(x.text || "")] || String(x.text || ""),
+      text: publicSentence(legacy[String(x.text || "")] || x.text),
     }));
   const status = String(state?.status || "Đang nghỉ trong hang");
   const statusVi =
@@ -97,7 +110,7 @@ export async function getPublicState(): Promise<PublicState> {
   const rawThought =
     legacy[String(state?.thought || "")] || String(state?.thought || "");
   const thoughtVi = vietnameseText.test(rawThought)
-    ? rawThought
+    ? publicSentence(rawThought, 145)
     : "Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu.";
   const projectResult =
     activeProject?.result && typeof activeProject.result === "object"

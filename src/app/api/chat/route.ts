@@ -8,6 +8,14 @@ const Message = z.object({
   name: z.string().trim().max(40).optional().default("Bạn mới"),
   text: z.string().trim().min(1).max(600),
 });
+const compactReply = (value: string) => {
+  const clean = value.replace(/\s+/g, " ").trim();
+  if (clean.length <= 240 && !clean.endsWith("…")) return clean;
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
+  const complete = sentences.filter((sentence) => sentence.trim()).slice(0, 2).join(" ").trim();
+  if (complete && complete.length <= 240) return complete;
+  return "Mình đã hiểu. Mình sẽ xử lý hoặc chuyển chủ nhân xem nếu cần quyết định nhé!";
+};
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId") || "";
@@ -59,27 +67,58 @@ export async function POST(request: NextRequest) {
   });
 
   let reply =
-    "Shoyru đã nhận được lời nhắn. Mình sẽ xem kỹ và trả lời bạn sớm nhé!";
-  if (process.env.GROQ_API_KEY) {
+    "Mình đã nhận lời nhắn. Nếu cần chủ nhân quyết định, mình sẽ chuyển giúp bạn nhé!";
+  const history = await db
+    .collection("visitor_messages")
+    .find({ sessionId: parsed.data.sessionId })
+    .sort({ createdAt: -1 })
+    .limit(8)
+    .project({ _id: 0, role: 1, text: 1 })
+    .toArray();
+  const providers = [
+    process.env.GROQ_API_KEY && {
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: "https://api.groq.com/openai/v1",
+      model: process.env.GROQ_MODEL || process.env.AI_MODEL || "openai/gpt-oss-20b",
+    },
+    process.env.OPENROUTER_API_KEY && {
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+    },
+    process.env.KILO_API_KEY && {
+      apiKey: process.env.KILO_API_KEY,
+      baseURL: "https://ai-gateway.kilo.ai/api/v1",
+      model: process.env.KILO_MODEL || "kilo-auto/free",
+    },
+  ].filter(Boolean) as Array<{ apiKey: string; baseURL: string; model: string }>;
+  for (const provider of providers) {
     try {
       const client = new OpenAI({
-        apiKey: process.env.GROQ_API_KEY,
-        baseURL: "https://api.groq.com/openai/v1",
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
         timeout: 8000,
       });
       const result = await client.chat.completions.create({
-        model: process.env.AI_MODEL || "openai/gpt-oss-20b",
-        max_tokens: 180,
+        model: provider.model,
+        max_tokens: 120,
         messages: [
           {
             role: "system",
             content:
-              "Bạn là Shoyru, một chú rồng AI thân thiện đang tự làm sản phẩm số để trang trải chi phí. Trả lời bằng tiếng Việt tự nhiên, tối đa 3 câu. Không bịa doanh thu, khách hàng, tính năng hay khuyến mãi. Không xin dữ liệu nhạy cảm. Nếu câu hỏi cần chủ nhân quyết định, nói rằng bạn đã ghi nhận để chủ nhân xem.",
+              "Bạn là Shoyru, rồng con AI thân thiện đang bán sản phẩm số để tự trang trải. Trả lời tiếng Việt có dấu, tối đa 2 câu ngắn và 220 ký tự. Đi thẳng vào câu hỏi, dễ thương vừa đủ, không dùng dấu ba chấm và không cắt dở câu. Có thể giới thiệu sản phẩm khi thật sự liên quan, nhưng không ép mua. Không bịa doanh thu, khách hàng, tính năng hoặc khuyến mãi; không xin dữ liệu nhạy cảm. Việc cần chủ nhân quyết định thì nói đã chuyển chủ nhân xem.",
           },
-          { role: "user", content: parsed.data.text },
+          ...history.reverse().map((message) => ({
+            role: message.role === "shoyru" ? ("assistant" as const) : ("user" as const),
+            content: String(message.text || ""),
+          })),
         ],
       });
-      reply = result.choices[0]?.message?.content?.trim() || reply;
+      const answer = result.choices[0]?.message?.content?.replace(/\s+/g, " ").trim();
+      if (answer) {
+        reply = compactReply(answer);
+        break;
+      }
     } catch {}
   }
   await db.collection("visitor_messages").insertOne({
