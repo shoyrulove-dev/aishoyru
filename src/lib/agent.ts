@@ -87,7 +87,7 @@ export async function runAgentCycle() {
     db.collection("opportunities").find({}).sort({createdAt:-1}).limit(10).toArray(),
     db.collection("approvals").find({status:"pending",$or:[{destination:{$exists:true}},{type:"email"}]}).sort({createdAt:-1}).limit(10).toArray(),
   ]);
-  const storeFacts={stickerPack:{prepared:true,files:6,price:39000,paymentReady:Boolean(process.env.BANK_BIN&&process.env.BANK_ACCOUNT_NO&&process.env.BANK_ACCOUNT_NAME&&process.env.SEPAY_API_KEY&&process.env.PRODUCT_STICKER_URL)}};
+  const storeFacts={stickerPack:{prepared:true,online:true,files:6,price:39000,productUrl:"https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam",paymentReady:Boolean(process.env.BANK_BIN&&process.env.BANK_ACCOUNT_NO&&process.env.BANK_ACCOUNT_NAME&&process.env.SEPAY_API_KEY&&(process.env.BLOB_READ_WRITE_TOKEN||process.env.PRODUCT_STICKER_URL)),delivery:"Mã đơn riêng → VietQR → SePay xác minh → tải ZIP tự động"}};
   const outreachTargets=(process.env.OUTREACH_TARGETS||"").split(",").map(value=>value.trim()).filter(value=>/^\S+@\S+\.\S+$/.test(value));
   const fundingSourceIndex=Number(state?.fundingSourceIndex||0)%fundingSources.length;
   const fundingResearch=await inspectFundingSource(fundingSourceIndex);
