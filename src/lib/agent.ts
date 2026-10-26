@@ -443,6 +443,22 @@ export async function runAgentCycle() {
     )
       delete rawDecision[key];
   }
+  const asText = (value: unknown) =>
+    typeof value === "string" ? value : JSON.stringify(value ?? "");
+  for (const key of ["status", "thought", "reflection"])
+    rawDecision[key] = asText(rawDecision[key]);
+  if (rawDecision.action && typeof rawDecision.action === "object") {
+    const action = rawDecision.action as Record<string, unknown>;
+    action.type = asText(action.type);
+    action.title = asText(action.title);
+    action.details = asText(action.details);
+  }
+  if (rawDecision.work && typeof rawDecision.work === "object") {
+    const work = rawDecision.work as Record<string, unknown>;
+    work.summary = asText(work.summary);
+    work.artifact = asText(work.artifact);
+    work.nextStep = asText(work.nextStep);
+  }
   const decision = Decision.parse(rawDecision);
   if (decision.action.type === "wait" && pendingApprovals.length === 0) {
     if (recentPublished.length === 0) {
