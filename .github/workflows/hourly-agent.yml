@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow-file updates validate the live growth loop; scheduled runs discover, qualify and pursue real opportunities.
+# Workflow-file updates validate Shoyru's survival loop; scheduled runs pursue the highest-value safe action.
 
 on:
   schedule:

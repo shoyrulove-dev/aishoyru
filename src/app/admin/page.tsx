@@ -1,39 +1,703 @@
 "use client";
 
-import {ArrowUpRight,Check,ChevronRight,CircleDollarSign,ExternalLink,Globe2,KeyRound,LayoutDashboard,LogOut,Mail,Radio,RefreshCw,Rocket,Search,ShieldCheck,ShoppingBag,Target,X,Zap} from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  ExternalLink,
+  Globe2,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Radio,
+  RefreshCw,
+  Rocket,
+  Search,
+  ShieldCheck,
+  ShoppingBag,
+  Target,
+  X,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
-import {createElement,useState} from "react";
+import { createElement, useState } from "react";
 
-type Approval={_id:string;title:string;details:string;type:string;channel?:string;destination?:string;email?:{to:string;subject:string;body:string}};
-type Overview={approvals:Approval[];projects:Array<Record<string,unknown>>;opportunities:Array<Record<string,unknown>>;runs:Array<Record<string,unknown>>;orders:Array<Record<string,unknown>>;published:Array<Record<string,unknown>>;metrics:{revenue:number;pending:number;leads:number;orders:number};channels:Array<{id:string;name:string;status:string;detail:string}>};
-const money=(value:number)=>new Intl.NumberFormat("vi-VN").format(value)+"đ";
+type Approval = {
+  _id: string;
+  title: string;
+  details: string;
+  type: string;
+  channel?: string;
+  destination?: string;
+  email?: { to: string; subject: string; body: string };
+};
+type Overview = {
+  approvals: Approval[];
+  projects: Array<Record<string, unknown>>;
+  opportunities: Array<Record<string, unknown>>;
+  runs: Array<Record<string, unknown>>;
+  orders: Array<Record<string, unknown>>;
+  published: Array<Record<string, unknown>>;
+  metrics: { revenue: number; pending: number; leads: number; orders: number };
+  channels: Array<{ id: string; name: string; status: string; detail: string }>;
+};
+const money = (value: number) =>
+  new Intl.NumberFormat("vi-VN").format(value) + "đ";
 
-export default function Admin(){
- const[key,setKey]=useState(""),[data,setData]=useState<Overview|null>(null),[msg,setMsg]=useState(""),[loading,setLoading]=useState(false),[tab,setTab]=useState("overview");
- async function load(){setLoading(true);const r=await fetch("/api/admin/overview",{headers:{Authorization:`Bearer ${key}`}});setLoading(false);if(!r.ok){setData(null);setMsg("Mã quản trị không đúng hoặc dịch vụ dữ liệu chưa sẵn sàng.");return}setData(await r.json());setMsg("")}
- async function decide(id:string,status:string){const r=await fetch("/api/admin/approvals",{method:"PATCH",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({id,status})});const result=await r.json();if(!r.ok){setMsg(result.error||"Không thể thực hiện hành động.");return}setMsg(result.sent?"Email đã được gửi thật.":result.published?`Đã đăng tại ${result.url}.`:"Đã cập nhật.");await load()}
- if(!data)return <Login keyValue={key} setKey={setKey} load={load} loading={loading} message={msg}/>;
- const nav=[{id:"overview",label:"Tổng quan",icon:LayoutDashboard},{id:"actions",label:"Hành động",icon:Zap,count:data.metrics.pending},{id:"pipeline",label:"Cơ hội",icon:Target,count:data.metrics.leads},{id:"channels",label:"Kênh bán",icon:Radio}];
- return <main className="min-h-screen bg-[#f4f6f8] text-[#17202a]">
-  <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-[#e3e7eb] bg-white px-4 py-5 lg:flex"><Brand/><p className="mt-8 px-3 text-[10px] font-bold tracking-[.16em] text-[#9aa3ad]">ĐIỀU HÀNH</p><nav className="mt-2 space-y-1">{nav.map(item=><button key={item.id} onClick={()=>setTab(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${tab===item.id?"bg-[#17202a] text-white":"text-[#66717c] hover:bg-[#f2f4f6]"}`}><item.icon size={17}/><span className="flex-1 text-left">{item.label}</span>{Boolean(item.count)&&<span className="rounded-full bg-[#ff6b35] px-2 py-0.5 text-[10px] text-white">{item.count}</span>}</button>)}</nav><div className="mt-auto rounded-2xl bg-[#fff4ee] p-4"><Rocket className="text-[#ff6b35]" size={20}/><p className="mt-3 text-sm font-bold">Shoyru đang trực tuyến</p><p className="mt-1 text-xs leading-5 text-[#7a6d66]">Tự chạy mỗi giờ, chỉ dừng ở hành động cần quyền truy cập.</p></div><button onClick={()=>{setData(null);setKey("")}} className="mt-3 flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#7b858f]"><LogOut size={16}/>Đăng xuất</button></aside>
-  <div className="lg:pl-64"><header className="sticky top-0 z-20 border-b border-[#e3e7eb] bg-white/90 backdrop-blur"><div className="flex h-16 items-center justify-between px-5 lg:px-8"><div className="lg:hidden"><Brand/></div><div className="hidden lg:block"><p className="text-sm font-bold">Shoyru OS</p><p className="text-xs text-[#8b949e]">Trung tâm tăng trưởng và vận hành</p></div><div className="flex items-center gap-2"><span className="hidden items-center gap-2 rounded-full bg-[#eaf8ef] px-3 py-1.5 text-xs font-bold text-[#25864b] sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-[#38ad62]"/>Agent đang chạy</span><button onClick={load} className="grid h-9 w-9 place-items-center rounded-xl border border-[#dfe4e8] bg-white"><RefreshCw className={loading?"animate-spin":""} size={16}/></button><Link href="/" target="_blank" className="grid h-9 w-9 place-items-center rounded-xl border border-[#dfe4e8] bg-white"><ExternalLink size={16}/></Link></div></div><div className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden">{nav.map(item=><button key={item.id} onClick={()=>setTab(item.id)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold ${tab===item.id?"bg-[#17202a] text-white":"bg-[#f1f3f5] text-[#66717c]"}`}>{item.label}</button>)}</div></header>
-   <div className="mx-auto max-w-[1440px] p-5 lg:p-8">{msg&&<div className="mb-5 rounded-xl border border-[#b9e7c8] bg-[#effaf3] px-4 py-3 text-sm font-semibold text-[#277346]">{msg}</div>}{tab==="overview"&&<OverviewPanel data={data} setTab={setTab}/>} {tab==="actions"&&<Actions approvals={data.approvals} decide={decide}/>} {tab==="pipeline"&&<Pipeline data={data}/>} {tab==="channels"&&<Channels channels={data.channels}/>}</div>
-  </div>
- </main>
+export default function Admin() {
+  const [key, setKey] = useState(""),
+    [data, setData] = useState<Overview | null>(null),
+    [msg, setMsg] = useState(""),
+    [loading, setLoading] = useState(false),
+    [tab, setTab] = useState("overview");
+  async function load() {
+    setLoading(true);
+    const r = await fetch("/api/admin/overview", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    setLoading(false);
+    if (!r.ok) {
+      setData(null);
+      setMsg("Mã quản trị không đúng hoặc dịch vụ dữ liệu chưa sẵn sàng.");
+      return;
+    }
+    setData(await r.json());
+    setMsg("");
+  }
+  async function decide(id: string, status: string) {
+    const r = await fetch("/api/admin/approvals", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id, status }),
+    });
+    const result = await r.json();
+    if (!r.ok) {
+      setMsg(result.error || "Không thể thực hiện hành động.");
+      return;
+    }
+    setMsg(
+      result.sent
+        ? "Email đã được gửi thật."
+        : result.published
+          ? `Đã đăng tại ${result.url}.`
+          : "Đã cập nhật.",
+    );
+    await load();
+  }
+  if (!data)
+    return (
+      <Login
+        keyValue={key}
+        setKey={setKey}
+        load={load}
+        loading={loading}
+        message={msg}
+      />
+    );
+  const nav = [
+    { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+    {
+      id: "actions",
+      label: "Hành động",
+      icon: Zap,
+      count: data.metrics.pending,
+    },
+    {
+      id: "pipeline",
+      label: "Cơ hội",
+      icon: Target,
+      count: data.metrics.leads,
+    },
+    { id: "channels", label: "Kênh bán", icon: Radio },
+  ];
+  return (
+    <main className="min-h-screen bg-[#f4f6f8] text-[#17202a]">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-[#e3e7eb] bg-white px-4 py-5 lg:flex">
+        <Brand />
+        <p className="mt-8 px-3 text-[10px] font-bold tracking-[.16em] text-[#9aa3ad]">
+          ĐIỀU HÀNH
+        </p>
+        <nav className="mt-2 space-y-1">
+          {nav.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${tab === item.id ? "bg-[#17202a] text-white" : "text-[#66717c] hover:bg-[#f2f4f6]"}`}
+            >
+              <item.icon size={17} />
+              <span className="flex-1 text-left">{item.label}</span>
+              {Boolean(item.count) && (
+                <span className="rounded-full bg-[#ff6b35] px-2 py-0.5 text-[10px] text-white">
+                  {item.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto rounded-2xl bg-[#fff4ee] p-4">
+          <Rocket className="text-[#ff6b35]" size={20} />
+          <p className="mt-3 text-sm font-bold">Shoyru đang trực tuyến</p>
+          <p className="mt-1 text-xs leading-5 text-[#7a6d66]">
+            Tự chạy mỗi giờ, chỉ dừng ở hành động cần quyền truy cập.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setData(null);
+            setKey("");
+          }}
+          className="mt-3 flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#7b858f]"
+        >
+          <LogOut size={16} />
+          Đăng xuất
+        </button>
+      </aside>
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-20 border-b border-[#e3e7eb] bg-white/90 backdrop-blur">
+          <div className="flex h-16 items-center justify-between px-5 lg:px-8">
+            <div className="lg:hidden">
+              <Brand />
+            </div>
+            <div className="hidden lg:block">
+              <p className="text-sm font-bold">Shoyru OS</p>
+              <p className="text-xs text-[#8b949e]">
+                Trung tâm tăng trưởng và vận hành
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-2 rounded-full bg-[#eaf8ef] px-3 py-1.5 text-xs font-bold text-[#25864b] sm:flex">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-[#38ad62]" />
+                Agent đang chạy
+              </span>
+              <button
+                onClick={load}
+                className="grid h-9 w-9 place-items-center rounded-xl border border-[#dfe4e8] bg-white"
+              >
+                <RefreshCw
+                  className={loading ? "animate-spin" : ""}
+                  size={16}
+                />
+              </button>
+              <Link
+                href="/"
+                target="_blank"
+                className="grid h-9 w-9 place-items-center rounded-xl border border-[#dfe4e8] bg-white"
+              >
+                <ExternalLink size={16} />
+              </Link>
+            </div>
+          </div>
+          <div className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden">
+            {nav.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold ${tab === item.id ? "bg-[#17202a] text-white" : "bg-[#f1f3f5] text-[#66717c]"}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </header>
+        <div className="mx-auto max-w-[1440px] p-5 lg:p-8">
+          {msg && (
+            <div className="mb-5 rounded-xl border border-[#b9e7c8] bg-[#effaf3] px-4 py-3 text-sm font-semibold text-[#277346]">
+              {msg}
+            </div>
+          )}
+          {tab === "overview" && <OverviewPanel data={data} setTab={setTab} />}{" "}
+          {tab === "actions" && (
+            <Actions approvals={data.approvals} decide={decide} />
+          )}{" "}
+          {tab === "pipeline" && <Pipeline data={data} />}{" "}
+          {tab === "channels" && <Channels channels={data.channels} />}
+        </div>
+      </div>
+    </main>
+  );
 }
 
-function Login({keyValue,setKey,load,loading,message}:{keyValue:string;setKey:(v:string)=>void;load:()=>void;loading:boolean;message:string}){return <main className="grid min-h-screen bg-[#eef1f4] lg:grid-cols-[1.1fr_.9fr]"><section className="relative hidden overflow-hidden bg-[#101923] p-14 text-white lg:flex lg:flex-col"><div className="absolute -right-28 -top-20 h-96 w-96 rounded-full bg-[#ff6b35]/20 blur-3xl"/><Brand dark/><div className="relative my-auto max-w-xl"><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#ffb08f]">SHOYRU AGENT OPERATING SYSTEM</span><h1 className="mt-6 text-6xl font-black leading-[1.02] tracking-[-.05em]">Biến ý tưởng thành hành động kiếm tiền thật.</h1><p className="mt-6 text-lg leading-8 text-[#aeb8c2]">Theo dõi sản phẩm, khách hàng tiềm năng, kênh phân phối và những hành động cần bạn cấp quyền.</p></div><p className="text-xs text-[#74808b]">Mọi khoản thu đều được xác minh. Không bịa khách hàng, không tự tiêu tiền.</p></section><section className="grid place-items-center px-5 py-12"><div className="w-full max-w-md"><div className="lg:hidden"><Brand/></div><div className="mt-10 rounded-3xl border border-[#dde2e7] bg-white p-7 shadow-[0_24px_80px_rgba(20,31,44,.08)] sm:p-9"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#fff0e9] text-[#f45d28]"><KeyRound size={22}/></div><h2 className="mt-6 text-3xl font-black tracking-tight">Đăng nhập quản trị</h2><p className="mt-2 text-sm leading-6 text-[#77818b]">Dùng mã bí mật để mở trung tâm điều hành.</p><label className="mt-7 block text-xs font-bold text-[#4f5963]">Mã quản trị</label><input autoFocus type="password" value={keyValue} onChange={e=>setKey(e.target.value)} onKeyDown={e=>e.key==="Enter"&&load()} placeholder="Nhập ADMIN_API_KEY" className="mt-2 w-full rounded-xl border border-[#d9dfe4] bg-[#f9fafb] px-4 py-3.5 outline-none focus:border-[#ff6b35]"/><button onClick={load} disabled={!keyValue||loading} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#17202a] px-5 py-3.5 font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={18}/>:<ShieldCheck size={18}/>}Mở trung tâm</button>{message&&<p className="mt-4 rounded-xl bg-[#fff5e6] px-4 py-3 text-sm text-[#9b611b]">{message}</p>}</div></div></section></main>}
+function Login({
+  keyValue,
+  setKey,
+  load,
+  loading,
+  message,
+}: {
+  keyValue: string;
+  setKey: (v: string) => void;
+  load: () => void;
+  loading: boolean;
+  message: string;
+}) {
+  return (
+    <main className="grid min-h-screen bg-[#eef1f4] lg:grid-cols-[1.1fr_.9fr]">
+      <section className="relative hidden overflow-hidden bg-[#101923] p-14 text-white lg:flex lg:flex-col">
+        <div className="absolute -right-28 -top-20 h-96 w-96 rounded-full bg-[#ff6b35]/20 blur-3xl" />
+        <Brand dark />
+        <div className="relative my-auto max-w-xl">
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#ffb08f]">
+            SHOYRU AGENT OPERATING SYSTEM
+          </span>
+          <h1 className="mt-6 text-6xl font-black leading-[1.02] tracking-[-.05em]">
+            Biến ý tưởng thành hành động kiếm tiền thật.
+          </h1>
+          <p className="mt-6 text-lg leading-8 text-[#aeb8c2]">
+            Theo dõi sản phẩm, khách hàng tiềm năng, kênh phân phối và những
+            hành động cần bạn cấp quyền.
+          </p>
+        </div>
+        <p className="text-xs text-[#74808b]">
+          Mọi khoản thu đều được xác minh. Không bịa khách hàng, không tự tiêu
+          tiền.
+        </p>
+      </section>
+      <section className="grid place-items-center px-5 py-12">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden">
+            <Brand />
+          </div>
+          <div className="mt-10 rounded-3xl border border-[#dde2e7] bg-white p-7 shadow-[0_24px_80px_rgba(20,31,44,.08)] sm:p-9">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#fff0e9] text-[#f45d28]">
+              <KeyRound size={22} />
+            </div>
+            <h2 className="mt-6 text-3xl font-black tracking-tight">
+              Đăng nhập quản trị
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#77818b]">
+              Dùng mã bí mật để mở trung tâm điều hành.
+            </p>
+            <label className="mt-7 block text-xs font-bold text-[#4f5963]">
+              Mã quản trị
+            </label>
+            <input
+              autoFocus
+              type="password"
+              value={keyValue}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && load()}
+              placeholder="Nhập ADMIN_API_KEY"
+              className="mt-2 w-full rounded-xl border border-[#d9dfe4] bg-[#f9fafb] px-4 py-3.5 outline-none focus:border-[#ff6b35]"
+            />
+            <button
+              onClick={load}
+              disabled={!keyValue || loading}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#17202a] px-5 py-3.5 font-bold text-white disabled:opacity-50"
+            >
+              {loading ? (
+                <RefreshCw className="animate-spin" size={18} />
+              ) : (
+                <ShieldCheck size={18} />
+              )}
+              Mở trung tâm
+            </button>
+            {message && (
+              <p className="mt-4 rounded-xl bg-[#fff5e6] px-4 py-3 text-sm text-[#9b611b]">
+                {message}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
 
-function OverviewPanel({data,setTab}:{data:Overview;setTab:(tab:string)=>void}){return <><div className="flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="text-sm font-semibold text-[#f2612c]">Tổng quan vận hành</p><h1 className="mt-1 text-3xl font-black tracking-tight">Chào buổi làm việc 👋</h1><p className="mt-2 text-sm text-[#77818b]">Đây là dữ liệu thật từ hành trình kiếm sống của Shoyru.</p></div><Link href="/store" target="_blank" className="flex w-fit items-center gap-2 rounded-xl bg-[#17202a] px-4 py-2.5 text-sm font-bold text-white">Xem cửa hàng <ArrowUpRight size={16}/></Link></div><div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={CircleDollarSign} label="Doanh thu xác minh" value={money(data.metrics.revenue)} color="green"/><Metric icon={ShoppingBag} label="Đơn đã thanh toán" value={String(data.metrics.orders)} color="blue"/><Metric icon={Target} label="Cơ hội đã tìm thấy" value={String(data.metrics.leads)} color="orange"/><Metric icon={Zap} label="Chờ bạn cấp quyền" value={String(data.metrics.pending)} color="purple"/></div><div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]"><section className="rounded-2xl border border-[#dfe4e8] bg-white p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">PIPELINE KIẾM SỐNG</p><h2 className="mt-2 text-xl font-black">Từ ý tưởng đến khách hàng</h2></div><button onClick={()=>setTab("pipeline")} className="text-sm font-bold text-[#ef612f]">Xem chi tiết</button></div><div className="mt-7 grid gap-3 sm:grid-cols-4">{[[Search,"Tìm cơ hội",data.metrics.leads],[Target,"Đánh giá",data.opportunities.filter(x=>x.status==="qualified").length],[Mail,"Tiếp cận",data.approvals.filter(x=>x.type==="email").length],[CircleDollarSign,"Có doanh thu",data.metrics.orders]].map(([Icon,label,value],i)=><div key={String(label)} className="relative rounded-xl bg-[#f6f7f8] p-4">{createElement(Icon as React.ElementType,{size:18,className:"text-[#f2612c]"})}<p className="mt-4 text-2xl font-black">{String(value)}</p><p className="text-xs text-[#7b858f]">{String(label)}</p>{i<3&&<ChevronRight className="absolute -right-3 top-1/2 hidden text-[#c8ced4] sm:block" size={16}/>}</div>)}</div></section><section className="rounded-2xl bg-[#17202a] p-6 text-white"><p className="text-xs font-bold tracking-[.14em] text-[#8f9aa5]">VIỆC CẦN BẠN</p><p className="mt-3 text-4xl font-black">{data.metrics.pending}</p><p className="mt-2 text-sm leading-6 text-[#aeb7c0]">Chỉ hiện hành động có đích đến thật: đăng website hoặc gửi email.</p><button onClick={()=>setTab("actions")} className="mt-6 flex items-center gap-2 text-sm font-bold text-[#ff956f]">Mở hàng chờ duyệt <ArrowUpRight size={15}/></button></section></div></>}
+function OverviewPanel({
+  data,
+  setTab,
+}: {
+  data: Overview;
+  setTab: (tab: string) => void;
+}) {
+  return (
+    <>
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <p className="text-sm font-semibold text-[#f2612c]">
+            Tổng quan vận hành
+          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">
+            Chào buổi làm việc 👋
+          </h1>
+          <p className="mt-2 text-sm text-[#77818b]">
+            Đây là dữ liệu thật từ hành trình kiếm sống của Shoyru.
+          </p>
+        </div>
+        <Link
+          href="/store"
+          target="_blank"
+          className="flex w-fit items-center gap-2 rounded-xl bg-[#17202a] px-4 py-2.5 text-sm font-bold text-white"
+        >
+          Xem cửa hàng <ArrowUpRight size={16} />
+        </Link>
+      </div>
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          icon={CircleDollarSign}
+          label="Doanh thu xác minh"
+          value={money(data.metrics.revenue)}
+          color="green"
+        />
+        <Metric
+          icon={ShoppingBag}
+          label="Đơn đã thanh toán"
+          value={String(data.metrics.orders)}
+          color="blue"
+        />
+        <Metric
+          icon={Target}
+          label="Cơ hội đã tìm thấy"
+          value={String(data.metrics.leads)}
+          color="orange"
+        />
+        <Metric
+          icon={Zap}
+          label="Chờ bạn cấp quyền"
+          value={String(data.metrics.pending)}
+          color="purple"
+        />
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">
+                PIPELINE KIẾM SỐNG
+              </p>
+              <h2 className="mt-2 text-xl font-black">
+                Từ ý tưởng đến khách hàng
+              </h2>
+            </div>
+            <button
+              onClick={() => setTab("pipeline")}
+              className="text-sm font-bold text-[#ef612f]"
+            >
+              Xem chi tiết
+            </button>
+          </div>
+          <div className="mt-7 grid gap-3 sm:grid-cols-4">
+            {[
+              [Search, "Tìm cơ hội", data.metrics.leads],
+              [
+                Target,
+                "Đánh giá",
+                data.opportunities.filter((x) => x.status === "qualified")
+                  .length,
+              ],
+              [
+                Mail,
+                "Tiếp cận",
+                data.approvals.filter((x) => x.type === "email").length,
+              ],
+              [CircleDollarSign, "Có doanh thu", data.metrics.orders],
+            ].map(([Icon, label, value], i) => (
+              <div
+                key={String(label)}
+                className="relative rounded-xl bg-[#f6f7f8] p-4"
+              >
+                {createElement(Icon as React.ElementType, {
+                  size: 18,
+                  className: "text-[#f2612c]",
+                })}
+                <p className="mt-4 text-2xl font-black">{String(value)}</p>
+                <p className="text-xs text-[#7b858f]">{String(label)}</p>
+                {i < 3 && (
+                  <ChevronRight
+                    className="absolute -right-3 top-1/2 hidden text-[#c8ced4] sm:block"
+                    size={16}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="rounded-2xl bg-[#17202a] p-6 text-white">
+          <p className="text-xs font-bold tracking-[.14em] text-[#8f9aa5]">
+            VIỆC CẦN BẠN
+          </p>
+          <p className="mt-3 text-4xl font-black">{data.metrics.pending}</p>
+          <p className="mt-2 text-sm leading-6 text-[#aeb7c0]">
+            Chỉ báo bạn khi cần gửi email, cấp tài khoản, API, vốn hoặc quyết
+            định bên ngoài.
+          </p>
+          <button
+            onClick={() => setTab("actions")}
+            className="mt-6 flex items-center gap-2 text-sm font-bold text-[#ff956f]"
+          >
+            Mở hàng chờ duyệt <ArrowUpRight size={15} />
+          </button>
+        </section>
+      </div>
+    </>
+  );
+}
 
-function Actions({approvals,decide}:{approvals:Approval[];decide:(id:string,status:string)=>void}){return <SectionTitle eyebrow="ACTION QUEUE" title="Hành động cần cấp quyền" text="Mỗi thẻ cho biết chính xác Shoyru sẽ làm gì và ở đâu."><div className="space-y-4">{!approvals.length&&<Empty text="Không có hành động nào đang chờ."/>}{approvals.map(item=><article key={item._id} className="rounded-2xl border border-[#dfe4e8] bg-white p-6"><div className="flex flex-col gap-5 lg:flex-row lg:justify-between"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${item.type==="email"?"bg-[#eaf2ff] text-[#2868b2]":"bg-[#edf8f0] text-[#267e46]"}`}>{item.type==="email"?"GỬI EMAIL THẬT":"ĐĂNG WEBSITE THẬT"}</span><span className="text-xs text-[#89939d]">Đích đến: {item.destination||item.email?.to||"/updates"}</span></div><h2 className="mt-3 text-xl font-black">{item.title}</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#66717c]">{item.details}</p>{item.email&&<div className="mt-4 rounded-xl bg-[#f6f8fa] p-4 text-sm"><b>Người nhận:</b> {item.email.to}<br/><b>Tiêu đề:</b> {item.email.subject}</div>}</div><div className="flex shrink-0 gap-2 lg:flex-col"><button onClick={()=>decide(item._id,"approved")} className="flex items-center justify-center gap-2 rounded-xl bg-[#17202a] px-4 py-2.5 text-sm font-bold text-white"><Check size={16}/>{item.type==="email"?"Duyệt & gửi":"Duyệt & đăng"}</button><button onClick={()=>decide(item._id,"rejected")} className="flex items-center justify-center gap-2 rounded-xl border border-[#dfe4e8] px-4 py-2.5 text-sm font-bold text-[#68737e]"><X size={16}/>Bỏ qua</button></div></div></article>)}</div></SectionTitle>}
+function Actions({
+  approvals,
+  decide,
+}: {
+  approvals: Approval[];
+  decide: (id: string, status: string) => void;
+}) {
+  return (
+    <SectionTitle
+      eyebrow="ACTION QUEUE"
+      title="Hành động cần cấp quyền"
+      text="Mỗi thẻ cho biết chính xác Shoyru sẽ làm gì và ở đâu."
+    >
+      <div className="space-y-4">
+        {!approvals.length && <Empty text="Không có hành động nào đang chờ." />}
+        {approvals.map((item) => (
+          <article
+            key={item._id}
+            className="rounded-2xl border border-[#dfe4e8] bg-white p-6"
+          >
+            <div className="flex flex-col gap-5 lg:flex-row lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${item.type === "email" ? "bg-[#eaf2ff] text-[#2868b2]" : item.type === "support" ? "bg-[#fff1e8] text-[#b44d1f]" : "bg-[#edf8f0] text-[#267e46]"}`}
+                  >
+                    {item.type === "email"
+                      ? "GỬI EMAIL THẬT"
+                      : item.type === "support"
+                        ? "CẦN CHỦ NHÂN HỖ TRỢ"
+                        : "ĐĂNG WEBSITE THẬT"}
+                  </span>
+                  <span className="text-xs text-[#89939d]">
+                    {item.type === "support" ? "Người xử lý" : "Đích đến"}:{" "}
+                    {item.destination || item.email?.to || "/updates"}
+                  </span>
+                </div>
+                <h2 className="mt-3 text-xl font-black">{item.title}</h2>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#66717c]">
+                  {item.details}
+                </p>
+                {item.email && (
+                  <div className="mt-4 rounded-xl bg-[#f6f8fa] p-4 text-sm">
+                    <b>Người nhận:</b> {item.email.to}
+                    <br />
+                    <b>Tiêu đề:</b> {item.email.subject}
+                  </div>
+                )}
+              </div>
+              <div className="flex shrink-0 gap-2 lg:flex-col">
+                <button
+                  onClick={() => decide(item._id, "approved")}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#17202a] px-4 py-2.5 text-sm font-bold text-white"
+                >
+                  <Check size={16} />
+                  {item.type === "email"
+                    ? "Duyệt & gửi"
+                    : item.type === "support"
+                      ? "Đã cung cấp"
+                      : "Duyệt & đăng"}
+                </button>
+                <button
+                  onClick={() => decide(item._id, "rejected")}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#dfe4e8] px-4 py-2.5 text-sm font-bold text-[#68737e]"
+                >
+                  <X size={16} />
+                  Bỏ qua
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </SectionTitle>
+  );
+}
 
-function Pipeline({data}:{data:Overview}){return <SectionTitle eyebrow="GROWTH PIPELINE" title="Cơ hội và sản phẩm" text="Các đầu mối Shoyru tự tìm thấy phải có nguồn, độ phù hợp và bước tiếp theo."><div className="grid gap-6 xl:grid-cols-2"><div className="rounded-2xl border border-[#dfe4e8] bg-white"><PanelHead title="Cơ hội mới" count={data.opportunities.length}/><div className="divide-y divide-[#edf0f2]">{!data.opportunities.length&&<Empty text="Chưa tìm thấy cơ hội đủ điều kiện."/>}{data.opportunities.map((item,i)=><div key={String(item._id||i)} className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{String(item.title||"Cơ hội chưa đặt tên")}</p><p className="mt-1 text-xs text-[#89939d]">{String(item.channel||"Nguồn công khai")}</p></div>{Boolean(item.sourceUrl)&&<a href={String(item.sourceUrl)} target="_blank" rel="noreferrer" className="text-[#f2612c]"><ExternalLink size={16}/></a>}</div><p className="mt-3 text-sm leading-6 text-[#66717c]">{String(item.fit||item.nextAction||"")}</p></div>)}</div></div><div className="rounded-2xl border border-[#dfe4e8] bg-white"><PanelHead title="Sản phẩm đang làm" count={data.projects.length}/><div className="divide-y divide-[#edf0f2]">{data.projects.map((item,i)=><div key={String(item._id||i)} className="p-5"><div className="flex items-center justify-between"><p className="font-bold">{String(item.name)}</p><span className="rounded-full bg-[#fff2eb] px-2.5 py-1 text-[11px] font-bold text-[#e85c28]">{String(item.status)}</span></div><p className="mt-2 text-sm text-[#75808a]">{String(item.deliverable||"")}</p><div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf0f2]"><div className="h-full w-3/4 rounded-full bg-[#ff6b35]"/></div></div>)}</div></div></div></SectionTitle>}
+function Pipeline({ data }: { data: Overview }) {
+  return (
+    <SectionTitle
+      eyebrow="GROWTH PIPELINE"
+      title="Cơ hội và sản phẩm"
+      text="Các đầu mối Shoyru tự tìm thấy phải có nguồn, độ phù hợp và bước tiếp theo."
+    >
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white">
+          <PanelHead title="Cơ hội mới" count={data.opportunities.length} />
+          <div className="divide-y divide-[#edf0f2]">
+            {!data.opportunities.length && (
+              <Empty text="Chưa tìm thấy cơ hội đủ điều kiện." />
+            )}
+            {data.opportunities.map((item, i) => (
+              <div key={String(item._id || i)} className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold">
+                      {String(item.title || "Cơ hội chưa đặt tên")}
+                    </p>
+                    <p className="mt-1 text-xs text-[#89939d]">
+                      {String(item.channel || "Nguồn công khai")}
+                    </p>
+                  </div>
+                  {Boolean(item.sourceUrl) && (
+                    <a
+                      href={String(item.sourceUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[#f2612c]"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
+                  )}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#66717c]">
+                  {String(item.fit || item.nextAction || "")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white">
+          <PanelHead title="Sản phẩm đang làm" count={data.projects.length} />
+          <div className="divide-y divide-[#edf0f2]">
+            {data.projects.map((item, i) => (
+              <div key={String(item._id || i)} className="p-5">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold">{String(item.name)}</p>
+                  <span className="rounded-full bg-[#fff2eb] px-2.5 py-1 text-[11px] font-bold text-[#e85c28]">
+                    {String(item.status)}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[#75808a]">
+                  {String(item.deliverable || "")}
+                </p>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf0f2]">
+                  <div className="h-full w-3/4 rounded-full bg-[#ff6b35]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SectionTitle>
+  );
+}
 
-function Channels({channels}:{channels:Overview["channels"]}){return <SectionTitle eyebrow="DISTRIBUTION" title="Kênh bán và tiếp cận" text="Shoyru chỉ có thể tự hành động trên kênh đã kết nối bằng API hợp lệ."><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{channels.map(channel=><div key={channel.id} className="rounded-2xl border border-[#dfe4e8] bg-white p-5"><div className="flex items-center justify-between"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#f1f3f5]"><Globe2 size={19}/></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${channel.status==="connected"?"bg-[#eaf8ef] text-[#25864b]":"bg-[#fff3e8] text-[#a86120]"}`}>{channel.status==="connected"?"ĐÃ KẾT NỐI":"CHƯA KẾT NỐI"}</span></div><h3 className="mt-5 font-black">{channel.name}</h3><p className="mt-1 text-sm leading-6 text-[#77818b]">{channel.detail}</p></div>)}</div></SectionTitle>}
+function Channels({ channels }: { channels: Overview["channels"] }) {
+  return (
+    <SectionTitle
+      eyebrow="DISTRIBUTION"
+      title="Kênh bán và tiếp cận"
+      text="Shoyru chỉ có thể tự hành động trên kênh đã kết nối bằng API hợp lệ."
+    >
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {channels.map((channel) => (
+          <div
+            key={channel.id}
+            className="rounded-2xl border border-[#dfe4e8] bg-white p-5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#f1f3f5]">
+                <Globe2 size={19} />
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${channel.status === "connected" ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff3e8] text-[#a86120]"}`}
+              >
+                {channel.status === "connected" ? "ĐÃ KẾT NỐI" : "CHƯA KẾT NỐI"}
+              </span>
+            </div>
+            <h3 className="mt-5 font-black">{channel.name}</h3>
+            <p className="mt-1 text-sm leading-6 text-[#77818b]">
+              {channel.detail}
+            </p>
+          </div>
+        ))}
+      </div>
+    </SectionTitle>
+  );
+}
 
-function Brand({dark=false}:{dark?:boolean}){return <div className={`flex items-center gap-3 font-black ${dark?"text-white":"text-[#17202a]"}`}><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff6b35] text-lg">🔥</span><span>Shoyru <span className="text-[#ff6b35]">OS</span></span></div>}
-function Metric({icon:Icon,label,value,color}:{icon:React.ElementType;label:string;value:string;color:string}){const colors:Record<string,string>={green:"bg-[#eaf8ef] text-[#27854b]",blue:"bg-[#eaf2ff] text-[#2868b2]",orange:"bg-[#fff0e9] text-[#e65b29]",purple:"bg-[#f2ecff] text-[#7250b5]"};return <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5"><div className={`grid h-10 w-10 place-items-center rounded-xl ${colors[color]}`}><Icon size={19}/></div><p className="mt-5 text-2xl font-black">{value}</p><p className="mt-1 text-xs font-semibold text-[#828c96]">{label}</p></div>}
-function SectionTitle({eyebrow,title,text,children}:{eyebrow:string;title:string;text:string;children:React.ReactNode}){return <><p className="text-xs font-bold tracking-[.15em] text-[#f2612c]">{eyebrow}</p><h1 className="mt-2 text-3xl font-black tracking-tight">{title}</h1><p className="mb-7 mt-2 text-sm text-[#77818b]">{text}</p>{children}</>}
-function PanelHead({title,count}:{title:string;count:number}){return <div className="flex items-center justify-between border-b border-[#edf0f2] p-5"><h2 className="font-black">{title}</h2><span className="rounded-full bg-[#f1f3f5] px-2.5 py-1 text-xs font-bold">{count}</span></div>}
-function Empty({text}:{text:string}){return <div className="p-10 text-center"><ShieldCheck className="mx-auto text-[#9aa3ad]"/><p className="mt-3 text-sm text-[#7b858f]">{text}</p></div>}
+function Brand({ dark = false }: { dark?: boolean }) {
+  return (
+    <div
+      className={`flex items-center gap-3 font-black ${dark ? "text-white" : "text-[#17202a]"}`}
+    >
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff6b35] text-lg">
+        🔥
+      </span>
+      <span>
+        Shoyru <span className="text-[#ff6b35]">OS</span>
+      </span>
+    </div>
+  );
+}
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  color: string;
+}) {
+  const colors: Record<string, string> = {
+    green: "bg-[#eaf8ef] text-[#27854b]",
+    blue: "bg-[#eaf2ff] text-[#2868b2]",
+    orange: "bg-[#fff0e9] text-[#e65b29]",
+    purple: "bg-[#f2ecff] text-[#7250b5]",
+  };
+  return (
+    <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+      <div
+        className={`grid h-10 w-10 place-items-center rounded-xl ${colors[color]}`}
+      >
+        <Icon size={19} />
+      </div>
+      <p className="mt-5 text-2xl font-black">{value}</p>
+      <p className="mt-1 text-xs font-semibold text-[#828c96]">{label}</p>
+    </div>
+  );
+}
+function SectionTitle({
+  eyebrow,
+  title,
+  text,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <p className="text-xs font-bold tracking-[.15em] text-[#f2612c]">
+        {eyebrow}
+      </p>
+      <h1 className="mt-2 text-3xl font-black tracking-tight">{title}</h1>
+      <p className="mb-7 mt-2 text-sm text-[#77818b]">{text}</p>
+      {children}
+    </>
+  );
+}
+function PanelHead({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between border-b border-[#edf0f2] p-5">
+      <h2 className="font-black">{title}</h2>
+      <span className="rounded-full bg-[#f1f3f5] px-2.5 py-1 text-xs font-bold">
+        {count}
+      </span>
+    </div>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="p-10 text-center">
+      <ShieldCheck className="mx-auto text-[#9aa3ad]" />
+      <p className="mt-3 text-sm text-[#7b858f]">{text}</p>
+    </div>
+  );
+}
