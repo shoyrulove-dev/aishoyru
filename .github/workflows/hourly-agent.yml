@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow-file updates validate Shoyru's survival loop; scheduled runs pursue the highest-value safe action.
+# Workflow updates run a live survival check; scheduled cycles pursue the highest-value safe action.
 
 on:
   schedule:
