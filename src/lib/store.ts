@@ -49,6 +49,6 @@ export function createQrUrl(amount:number,orderCode:string){
   const account=process.env.BANK_ACCOUNT_NO;
   const name=process.env.BANK_ACCOUNT_NAME;
   if(!bin||!account||!name)return "";
-  const query=new URLSearchParams({amount:String(amount),addInfo:orderCode,accountName:name});
-  return `https://img.vietqr.io/image/${encodeURIComponent(bin)}-${encodeURIComponent(account)}-compact2.png?${query}`;
+  const query=new URLSearchParams({amount:String(amount),addInfo:orderCode});
+  return `https://img.vietqr.io/image/${encodeURIComponent(bin)}-${encodeURIComponent(account)}-qr_only.png?${query}`;
 }
