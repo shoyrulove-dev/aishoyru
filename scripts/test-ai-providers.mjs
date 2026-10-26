@@ -45,6 +45,8 @@ let providers = [
   ["Cohere", "COHERE", "cohere", "https://api.cohere.com/v2", "command-a-03-2025"],
   ["Mistral", "MISTRAL", "openai", "https://api.mistral.ai/v1", "mistral-small-latest"],
   ["SambaNova", "SAMBANOVA", "openai", "https://api.sambanova.ai/v1", ""],
+  ["Vercel AI Gateway", "VERCEL_AI_GATEWAY", "openai", "https://ai-gateway.vercel.sh/v1", "openai/gpt-oss-20b"],
+  ["NVIDIA NIM", "NVIDIA_NIM", "openai", "https://integrate.api.nvidia.com/v1", "meta/llama-3.1-8b-instruct"],
 ].map(([name, prefix, protocol, defaultBaseURL, defaultModel]) => ({
   name,
   protocol,
@@ -52,6 +54,15 @@ let providers = [
   baseURL: (process.env[`${prefix}_BASE_URL`] || defaultBaseURL).replace(/\/$/, ""),
   model: process.env[`${prefix}_MODEL`] || defaultModel,
 }));
+
+providers.push({
+  name: "Cloudflare Workers AI",
+  protocol: "cloudflare",
+  key: process.env.CLOUDFLARE_AI_API_TOKEN || "",
+  accountId: process.env.CLOUDFLARE_ACCOUNT_ID || "",
+  baseURL: "https://api.cloudflare.com/client/v4",
+  model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
+});
 
 if (providerFilter) {
   providers = providers.filter((provider) =>
@@ -79,7 +90,7 @@ const rateHeaders = (headers) => ({
 });
 
 async function discoverModel(provider) {
-  if (provider.model || provider.protocol === "cohere") return provider.model;
+  if (provider.model || provider.protocol === "cohere" || provider.protocol === "cloudflare") return provider.model;
   const response = await fetch(`${provider.baseURL}/models`, {
     headers: { Authorization: `Bearer ${provider.key}` },
     signal: AbortSignal.timeout(timeoutMs),
@@ -91,10 +102,14 @@ async function discoverModel(provider) {
 
 async function oneRequest(provider, model) {
   const started = performance.now();
-  const url = provider.protocol === "cohere"
+  const url = provider.protocol === "cloudflare"
+    ? `${provider.baseURL}/accounts/${provider.accountId}/ai/run/${model}`
+    : provider.protocol === "cohere"
     ? `${provider.baseURL}/chat`
     : `${provider.baseURL}/chat/completions`;
-  const payload = provider.protocol === "cohere"
+  const payload = provider.protocol === "cloudflare"
+    ? { messages: [{ role: "user", content: prompt }], max_tokens: maxTokens }
+    : provider.protocol === "cohere"
     ? { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens }
     : { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens, stream: false };
   try {
@@ -112,7 +127,9 @@ async function oneRequest(provider, model) {
       signal: AbortSignal.timeout(timeoutMs),
     });
     const body = await response.json().catch(() => ({}));
-    const content = provider.protocol === "cohere"
+    const content = provider.protocol === "cloudflare"
+      ? body?.result?.response
+      : provider.protocol === "cohere"
       ? body?.message?.content?.map?.((item) => item?.text || "").join("")
       : body?.choices?.[0]?.message?.content;
     const usage = body?.usage || {};
@@ -148,6 +165,8 @@ async function oneRequest(provider, model) {
 async function testProvider(provider) {
   if (!provider.key)
     return [{ provider: provider.name, model: provider.model || "auto", result: "SKIPPED_NO_KEY" }];
+  if (provider.protocol === "cloudflare" && !provider.accountId)
+    return [{ provider: provider.name, model: provider.model, result: "SKIPPED_NO_ACCOUNT_ID" }];
   let model;
   try {
     model = await discoverModel(provider);
