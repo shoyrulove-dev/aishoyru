@@ -49,6 +49,15 @@ function dailyRoutine(now: Date) {
       activity: "Shoyru ăn sáng và kiểm tra nhanh tình hình trong hang.",
       nextWake: "08:17 sáng",
     };
+  if (hour === 8)
+    return {
+      status: "Đang tập thể dục",
+      thought:
+        "Vỗ cánh mười cái, chạy quanh rương vàng hai vòng. Rồng khỏe mới bê nổi nhiều đơn hàng.",
+      activity:
+        "Shoyru tập bay và vận động buổi sáng trước khi bắt đầu tìm khách và làm sản phẩm.",
+      nextWake: "09:17 sáng",
+    };
   if (hour === 12)
     return {
       status: "Đang ăn trưa",

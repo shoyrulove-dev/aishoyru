@@ -15,6 +15,17 @@ import type { PublicState } from "@/lib/types";
 import { VisitorChat } from "@/components/visitor-chat";
 
 const money = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + "đ";
+const routineImage = (status: string) => {
+  const value = status.toLocaleLowerCase("vi-VN");
+  if (value.includes("ngủ trong hang")) return "/shoyru-routine-sleep-night.png";
+  if (value.includes("ăn sáng")) return "/shoyru-routine-breakfast.png";
+  if (value.includes("tập thể dục")) return "/shoyru-routine-exercise.png";
+  if (value.includes("ăn trưa")) return "/shoyru-routine-lunch.png";
+  if (value.includes("ngủ trưa")) return "/shoyru-routine-nap.png";
+  if (value.includes("ăn tối")) return "/shoyru-routine-dinner.png";
+  if (value.includes("dọn hang")) return "/shoyru-routine-winddown.png";
+  return "/be-rong-mascot.png";
+};
 export function Dashboard({ initialState }: { initialState: PublicState }) {
   const [data, setData] = useState(initialState);
   useEffect(() => {
@@ -83,10 +94,10 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
             </div>
             <div className="glow overflow-hidden rounded-[2rem] border border-[#ff8b4c]/20 bg-[#17140f]">
               <Image
-                className="dragon h-auto w-full"
-                src="/be-rong-mascot.png"
-                width={1536}
-                height={1024}
+                className="dragon aspect-square h-auto w-full object-cover"
+                src={routineImage(data.status)}
+                width={1254}
+                height={1254}
                 priority
                 alt="Shoyru đang làm việc"
               />
@@ -137,7 +148,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
             <Eyebrow>NẾP SỐNG CỦA RỒNG</Eyebrow>
             <p className="font-extrabold">Ăn 7h · 12h · 18h</p>
             <p className="mt-1 text-xs text-[#8f8a83]">
-              Ngủ trưa 13h · ngủ đêm 23h–7h
+              Tập thể dục 8h · ngủ trưa 13h · ngủ đêm 23h–7h
             </p>
           </div>
         </div>
@@ -234,10 +245,10 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="relative mx-auto w-full max-w-[620px]">
           <div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]">
             <Image
-              className="dragon h-auto w-full"
-              src="/be-rong-mascot.png"
-              width={1536}
-              height={1024}
+              className="dragon aspect-square h-auto w-full object-cover"
+              src={routineImage(data.status)}
+              width={1254}
+              height={1254}
               priority
               alt="Shoyru đang làm việc"
             />
