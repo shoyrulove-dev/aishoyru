@@ -236,16 +236,17 @@ function Login({
   message: string;
 }) {
   return (
-    <main className="grid min-h-screen bg-[#eef1f4] lg:grid-cols-[1.1fr_.9fr]">
+    <main className="grid min-h-screen bg-[#e7e3db] text-[#17202a] lg:grid-cols-[1.1fr_.9fr]">
       <section className="relative hidden overflow-hidden bg-[#101923] p-14 text-white lg:flex lg:flex-col">
         <div className="absolute -right-28 -top-20 h-96 w-96 rounded-full bg-[#ff6b35]/20 blur-3xl" />
         <Brand dark />
-        <div className="relative my-auto max-w-xl">
+        <div className="relative my-auto max-w-3xl">
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#ffb08f]">
             SHOYRU AGENT OPERATING SYSTEM
           </span>
-          <h1 className="mt-6 text-6xl font-black leading-[1.02] tracking-[-.05em]">
-            Biến ý tưởng thành hành động kiếm tiền thật.
+          <h1 className="mt-6 text-5xl font-black leading-[1.04] tracking-[-.045em] xl:text-6xl">
+            <span className="block">Biến ý tưởng thành</span>
+            <span className="block">hành động kiếm tiền thật.</span>
           </h1>
           <p className="mt-6 text-lg leading-8 text-[#aeb8c2]">
             Theo dõi sản phẩm, khách hàng tiềm năng, kênh phân phối và những
@@ -257,16 +258,16 @@ function Login({
           tiền.
         </p>
       </section>
-      <section className="grid place-items-center px-5 py-12">
+      <section className="grid place-items-center bg-[#e7e3db] px-5 py-12 text-[#17202a]">
         <div className="w-full max-w-md">
           <div className="lg:hidden">
             <Brand />
           </div>
-          <div className="mt-10 rounded-3xl border border-[#dde2e7] bg-white p-7 shadow-[0_24px_80px_rgba(20,31,44,.08)] sm:p-9">
+          <div className="mt-10 rounded-3xl border border-[#d5cec2] bg-[#fbf8f2] p-7 text-[#17202a] shadow-[0_24px_80px_rgba(20,31,44,.12)] sm:p-9">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#fff0e9] text-[#f45d28]">
               <KeyRound size={22} />
             </div>
-            <h2 className="mt-6 text-3xl font-black tracking-tight">
+            <h2 className="mt-6 text-3xl font-black tracking-tight text-[#17202a]">
               Đăng nhập quản trị
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#77818b]">
@@ -282,12 +283,12 @@ function Login({
               onChange={(e) => setKey(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && load()}
               placeholder="Nhập ADMIN_API_KEY"
-              className="mt-2 w-full rounded-xl border border-[#d9dfe4] bg-[#f9fafb] px-4 py-3.5 outline-none focus:border-[#ff6b35]"
+              className="mt-2 w-full rounded-xl border border-[#d9d5ce] bg-white px-4 py-3.5 text-[#17202a] outline-none placeholder:text-[#9aa1a8] focus:border-[#ff6b35]"
             />
             <button
               onClick={load}
               disabled={!keyValue || loading}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#17202a] px-5 py-3.5 font-bold text-white disabled:opacity-50"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#17202a] px-5 py-3.5 font-bold text-white disabled:bg-[#d2cec7] disabled:text-[#747b82]"
             >
               {loading ? (
                 <RefreshCw className="animate-spin" size={18} />
