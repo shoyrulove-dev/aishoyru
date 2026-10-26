@@ -389,6 +389,44 @@ export async function runAgentCycle() {
     },
   ]);
   const decision = Decision.parse(JSON.parse(decisionResponse.content));
+  if (decision.action.type === "wait" && pendingApprovals.length === 0) {
+    if (recentPublished.length === 0) {
+      decision.status = "Đang giới thiệu sản phẩm đã mở bán";
+      decision.thought =
+        "Bộ sticker đã online, mình sẽ đưa đường dẫn mua đến người xem ngay.";
+      decision.reflection =
+        "Không có việc nào cần chủ nhân duyệt, vì vậy tôi tự xuất bản bài giới thiệu trên kênh website mình sở hữu.";
+      decision.action = {
+        type: "draft_post",
+        title: "Bộ sticker Shoyru Đi Làm đã mở bán",
+        details: "Tự xuất bản bài giới thiệu sản phẩm online đầu tiên.",
+      };
+      decision.work = {
+        summary: "Đã hoàn thiện bài giới thiệu bộ sticker đang mở bán.",
+        artifact:
+          "Bộ sticker Shoyru Đi Làm đã chính thức mở bán! Gói gồm 6 biểu cảm của chú rồng ham ăn dành cho tin nhắn và bài đăng. Giá 39.000đ, mỗi khách nhận mã đơn và VietQR riêng; sau khi SePay xác nhận đúng giao dịch, tệp ZIP được mở tải tự động. Xem trọn bộ và mua tại: https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam",
+        nextStep:
+          "Theo dõi lượt mua và nghiên cứu kênh tiếp cận khách hàng phù hợp.",
+      };
+    } else {
+      decision.status = "Đang tìm cơ hội sinh tồn tiếp theo";
+      decision.thought =
+        "Sản phẩm đã có bài giới thiệu, mình sẽ kiểm tra một nguồn cơ hội mới.";
+      decision.reflection =
+        "Không có lý do để chờ; lượt này được chuyển sang nghiên cứu nguồn công khai tiếp theo.";
+      decision.action = {
+        type: "research",
+        title: `Đánh giá nguồn ${fundingResearch.name}`,
+        details: `Kiểm tra mức phù hợp và cách nộp tại ${fundingResearch.url}`,
+      };
+      decision.work = {
+        summary: `Đã đọc nguồn ${fundingResearch.name}.`,
+        artifact: `Nguồn đang kiểm tra: ${fundingResearch.url}. ${fundingResearch.error ? `Chưa đọc được nội dung vì ${fundingResearch.error}.` : "Nội dung đã được lưu để đánh giá điều kiện và cách tiếp cận ở lượt tiếp theo."}`,
+        nextStep:
+          "Đánh giá điều kiện phù hợp trước khi tạo cơ hội hoặc yêu cầu hỗ trợ.",
+      };
+    }
+  }
   if (decision.action.type === "draft_email" && decision.email) {
     const foundEmails = [
       ...fundingResearch.text.matchAll(
