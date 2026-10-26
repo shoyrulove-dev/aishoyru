@@ -252,7 +252,7 @@ export async function runAgentCycle() {
           raw.reflection,
           action.title,
         ].map((value) => String(value || ""));
-        if (!publicFields.every((value) => vietnameseText.test(value)))
+        if (!vietnameseText.test(publicFields.join(" ")))
           throw new Error("Nội dung công khai không phải tiếng Việt có dấu");
         return { content, provider: provider.name, model: provider.model };
       } catch (error) {
