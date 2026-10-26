@@ -32,6 +32,7 @@ const stringArg = (name, fallback = "") => {
 };
 const providerFilter = stringArg("provider").toLowerCase();
 const modelOverride = stringArg("model");
+const jsonMode = process.argv.includes("--json");
 const prompt = process.env.AI_TEST_PROMPT || "Chỉ trả lời một câu tiếng Việt ngắn: Shoyru đã sẵn sàng.";
 
 let providers = [
@@ -109,10 +110,20 @@ async function oneRequest(provider, model) {
     ? `${provider.baseURL}/chat`
     : `${provider.baseURL}/chat/completions`;
   const payload = provider.protocol === "cloudflare"
-    ? { messages: [{ role: "user", content: prompt }], max_tokens: maxTokens }
+    ? {
+        messages: [{ role: "user", content: jsonMode ? `${prompt} Chỉ trả JSON hợp lệ dạng {\"message\":\"...\"}.` : prompt }],
+        max_tokens: maxTokens,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }
     : provider.protocol === "cohere"
     ? { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens }
-    : { model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens, stream: false };
+    : {
+        model,
+        messages: [{ role: "user", content: jsonMode ? `${prompt} Chỉ trả JSON hợp lệ dạng {\"message\":\"...\"}.` : prompt }],
+        max_tokens: maxTokens,
+        stream: false,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      };
   try {
     const response = await fetch(url, {
       method: "POST",

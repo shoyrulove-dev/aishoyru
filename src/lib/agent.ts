@@ -398,14 +398,6 @@ export async function runAgentCycle() {
       model: process.env.NVIDIA_NIM_MODEL || "nvidia/nemotron-3.5-bolt-e4b",
     },
     {
-      name: "cloudflare",
-      apiKey: process.env.CLOUDFLARE_AI_API_TOKEN,
-      baseURL: process.env.CLOUDFLARE_ACCOUNT_ID
-        ? `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`
-        : "",
-      model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
-    },
-    {
       name: "openrouter",
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: "https://openrouter.ai/api/v1",
@@ -435,7 +427,7 @@ export async function runAgentCycle() {
       baseURL: "https://api.openai.com/v1",
       model: process.env.OPENAI_MODEL || "gpt-5-mini",
     },
-  ].filter((p) => p.apiKey && p.baseURL);
+  ].filter((p) => p.apiKey);
   if (!providers.length)
     throw new Error(
       "Chưa cấu hình API key cho Groq, OpenRouter, Kilo hoặc OpenAI",
