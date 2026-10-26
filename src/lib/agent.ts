@@ -226,6 +226,7 @@ export async function runAgentCycle() {
     );
   async function completeJson(messages: AiMessage[]) {
     const errors: string[] = [];
+    const compactMessages = messages.slice(-2);
     for (const provider of providers) {
       try {
         const client = new OpenAI({
@@ -237,7 +238,7 @@ export async function runAgentCycle() {
         const response = await client.chat.completions.create({
           model: provider.model,
           response_format: { type: "json_object" },
-          messages,
+          messages: compactMessages,
         });
         const content = response.choices[0].message.content || "{}";
         const raw = JSON.parse(content) as Record<string, unknown>;
