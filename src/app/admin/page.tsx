@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  MessageCircle,
   Radio,
   RefreshCw,
   Rocket,
@@ -40,7 +41,17 @@ type Overview = {
   runs: Array<Record<string, unknown>>;
   orders: Array<Record<string, unknown>>;
   published: Array<Record<string, unknown>>;
-  metrics: { revenue: number; pending: number; leads: number; orders: number };
+  chats: Array<Record<string, unknown>>;
+  metrics: {
+    revenue: number;
+    pending: number;
+    leads: number;
+    orders: number;
+    views24h: number;
+    visitors24h: number;
+    chatOpens24h: number;
+    unreadChats: number;
+  };
   channels: Array<{ id: string; name: string; status: string; detail: string }>;
 };
 const money = (value: number) =>
@@ -89,6 +100,23 @@ export default function Admin() {
     );
     await load();
   }
+  async function replyChat(sessionId: string, text: string) {
+    const r = await fetch("/api/admin/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sessionId, text }),
+    });
+    const result = await r.json();
+    setMsg(
+      r.ok
+        ? "Đã gửi lời nhắn cho khách."
+        : result.error || "Không gửi được tin nhắn.",
+    );
+    if (r.ok) await load();
+  }
   if (!data)
     return (
       <Login
@@ -114,6 +142,12 @@ export default function Admin() {
       count: data.metrics.leads,
     },
     { id: "channels", label: "Kênh bán", icon: Radio },
+    {
+      id: "visitors",
+      label: "Khách & chat",
+      icon: MessageCircle,
+      count: data.metrics.unreadChats,
+    },
   ];
   return (
     <main className="min-h-screen bg-[#f4f6f8] text-[#17202a]">
@@ -216,6 +250,7 @@ export default function Admin() {
           )}{" "}
           {tab === "pipeline" && <Pipeline data={data} />}{" "}
           {tab === "channels" && <Channels channels={data.channels} />}
+          {tab === "visitors" && <Visitors data={data} reply={replyChat} />}
         </div>
       </div>
     </main>
@@ -582,6 +617,116 @@ function Pipeline({ data }: { data: Overview }) {
         </div>
       </div>
     </SectionTitle>
+  );
+}
+
+function Visitors({
+  data,
+  reply,
+}: {
+  data: Overview;
+  reply: (sessionId: string, text: string) => Promise<void>;
+}) {
+  const latest = Array.from(
+    new Map(data.chats.map((item) => [String(item.sessionId), item])).values(),
+  );
+  return (
+    <section>
+      <div className="mb-6">
+        <p className="text-xs font-bold tracking-[.16em] text-[#ff6b35]">
+          KHÁCH GHÉ TRONG 24 GIỜ
+        </p>
+        <h1 className="mt-2 text-3xl font-black">Lượt xem và trò chuyện</h1>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Metric
+          label="Lượt xem"
+          value={String(data.metrics.views24h)}
+          icon={Globe2}
+          color="blue"
+        />
+        <Metric
+          label="Khách duy nhất"
+          value={String(data.metrics.visitors24h)}
+          icon={Target}
+          color="green"
+        />
+        <Metric
+          label="Mở khung chat"
+          value={String(data.metrics.chatOpens24h)}
+          icon={MessageCircle}
+          color="orange"
+        />
+        <Metric
+          label="Chưa đọc"
+          value={String(data.metrics.unreadChats)}
+          icon={Mail}
+          color="purple"
+        />
+      </div>
+      <div className="mt-7 grid gap-4 xl:grid-cols-2">
+        {!latest.length && <Empty text="Chưa có khách nào nhắn Shoyru." />}
+        {latest.map((item) => (
+          <ChatCard key={String(item.sessionId)} item={item} reply={reply} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChatCard({
+  item,
+  reply,
+}: {
+  item: Record<string, unknown>;
+  reply: (sessionId: string, text: string) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const sessionId = String(item.sessionId || "");
+  return (
+    <article className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <b>{String(item.name || "Bạn mới")}</b>
+          <p className="text-xs text-[#8b949e]">
+            Phiên {sessionId.slice(0, 8)}…
+          </p>
+        </div>
+        {!item.read && (
+          <span className="rounded-full bg-[#fff0e9] px-3 py-1 text-xs font-bold text-[#d95b2e]">
+            Tin mới
+          </span>
+        )}
+      </div>
+      <p className="mt-4 rounded-xl bg-[#f4f6f8] p-4 text-sm leading-6 text-[#46515c]">
+        {String(item.text || "")}
+      </p>
+      <div className="mt-4 flex gap-2">
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && text.trim()) {
+              reply(sessionId, text.trim());
+              setText("");
+            }
+          }}
+          placeholder="Trả lời với tư cách Shoyru…"
+          className="min-w-0 flex-1 rounded-xl border border-[#dfe4e8] px-4 py-2.5 text-sm outline-none focus:border-[#ff6b35]"
+        />
+        <button
+          onClick={() => {
+            if (text.trim()) {
+              reply(sessionId, text.trim());
+              setText("");
+            }
+          }}
+          className="rounded-xl bg-[#17202a] px-4 py-2.5 text-sm font-bold text-white"
+        >
+          Gửi
+        </button>
+      </div>
+    </article>
   );
 }
 
