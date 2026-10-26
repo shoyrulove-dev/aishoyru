@@ -558,6 +558,24 @@ export async function runAgentCycle() {
   const needsApproval =
     decision.action.type === "draft_email" ||
     decision.action.type === "request_support";
+  await db.collection("published_posts").deleteMany({
+    automatic: true,
+    $or: [
+      {
+        content: {
+          $regex:
+            "^(postDraft\\.(json|md)|draft_post_shoyru_sticker\\.json|draftPost)$",
+          $options: "i",
+        },
+      },
+      {
+        title: {
+          $regex: "(khuyến mãi|giảm giá|Draft promotion)",
+          $options: "i",
+        },
+      },
+    ],
+  });
   const writes: Promise<unknown>[] = [
     db.collection("agent_state").updateOne(
       { key: "main" },
