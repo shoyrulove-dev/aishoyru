@@ -47,6 +47,7 @@ let providers = [
   ["SambaNova", "SAMBANOVA", "openai", "https://api.sambanova.ai/v1", ""],
   ["Vercel AI Gateway", "VERCEL_AI_GATEWAY", "openai", "https://ai-gateway.vercel.sh/v1", "openai/gpt-oss-20b"],
   ["NVIDIA NIM", "NVIDIA_NIM", "openai", "https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3.5-bolt-e4b"],
+  ["Oxion AI", "OXION", "openai", "https://www.oxionai.com/v1", "gpt-5.6-luna"],
 ].map(([name, prefix, protocol, defaultBaseURL, defaultModel]) => ({
   name,
   protocol,
@@ -82,8 +83,8 @@ const classify = (status, body) => {
 
 const rateHeaders = (headers) => ({
   limit: headers.get("x-ratelimit-limit-requests") || headers.get("x-ratelimit-limit") || headers.get("ratelimit-limit") || "",
-  remaining: headers.get("x-ratelimit-remaining-requests") || headers.get("ratelimit-remaining") || "",
-  reset: headers.get("x-ratelimit-reset-requests") || headers.get("ratelimit-reset") || "",
+  remaining: headers.get("x-ratelimit-remaining-requests") || headers.get("x-ratelimit-remaining") || headers.get("ratelimit-remaining") || "",
+  reset: headers.get("x-ratelimit-reset-requests") || headers.get("x-ratelimit-reset") || headers.get("ratelimit-reset") || "",
   tokenLimit: headers.get("x-ratelimit-limit-tokens") || "",
   tokenRemaining: headers.get("x-ratelimit-remaining-tokens") || "",
   retryAfter: headers.get("retry-after") || "",
