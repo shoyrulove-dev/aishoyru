@@ -3,8 +3,8 @@ name: Shoyru hourly work cycle
 
 on:
   schedule:
-    # Gọi hai lần để bù trường hợp GitHub trì hoãn/bỏ một lượt; API tự khóa chống chạy trùng.
-    - cron: "17,47 * * * *"
+    # Gọi bốn lần để bù khi GitHub trì hoãn/bỏ lịch; API khóa 40 phút nên không chạy trùng.
+    - cron: "2,17,32,47 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
@@ -35,7 +35,7 @@ jobs:
             http_code=$(curl --silent --show-error --max-time 90 \
               --output response.json --write-out "%{http_code}" \
               -H "Authorization: Bearer $oidc_token" \
-              https://aishoyru.vercel.app/api/cron/agent) || http_code="000"
+              https://shoyruai.blissbiovn.com/api/cron/agent) || http_code="000"
             [ "$http_code" != "401" ] && [ "$http_code" != "000" ] && [ "$http_code" != "500" ] && [ "$http_code" != "502" ] && [ "$http_code" != "503" ] && [ "$http_code" != "504" ] && break
             sleep 10
           done
