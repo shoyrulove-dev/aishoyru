@@ -182,6 +182,16 @@ export async function runAgentCycle() {
     db
       .collection("orders")
       .deleteMany({ buyerName: "Kiểm thử E2E", status: "pending" }),
+    db.collection("approvals").updateMany(
+      { type: "publish", status: "pending" },
+      {
+        $set: {
+          status: "superseded",
+          reviewedAt: new Date(),
+          note: "Website sở hữu hiện được Shoyru tự xuất bản",
+        },
+      },
+    ),
   ]);
   const providers = [
     {
@@ -292,7 +302,7 @@ export async function runAgentCycle() {
       .collection("approvals")
       .find({
         status: "pending",
-        $or: [{ destination: { $exists: true } }, { type: "email" }],
+        type: { $in: ["email", "support"] },
       })
       .sort({ createdAt: -1 })
       .limit(10)
@@ -414,32 +424,27 @@ export async function runAgentCycle() {
     decision.action.type === "draft_email" ||
     decision.action.type === "request_support";
   const writes: Promise<unknown>[] = [
-    db
-      .collection("agent_state")
-      .updateOne(
-        { key: "main" },
-        {
-          $set: {
-            status: decision.status,
-            thought: decision.thought,
-            lastRunAt: now,
-            nextWake: "Mỗi giờ, vào phút 17",
-            fundingSourceIndex:
-              (fundingSourceIndex + 1) % fundingSources.length,
-            updatedAt: now,
-          },
+    db.collection("agent_state").updateOne(
+      { key: "main" },
+      {
+        $set: {
+          status: decision.status,
+          thought: decision.thought,
+          lastRunAt: now,
+          nextWake: "Mỗi giờ, vào phút 17",
+          fundingSourceIndex: (fundingSourceIndex + 1) % fundingSources.length,
+          updatedAt: now,
         },
-        { upsert: true },
-      ),
-    db
-      .collection("activities")
-      .insertOne({
-        kind: "SUY NGHĨ",
-        text: decision.reflection,
-        public: true,
-        createdAt: now,
-        source: "agent",
-      }),
+      },
+      { upsert: true },
+    ),
+    db.collection("activities").insertOne({
+      kind: "SUY NGHĨ",
+      text: decision.reflection,
+      public: true,
+      createdAt: now,
+      source: "agent",
+    }),
     db.collection("conversations").insertMany([
       {
         speaker: "shoyru",
@@ -456,144 +461,124 @@ export async function runAgentCycle() {
         source: "agent",
       },
     ]),
-    db
-      .collection("agent_runs")
-      .insertOne({
-        decision,
-        workResult,
-        provider: decisionResponse.provider,
-        model: decisionResponse.model,
-        createdAt: now,
-      }),
-    db
-      .collection("funding_research")
-      .insertOne({
-        ...fundingResearch,
-        text: fundingResearch.text.slice(0, 4000),
-        createdAt: now,
-        source: "agent",
-      }),
+    db.collection("agent_runs").insertOne({
+      decision,
+      workResult,
+      provider: decisionResponse.provider,
+      model: decisionResponse.model,
+      createdAt: now,
+    }),
+    db.collection("funding_research").insertOne({
+      ...fundingResearch,
+      text: fundingResearch.text.slice(0, 4000),
+      createdAt: now,
+      source: "agent",
+    }),
   ];
   if (workResult) {
     writes.push(
-      db
-        .collection("tasks")
-        .insertOne({
-          ...decision.action,
-          result: workResult,
-          status: "completed",
-          completedAt: now,
-          createdAt: now,
-          source: "agent",
-        }),
+      db.collection("tasks").insertOne({
+        ...decision.action,
+        result: workResult,
+        status: "completed",
+        completedAt: now,
+        createdAt: now,
+        source: "agent",
+      }),
     );
     writes.push(
-      db
-        .collection("activities")
-        .insertOne({
-          kind: "ĐÃ LÀM",
-          text: workResult.summary,
-          public: true,
-          createdAt: new Date(now.getTime() + 1),
-          source: "agent",
-        }),
+      db.collection("activities").insertOne({
+        kind: "ĐÃ LÀM",
+        text: workResult.summary,
+        public: true,
+        createdAt: new Date(now.getTime() + 1),
+        source: "agent",
+      }),
     );
     if (activeProject)
       writes.push(
-        db
-          .collection("projects")
-          .updateOne(
-            { _id: activeProject._id },
-            {
-              $set: {
-                lastAction: decision.action,
-                result: workResult,
-                status:
-                  decision.action.type === "draft_post"
-                    ? "ready"
-                    : decision.action.type === "validate"
-                      ? "validating"
-                      : String(activeProject.status) === "ready"
-                        ? "ready"
-                        : "active",
-                updatedAt: now,
-              },
-              $inc: { stepCount: 1 },
+        db.collection("projects").updateOne(
+          { _id: activeProject._id },
+          {
+            $set: {
+              lastAction: decision.action,
+              result: workResult,
+              status:
+                decision.action.type === "draft_post"
+                  ? "ready"
+                  : decision.action.type === "validate"
+                    ? "validating"
+                    : String(activeProject.status) === "ready"
+                      ? "ready"
+                      : "active",
+              updatedAt: now,
             },
-          ),
+            $inc: { stepCount: 1 },
+          },
+        ),
       );
     else if (decision.project)
       writes.push(
-        db
-          .collection("projects")
-          .insertOne({
-            ...decision.project,
-            status: "active",
-            lastAction: decision.action,
-            result: workResult,
-            stepCount: 1,
-            createdAt: now,
-            updatedAt: now,
-            source: "agent",
-          }),
+        db.collection("projects").insertOne({
+          ...decision.project,
+          status: "active",
+          lastAction: decision.action,
+          result: workResult,
+          stepCount: 1,
+          createdAt: now,
+          updatedAt: now,
+          source: "agent",
+        }),
       );
   }
   if (decision.opportunity)
     writes.push(
-      db
-        .collection("opportunities")
-        .updateOne(
-          { sourceUrl: decision.opportunity.sourceUrl },
-          {
-            $set: {
-              ...decision.opportunity,
-              status: "discovered",
-              updatedAt: now,
-            },
-            $setOnInsert: { createdAt: now, source: "agent" },
+      db.collection("opportunities").updateOne(
+        { sourceUrl: decision.opportunity.sourceUrl },
+        {
+          $set: {
+            ...decision.opportunity,
+            status: "discovered",
+            updatedAt: now,
           },
-          { upsert: true },
-        ),
+          $setOnInsert: { createdAt: now, source: "agent" },
+        },
+        { upsert: true },
+      ),
     );
   if (decision.action.type === "draft_post" && workResult) {
     const slug = `${now.toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`;
     writes.push(
-      db
-        .collection("published_posts")
-        .insertOne({
-          slug,
-          title: decision.action.title,
-          content: workResult.artifact,
-          channel: "website",
-          publishedAt: now,
-          createdAt: now,
-          source: "agent",
-          automatic: true,
-        }),
+      db.collection("published_posts").insertOne({
+        slug,
+        title: decision.action.title,
+        content: workResult.artifact,
+        channel: "website",
+        publishedAt: now,
+        createdAt: now,
+        source: "agent",
+        automatic: true,
+      }),
     );
   }
   if (needsApproval && workResult) {
     const support = decision.supportRequest;
     writes.push(
-      db
-        .collection("approvals")
-        .insertOne({
-          type: decision.action.type === "draft_email" ? "email" : "support",
-          channel: decision.action.type === "draft_email" ? "email" : "human",
-          destination:
-            decision.action.type === "draft_email"
-              ? decision.email?.to
-              : "admin",
-          title: support?.title || decision.action.title,
-          details: support
-            ? `${support.reason}\n\nCần bạn cung cấp: ${support.needed}\n\nTác động dự kiến: ${support.impact}`
-            : workResult.artifact,
-          email: decision.email,
-          supportRequest: support,
-          status: "pending",
-          createdAt: now,
-          source: "agent",
-        }),
+      db.collection("approvals").insertOne({
+        type: decision.action.type === "draft_email" ? "email" : "support",
+        channel: decision.action.type === "draft_email" ? "email" : "human",
+        destination:
+          decision.action.type === "draft_email" ? decision.email?.to : "admin",
+        title: support?.title || decision.action.title,
+        details: support
+          ? `${support.reason}\n\nCần bạn cung cấp: ${support.needed}\n\nTác động dự kiến: ${support.impact}`
+          : workResult.artifact,
+        email: decision.email,
+        supportRequest: support,
+        status: "pending",
+        createdAt: now,
+        source: "agent",
+      }),
     );
   }
   await Promise.all(writes);

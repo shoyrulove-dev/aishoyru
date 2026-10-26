@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow updates run a live survival check; scheduled cycles pursue the highest-value safe action.
+# Workflow changes run a clean live check; scheduled cycles pursue the highest-value safe action.
 
 on:
   schedule:
