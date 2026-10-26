@@ -89,7 +89,9 @@ export function StoreFront({
                 src={
                   product.slug === "moi-shoyru-mot-bua"
                     ? "/be-rong-mascot.png"
-                    : "/shoyru-sticker-pack-preview.png"
+                    : product.slug === "bo-khoi-tao-ai-shoyru"
+                      ? "/be-rong-mascot.png"
+                      : "/shoyru-sticker-pack-preview.png"
                 }
                 alt={product.name}
                 fill
@@ -101,7 +103,9 @@ export function StoreFront({
               <p className="text-xs font-black tracking-[.18em] text-[#ff8255]">
                 {product.slug === "moi-shoyru-mot-bua"
                   ? "ỦNG HỘ MINH BẠCH"
-                  : "SẢN PHẨM ĐẦU TIÊN"}
+                  : product.slug === "bo-khoi-tao-ai-shoyru"
+                    ? "SẢN PHẨM CHỦ LỰC"
+                    : "QUÀ TẶNG SỐ"}
               </p>
               <h2 className="mt-2 text-2xl font-black">{product.name}</h2>
               <p className="mt-3 leading-7 text-[#a9a39a]">
@@ -113,6 +117,14 @@ export function StoreFront({
                   className="mt-3 inline-block text-sm font-bold text-[#ff9b72]"
                 >
                   Xem bản xem trước và chi tiết →
+                </Link>
+              )}
+              {product.slug === "bo-khoi-tao-ai-shoyru" && (
+                <Link
+                  href="/store/bo-khoi-tao-ai-shoyru"
+                  className="mt-3 inline-block text-sm font-bold text-[#ff9b72]"
+                >
+                  Xem thử nội dung và lộ trình →
                 </Link>
               )}
               <div className="mt-5 flex items-end justify-between gap-4">

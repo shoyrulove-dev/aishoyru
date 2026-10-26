@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    "/api/store/download": ["./products/shoyru-agent-kit-v1.zip"],
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
