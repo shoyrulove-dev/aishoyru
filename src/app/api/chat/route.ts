@@ -100,6 +100,18 @@ export async function POST(request: NextRequest) {
       baseURL: "https://api.groq.com/openai/v1",
       model: process.env.GROQ_MODEL || process.env.AI_MODEL || "openai/gpt-oss-20b",
     },
+    process.env.NVIDIA_NIM_API_KEY && {
+      name: "nvidia",
+      apiKey: process.env.NVIDIA_NIM_API_KEY,
+      baseURL: process.env.NVIDIA_NIM_BASE_URL || "https://integrate.api.nvidia.com/v1",
+      model: process.env.NVIDIA_NIM_MODEL || "nvidia/nemotron-3.5-bolt-e4b",
+    },
+    process.env.CLOUDFLARE_AI_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID && {
+      name: "cloudflare",
+      apiKey: process.env.CLOUDFLARE_AI_API_TOKEN,
+      baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
+      model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
+    },
     process.env.OPENROUTER_API_KEY && {
       name: "openrouter",
       apiKey: process.env.OPENROUTER_API_KEY,
@@ -117,6 +129,12 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.KILO_API_KEY,
       baseURL: "https://ai-gateway.kilo.ai/api/v1",
       model: "cohere/north-mini-code:free",
+    },
+    process.env.OXION_API_KEY && {
+      name: "oxion",
+      apiKey: process.env.OXION_API_KEY,
+      baseURL: process.env.OXION_BASE_URL || "https://www.oxionai.com/v1",
+      model: process.env.OXION_MODEL || "gpt-5.6-luna",
     },
   ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
   for (const provider of providers) {

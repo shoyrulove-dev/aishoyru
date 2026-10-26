@@ -26,6 +26,8 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 
 - `MONGODB_URI`, `MONGODB_DB`
 - `AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `GROQ_API_KEY` cho giai đoạn thử nghiệm
+- `OXION_API_KEY` bật OxionAI ở tầng dự phòng; mặc định dùng `gpt-5.6-luna` qua endpoint OpenAI-compatible.
+- NVIDIA NIM và Cloudflare Workers AI là hai tầng dự phòng ưu tiên trước các gateway miễn phí khi có đủ biến môi trường tương ứng.
 - Có thể đổi sang `AI_PROVIDER=openai` và thêm `OPENAI_API_KEY` mà không sửa code
 - `CRON_SECRET`: Vercel tự gửi dưới dạng Bearer khi chạy cron
 - `ADMIN_API_KEY`: khóa tự đặt để mở `/admin`
