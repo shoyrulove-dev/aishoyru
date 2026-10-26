@@ -359,16 +359,49 @@ export async function runAgentCycle() {
       role: "user",
       content: JSON.stringify({
         state,
-        recent,
-        transactions,
-        experiments,
-        activeProject: activeProject || null,
-        recentOpportunities,
+        recent: recent.slice(0, 8).map((item) => ({
+          kind: item.kind,
+          text: clip(String(item.text || ""), 220),
+          createdAt: item.createdAt,
+        })),
+        transactions: transactions.slice(0, 10).map((item) => ({
+          type: item.type,
+          amount: item.amount,
+          note: clip(String(item.note || ""), 120),
+        })),
+        experiments: experiments.map((item) => ({
+          name: item.name,
+          status: item.status,
+        })),
+        activeProject: activeProject
+          ? {
+              name: activeProject.name,
+              status: activeProject.status,
+              customer: activeProject.customer,
+              deliverable: activeProject.deliverable,
+              price: activeProject.price,
+              stepCount: activeProject.stepCount,
+            }
+          : null,
+        recentOpportunities: recentOpportunities.slice(0, 5).map((item) => ({
+          title: item.title,
+          sourceUrl: item.sourceUrl,
+          status: item.status,
+        })),
         pendingApprovals,
-        recentPublished,
+        recentPublished: recentPublished.slice(0, 5).map((item) => ({
+          title: item.title,
+          publishedAt: item.publishedAt,
+        })),
         storeFacts,
         outreachTargets,
-        fundingResearch,
+        fundingResearch: {
+          name: fundingResearch.name,
+          url: fundingResearch.url,
+          checkedAt: fundingResearch.checkedAt,
+          error: fundingResearch.error,
+          text: fundingResearch.text.slice(0, 3500),
+        },
         ownedPublishingChannel: "https://shoyruai.blissbiovn.com/updates",
         survivalState: {
           verifiedIncome: transactions
