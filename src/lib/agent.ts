@@ -523,6 +523,14 @@ export async function runAgentCycle() {
     work.summary = asText(work.summary);
     work.artifact = asText(work.artifact);
     work.nextStep = asText(work.nextStep);
+    const action = (rawDecision.action || {}) as Record<string, unknown>;
+    if (String(work.summary).trim().length < 3)
+      work.summary =
+        asText(action.title) || "Đã hoàn thành một bước công việc.";
+    if (String(work.artifact).trim().length < 3)
+      work.artifact = asText(action.details) || "Kết quả đã được ghi nhận.";
+    if (String(work.nextStep).trim().length < 3)
+      work.nextStep = "Tiếp tục bước có giá trị cao nhất trong lượt sau.";
   }
   const decision = Decision.parse(rawDecision);
   if (decision.action.type === "wait" && pendingApprovals.length === 0) {
