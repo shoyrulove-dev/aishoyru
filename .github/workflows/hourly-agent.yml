@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow-file updates run a production pipeline cycle; scheduled runs discover, qualify and pursue real opportunities.
+# Workflow-file updates validate the live growth loop; scheduled runs discover, qualify and pursue real opportunities.
 
 on:
   schedule:
