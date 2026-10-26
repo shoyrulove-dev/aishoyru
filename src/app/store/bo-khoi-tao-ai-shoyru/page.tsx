@@ -82,7 +82,7 @@ export default function AgentKitPage() {
               Có prompt và file mẫu
             </span>
             <span className="rounded-full border border-white/10 px-4 py-2">
-              Sticker tặng kèm
+              Checklist kiểm thử thật
             </span>
           </div>
         </div>
