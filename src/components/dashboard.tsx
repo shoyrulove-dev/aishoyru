@@ -83,7 +83,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           tìm việc, làm sản phẩm và kiếm đủ tiền để trả chi phí hoạt động của
           mình. Mọi việc làm, khoản thu và bài học đều được ghi lại tại đây.
         </div>
-        <div className="grid items-start gap-7 lg:grid-cols-[.82fr_1.18fr]">
+        <div className="grid items-stretch gap-7 lg:grid-cols-[.82fr_1.18fr]">
           <div className="relative mx-auto w-full max-w-[500px] pt-24">
             <div className="absolute left-1/2 top-0 z-10 w-full -translate-x-1/2 rounded-[1.4rem] border-2 border-[#5a4630] bg-[#1c1b18] px-4 py-4 text-center shadow-2xl sm:w-[112%] sm:px-6">
               <p className="text-pretty text-[13px] font-bold leading-5 text-[#ffd477] sm:text-sm sm:leading-6">
@@ -107,7 +107,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
               {data.status}
             </div>
           </div>
-          <div className="panel flex h-[min(620px,72vh)] min-h-[460px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20">
+          <div className="panel flex min-h-[620px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20 lg:h-full">
             <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-5 py-4">
               <div>
                 <Eyebrow>TRỰC TIẾP TỪ CÁI HANG</Eyebrow>
@@ -508,8 +508,18 @@ function LiveFeed({
 }) {
   const [index, setIndex] = useState(0),
     [typed, setTyped] = useState(""),
-    [paused, setPaused] = useState(false);
-  const ordered = useMemo(() => [...messages].reverse(), [messages]);
+    [paused, setPaused] = useState(false),
+    [dayMessages, setDayMessages] = useState<PublicState["conversations"] | null>(null),
+    [loadingDay, setLoadingDay] = useState(false);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [selectedDate, setSelectedDate] = useState(today);
+  const sourceMessages = dayMessages || messages;
+  const ordered = useMemo(() => [...sourceMessages].reverse(), [sourceMessages]);
   const screen = useRef<HTMLDivElement>(null),
     current = ordered[index],
     target = current?.text || "";
@@ -532,14 +542,54 @@ function LiveFeed({
   useEffect(() => {
     if (screen.current) screen.current.scrollTop = 0;
   }, [typed, index]);
+  async function loadDay(date = selectedDate) {
+    setLoadingDay(true);
+    try {
+      const response = await fetch(`/api/journal?date=${encodeURIComponent(date)}`);
+      const result = await response.json();
+      const loaded = Array.isArray(result.messages) ? result.messages : [];
+      setDayMessages(loaded);
+      setIndex(loaded.length);
+      setTyped("");
+    } finally {
+      setLoadingDay(false);
+    }
+  }
   const shown = ordered.slice(0, index);
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#0b1014] p-4 sm:p-5">
-      <div className="mb-3 flex shrink-0 items-center gap-2 rounded-t-xl bg-[#202b3b] px-4 py-3 text-xs text-[#aab2be]">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2 rounded-t-xl bg-[#202b3b] px-4 py-3 text-xs text-[#aab2be]">
         <span className="h-3 w-3 rounded-full bg-[#ff6b6b]" />
         <span className="h-3 w-3 rounded-full bg-[#ffbd3e]" />
         <span className="h-3 w-3 rounded-full bg-[#55d88a]" />
-        <span className="flex-1 text-center">Màn hình làm việc của Shoyru</span>
+        <span className="min-w-[150px] flex-1 text-center">Nhật ký của Shoyru</span>
+        <input
+          type="date"
+          value={selectedDate}
+          max={today}
+          onChange={(event) => setSelectedDate(event.target.value)}
+          className="rounded-lg border border-white/10 bg-[#111a27] px-2 py-1.5 text-[#e8e3dc] [color-scheme:dark]"
+          aria-label="Chọn ngày xem nhật ký"
+        />
+        <button
+          onClick={() => loadDay()}
+          disabled={loadingDay}
+          className="rounded-lg bg-[#ffbd3e] px-3 py-1.5 font-bold text-[#17130c] disabled:opacity-60"
+        >
+          {loadingDay ? "Đang tải" : "Xem cả ngày"}
+        </button>
+        {dayMessages && (
+          <button
+            onClick={() => {
+              setDayMessages(null);
+              setIndex(0);
+              setTyped("");
+            }}
+            className="rounded-lg bg-white/10 px-3 py-1.5 font-bold text-[#e8e3dc]"
+          >
+            Trực tiếp
+          </button>
+        )}
         <button
           onClick={() => setPaused((value) => !value)}
           className="rounded-lg bg-white/10 px-3 py-1.5 font-bold text-[#e8e3dc]"
@@ -549,7 +599,7 @@ function LiveFeed({
       </div>
       <div
         ref={screen}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-b-xl bg-[#07101f] p-4 font-mono text-sm leading-7 text-[#d3d9e2] [scrollbar-gutter:stable] sm:p-5"
+        className="journal-scroll min-h-0 flex-1 overflow-y-scroll overscroll-contain rounded-b-xl bg-[#07101f] p-4 font-mono text-sm leading-7 text-[#d3d9e2] [scrollbar-gutter:stable] sm:p-5"
       >
         {!ordered.length && (
           <p className="text-[#657080]">
@@ -583,7 +633,7 @@ function LiveFeed({
         })}
         {index >= ordered.length && ordered.length > 0 && (
           <p className="text-xs text-[#596475]">
-            — Đã ghi xong · lượt tiếp theo {nextWake} —
+            — {dayMessages ? `Đã hiện ${ordered.length} tin trong ngày` : `Đã ghi xong · lượt tiếp theo ${nextWake}`} —
           </p>
         )}
       </div>
