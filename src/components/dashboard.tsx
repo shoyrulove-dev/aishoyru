@@ -14,7 +14,7 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
   <div className="border-b border-white/8 bg-[#0a0d10]/90 px-5 py-2 text-center text-[10px] tracking-[.16em] text-[#b8b2a8] uppercase">Thí nghiệm công khai · Không bịa doanh thu · Dữ liệu thật khi kết nối</div>
   <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
    <a href="#top" className="flex items-center gap-3 font-black tracking-tight"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff6b35] text-xl">🔥</span><span><span className="text-[#ffbd3e]">Shoyru</span> · Rồng Ham Ăn</span></a>
-   <div className="hidden gap-7 text-sm text-[#aaa59d] md:flex"><a href="#top">Nhật ký</a><a href="#experiment">Thí nghiệm</a><a href="#rules">Luật chơi</a></div>
+   <div className="hidden gap-7 text-sm text-[#aaa59d] md:flex"><a href="#top">Nhật ký</a><a href="/updates">Bài đăng</a><a href="#rules">Luật chơi</a></div>
    <a href="/store" className="rounded-full bg-[#f5ead2] px-4 py-2 text-sm font-extrabold text-[#14181b]">Ghé quầy của Bé</a>
   </nav>
   <section id="top" className="relative mx-auto max-w-7xl px-5 pb-14 pt-4 lg:px-8">

@@ -22,6 +22,12 @@ export async function PATCH(r:NextRequest){
   await db.collection("approvals").updateOne({_id:approval._id},{$set:{status:"approved",sentAt:new Date(),emailProviderId:String((result as {id?:string}).id||"")}});
   return NextResponse.json({ok:true,sent:true});
  }
+ if(status==="approved"&&approval.type==="publish"){
+  const slug=`${new Date().toISOString().slice(0,10)}-${approval._id.toString()}`;
+  await db.collection("published_posts").insertOne({slug,title:approval.title,content:approval.details,channel:"website",sourceApprovalId:approval._id,publishedAt:new Date(),createdAt:new Date()});
+  await db.collection("approvals").updateOne({_id:approval._id},{$set:{status:"approved",reviewedAt:new Date(),publishedUrl:`/updates#${slug}`}});
+  return NextResponse.json({ok:true,sent:false,published:true,url:`/updates#${slug}`});
+ }
  await db.collection("approvals").updateOne({_id:approval._id},{$set:{status,reviewedAt:new Date()}});
  return NextResponse.json({ok:true,sent:false});
 }
