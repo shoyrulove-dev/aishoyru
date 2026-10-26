@@ -45,3 +45,14 @@ Import repository lên Vercel, thêm biến môi trường rồi deploy. GitHub 
 - Giao dịch có identity `provider + externalId`; nên tạo unique index trong Atlas.
 - Hành động đối ngoại phải qua approval.
 - Không đưa key vào frontend hoặc repository.
+# Thử nghiệm nhiều AI provider
+
+Điền key trong `.env.ai.local`, sau đó chạy:
+
+```bash
+npm run ai:test
+npm run ai:bench
+```
+
+`ai:test` gửi một yêu cầu an toàn tới từng provider. `ai:bench` gửi 10 yêu cầu/provider với concurrency 2 để đo độ trễ và quan sát rate limit. Script không in API key hoặc nội dung trả lời. Không tăng số request quá cao khi dùng gói miễn phí.
+
