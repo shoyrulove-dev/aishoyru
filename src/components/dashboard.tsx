@@ -23,8 +23,8 @@ export function Dashboard({initialState}:{initialState:PublicState}) {
    </div>
    <div className="grid items-start gap-7 lg:grid-cols-[.82fr_1.18fr]">
     <div className="relative mx-auto w-full max-w-[500px] pt-24">
-     <div className="absolute left-1/2 top-0 z-10 w-[88%] -translate-x-1/2 rounded-[1.4rem] border-2 border-[#5a4630] bg-[#1c1b18] px-5 py-4 text-center shadow-2xl">
-      <p className="text-sm font-bold leading-6 text-[#ffd477]">{data.thought}</p>
+     <div className="absolute left-1/2 top-0 z-10 w-full -translate-x-1/2 rounded-[1.4rem] border-2 border-[#5a4630] bg-[#1c1b18] px-4 py-4 text-center shadow-2xl sm:w-[112%] sm:px-6">
+      <p className="text-pretty text-[13px] font-bold leading-5 text-[#ffd477] sm:text-sm sm:leading-6">{data.thought}</p>
       <span className="absolute -bottom-5 left-[44%] h-4 w-4 rounded-full border-2 border-[#5a4630] bg-[#1c1b18]"/>
       <span className="absolute -bottom-9 left-[49%] h-2.5 w-2.5 rounded-full border-2 border-[#5a4630] bg-[#1c1b18]"/>
      </div>
