@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow changes verify compact working memory; scheduled cycles pursue the highest-value safe action.
+# Workflow changes verify compact JSON decisions; scheduled cycles pursue the highest-value safe action.
 
 on:
   schedule:
