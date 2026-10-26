@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow changes verify Vietnamese decisions; scheduled cycles pursue the highest-value safe action.
+# Workflow changes verify normalized decisions; scheduled cycles pursue the highest-value safe action.
 
 on:
   schedule:

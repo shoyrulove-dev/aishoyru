@@ -422,7 +422,28 @@ export async function runAgentCycle() {
       }),
     },
   ]);
-  const decision = Decision.parse(JSON.parse(decisionResponse.content));
+  const rawDecision = JSON.parse(decisionResponse.content) as Record<
+    string,
+    unknown
+  >;
+  const optionalRequirements: Record<string, string[]> = {
+    project: ["name", "customer", "deliverable", "price"],
+    opportunity: ["title", "sourceUrl", "channel", "fit", "nextAction"],
+    email: ["to", "subject", "body"],
+    supportRequest: ["title", "reason", "needed", "impact"],
+  };
+  for (const [key, required] of Object.entries(optionalRequirements)) {
+    const value = rawDecision[key];
+    if (
+      value &&
+      (typeof value !== "object" ||
+        !required.every((field) =>
+          Object.prototype.hasOwnProperty.call(value, field),
+        ))
+    )
+      delete rawDecision[key];
+  }
+  const decision = Decision.parse(rawDecision);
   if (decision.action.type === "wait" && pendingApprovals.length === 0) {
     if (recentPublished.length === 0) {
       decision.status = "Đang giới thiệu sản phẩm đã mở bán";
