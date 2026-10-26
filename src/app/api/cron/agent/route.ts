@@ -36,12 +36,19 @@ async function isAuthorized(req: NextRequest) {
 export async function GET(req: NextRequest) {
   if (!(await isAuthorized(req)))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const directSecret =
+    Boolean(process.env.CRON_SECRET) &&
+    req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
   const db = await getDb();
   const state = await db?.collection("agent_state").findOne({ key: "main" });
   const lastRun = state?.lastRunAt
     ? new Date(state.lastRunAt as Date).getTime()
     : 0;
-  if (lastRun && Date.now() - lastRun < 40 * 60 * 1000)
+  if (
+    lastRun &&
+    Date.now() - lastRun < 40 * 60 * 1000 &&
+    !(directSecret && req.nextUrl.searchParams.get("force") === "1")
+  )
     return NextResponse.json({
       ok: true,
       skipped: true,
