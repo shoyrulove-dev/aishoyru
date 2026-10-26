@@ -1,5 +1,10 @@
 import OpenAI from "openai";
 import { getDb } from "./mongodb";
+import {
+  providerIsCoolingDown,
+  recordProviderFailure,
+  recordProviderSuccess,
+} from "./ai-health";
 import { z } from "zod";
 
 const clip = (value: string, max: number) => {
@@ -436,6 +441,8 @@ export async function runAgentCycle() {
     const errors: string[] = [];
     const compactMessages = messages.slice(-2);
     for (const provider of providers) {
+      if (await providerIsCoolingDown(db!, provider.name)) continue;
+      const startedAt = Date.now();
       try {
         const client = new OpenAI({
           apiKey: provider.apiKey,
@@ -462,8 +469,15 @@ export async function runAgentCycle() {
         ].map((value) => String(value || ""));
         if (!vietnameseText.test(publicFields.join(" ")))
           throw new Error("Nội dung công khai không phải tiếng Việt có dấu");
+        await recordProviderSuccess(
+          db!,
+          provider.name,
+          provider.model,
+          Date.now() - startedAt,
+        );
         return { content, provider: provider.name, model: provider.model };
       } catch (error) {
+        await recordProviderFailure(db!, provider.name, provider.model, error);
         errors.push(
           `${provider.name}: ${error instanceof Error ? error.message : "unknown error"}`,
         );

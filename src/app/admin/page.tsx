@@ -34,14 +34,36 @@ type Approval = {
   destination?: string;
   email?: { to: string; subject: string; body: string };
 };
+type AgentRun = {
+  _id: string;
+  provider?: string;
+  model?: string;
+  createdAt?: string;
+  decision?: {
+    status?: string;
+    action?: { type?: string; title?: string; details?: string };
+  };
+  workResult?: { summary?: string; artifact?: string; nextStep?: string };
+};
 type Overview = {
   approvals: Approval[];
   projects: Array<Record<string, unknown>>;
   opportunities: Array<Record<string, unknown>>;
-  runs: Array<Record<string, unknown>>;
+  runs: AgentRun[];
   orders: Array<Record<string, unknown>>;
   published: Array<Record<string, unknown>>;
   chats: Array<Record<string, unknown>>;
+  aiHealth: Array<{
+    provider: string;
+    model?: string;
+    status?: string;
+    totalSuccess?: number;
+    totalFailure?: number;
+    consecutiveFailures?: number;
+    lastLatencyMs?: number;
+    cooldownUntil?: string;
+    lastError?: string;
+  }>;
   metrics: {
     revenue: number;
     pending: number;
@@ -142,6 +164,8 @@ export default function Admin() {
       count: data.metrics.leads,
     },
     { id: "channels", label: "Kênh bán", icon: Radio },
+    { id: "work-log", label: "Nhật ký việc", icon: Check },
+    { id: "ai-health", label: "Sức khỏe AI", icon: Zap },
     {
       id: "visitors",
       label: "Khách & chat",
@@ -250,6 +274,8 @@ export default function Admin() {
           )}{" "}
           {tab === "pipeline" && <Pipeline data={data} />}{" "}
           {tab === "channels" && <Channels channels={data.channels} />}
+          {tab === "work-log" && <WorkLog runs={data.runs} />}
+          {tab === "ai-health" && <AiHealth providers={data.aiHealth} />}
           {tab === "visitors" && <Visitors data={data} reply={replyChat} />}
         </div>
       </div>
@@ -761,6 +787,121 @@ function Channels({ channels }: { channels: Overview["channels"] }) {
         ))}
       </div>
     </SectionTitle>
+  );
+}
+
+function AiHealth({ providers }: { providers: Overview["aiHealth"] }) {
+  const labels: Record<string, string> = {
+    healthy: "Ổn định",
+    degraded: "Có lỗi",
+    cooldown: "Đang tạm nghỉ",
+  };
+  return (
+    <SectionTitle
+      eyebrow="HẠ TẦNG AI"
+      title="Sức khỏe bộ não Shoyru"
+      text="Nguồn lỗi ba lần liên tiếp sẽ tạm nghỉ 20 phút trước khi thử lại."
+    >
+      {providers.length === 0 ? (
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white">
+          <Empty text="Chưa có lượt gọi AI nào sau khi bật theo dõi." />
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {providers.map((provider) => {
+            const success = Number(provider.totalSuccess || 0);
+            const failure = Number(provider.totalFailure || 0);
+            const total = success + failure;
+            const rate = total ? Math.round((success / total) * 100) : 0;
+            const healthy = provider.status === "healthy";
+            const cooling = provider.status === "cooldown";
+            return (
+              <article key={provider.provider} className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-black capitalize">{provider.provider}</h2>
+                    <p className="mt-1 truncate text-xs text-[#7b858f]">{provider.model || "Chưa ghi nhận model"}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${healthy ? "bg-[#eaf8ef] text-[#27854b]" : cooling ? "bg-[#fff0e9] text-[#d95628]" : "bg-[#fff6dc] text-[#9a6a12]"}`}>
+                    {labels[provider.status || ""] || "Chưa rõ"}
+                  </span>
+                </div>
+                <div className="mt-5 grid grid-cols-3 gap-3">
+                  <AiStat label="Thành công" value={String(success)} />
+                  <AiStat label="Tỷ lệ tốt" value={`${rate}%`} />
+                  <AiStat label="Độ trễ" value={provider.lastLatencyMs ? `${provider.lastLatencyMs} ms` : "—"} />
+                </div>
+                {provider.lastError && (
+                  <p className="mt-4 break-words rounded-xl bg-[#fff6f1] px-3 py-2 text-xs leading-5 text-[#9b4b2e]">
+                    Lỗi gần nhất: {provider.lastError}
+                  </p>
+                )}
+                <p className="mt-4 text-xs text-[#8b949e]">
+                  {provider.consecutiveFailures || 0} lỗi liên tiếp
+                  {provider.cooldownUntil ? ` · thử lại sau ${new Date(provider.cooldownUntil).toLocaleString("vi-VN")}` : ""}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </SectionTitle>
+  );
+}
+
+function WorkLog({ runs }: { runs: AgentRun[] }) {
+  return (
+    <SectionTitle
+      eyebrow="CÔNG VIỆC THỰC TẾ"
+      title="Shoyru đã làm được gì?"
+      text="Mỗi lượt ghi rõ việc đã làm, đầu ra, bước tiếp theo và nguồn AI thực hiện."
+    >
+      <div className="space-y-4">
+        {runs.length === 0 && (
+          <div className="rounded-2xl border border-[#dfe4e8] bg-white">
+            <Empty text="Chưa có lượt làm việc nào." />
+          </div>
+        )}
+        {runs.map((run) => (
+          <article key={run._id} className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-[#f2612c]">
+                  {run.decision?.action?.type || "sinh hoạt"}
+                </p>
+                <h2 className="mt-2 text-lg font-black">{run.decision?.action?.title || run.decision?.status || "Một lượt của Shoyru"}</h2>
+              </div>
+              <p className="text-xs text-[#8b949e]">
+                {run.createdAt ? new Date(run.createdAt).toLocaleString("vi-VN") : ""} · {run.provider || "hệ thống"}
+              </p>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <WorkField label="Đã làm" value={run.workResult?.summary || run.decision?.action?.details || "Chưa có mô tả."} />
+              <WorkField label="Kết quả" value={run.workResult?.artifact || "Chưa có đầu ra riêng."} />
+              <WorkField label="Việc tiếp theo" value={run.workResult?.nextStep || "Chờ lượt kế tiếp."} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </SectionTitle>
+  );
+}
+
+function WorkField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[#f6f7f8] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#8b949e]">{label}</p>
+      <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-[#46515c]">{value}</p>
+    </div>
+  );
+}
+
+function AiStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[#f4f6f8] p-3">
+      <p className="text-sm font-black">{value}</p>
+      <p className="mt-1 text-[10px] font-semibold text-[#818b95]">{label}</p>
+    </div>
   );
 }
 

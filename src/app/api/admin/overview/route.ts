@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     income,
     engagement,
     chats,
+    aiHealth,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
         createdAt: 1,
         "decision.action": 1,
         "decision.status": 1,
+        workResult: 1,
       })
       .toArray(),
     db
@@ -103,6 +105,11 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(40)
       .toArray(),
+    db
+      .collection("ai_provider_health")
+      .find({})
+      .sort({ updatedAt: -1 })
+      .toArray(),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
@@ -113,6 +120,7 @@ export async function GET(request: NextRequest) {
     orders,
     published,
     chats,
+    aiHealth,
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,

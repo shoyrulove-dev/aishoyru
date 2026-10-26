@@ -2,6 +2,11 @@ import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
+import {
+  providerIsCoolingDown,
+  recordProviderFailure,
+  recordProviderSuccess,
+} from "@/lib/ai-health";
 
 const Message = z.object({
   sessionId: z.string().regex(/^[a-zA-Z0-9-]{12,64}$/),
@@ -138,6 +143,8 @@ export async function POST(request: NextRequest) {
     },
   ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
   for (const provider of providers) {
+    if (await providerIsCoolingDown(db, provider.name)) continue;
+    const startedAt = Date.now();
     try {
       const client = new OpenAI({
         apiKey: provider.apiKey,
@@ -164,9 +171,18 @@ export async function POST(request: NextRequest) {
       if (answer && naturalVietnamese.test(answer) && !/user safety|policy|moderation/i.test(answer)) {
         reply = compactReply(answer);
         providerUsed = provider.name;
+        await recordProviderSuccess(
+          db,
+          provider.name,
+          provider.model,
+          Date.now() - startedAt,
+        );
         break;
       }
-    } catch {}
+      throw new Error("Pháº£n há»“i khÃ´ng Ä‘áº¡t tiÃªu chuáº©n tiáº¿ng Viá»‡t");
+    } catch (error) {
+      await recordProviderFailure(db, provider.name, provider.model, error);
+    }
   }
   await db.collection("visitor_messages").insertOne({
     sessionId: parsed.data.sessionId,
