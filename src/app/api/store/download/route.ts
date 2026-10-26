@@ -1,7 +1,5 @@
 import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET(req: NextRequest) {
@@ -18,34 +16,26 @@ export async function GET(req: NextRequest) {
       { error: "Cơ sở dữ liệu chưa sẵn sàng." },
       { status: 503 },
     );
-  const order = await db
-    .collection("orders")
-    .findOne({
-      code,
-      deliveryToken: token,
-      status: "paid",
-      product: { $in: ["sticker-shoyru-di-lam", "bo-khoi-tao-ai-shoyru"] },
-    });
+  const order = await db.collection("orders").findOne({
+    code,
+    deliveryToken: token,
+    status: "paid",
+    product: { $in: ["sticker-shoyru-di-lam", "bo-khoi-tao-ai-shoyru"] },
+  });
   if (!order)
     return NextResponse.json(
       { error: "Đơn hàng chưa được thanh toán hoặc liên kết không đúng." },
       { status: 403 },
     );
-  if (order.product === "bo-khoi-tao-ai-shoyru") {
-    const file = await readFile(
-      path.join(process.cwd(), "products", "shoyru-agent-kit-v1.zip"),
-    );
-    return new NextResponse(file, {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition":
-          'attachment; filename="bo-khoi-tao-ai-shoyru-v1.zip"',
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, no-store",
-      },
-    });
-  }
-  const result = await get("products/shoyru-stickers-v1.zip", {
+  const pathname =
+    order.product === "bo-khoi-tao-ai-shoyru"
+      ? "products/shoyru-agent-kit-v1.zip"
+      : "products/shoyru-stickers-v1.zip";
+  const filename =
+    order.product === "bo-khoi-tao-ai-shoyru"
+      ? "bo-khoi-tao-ai-shoyru-v1.zip"
+      : "shoyru-stickers-v1.zip";
+  const result = await get(pathname, {
     access: "private",
   });
   if (!result || result.statusCode !== 200 || !result.stream)
@@ -56,7 +46,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(result.stream, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="shoyru-stickers-v1.zip"',
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, no-store",
     },
