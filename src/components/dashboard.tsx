@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   Coins,
   Drumstick,
@@ -28,6 +29,8 @@ const routineImage = (status: string) => {
 };
 export function Dashboard({ initialState }: { initialState: PublicState }) {
   const [data, setData] = useState(initialState);
+  const dragonColumnRef = useRef<HTMLDivElement>(null);
+  const [dragonColumnHeight, setDragonColumnHeight] = useState(0);
   useEffect(() => {
     const t = setInterval(
       () =>
@@ -38,6 +41,15 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
       15000,
     );
     return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const column = dragonColumnRef.current;
+    if (!column) return;
+    const updateHeight = () => setDragonColumnHeight(Math.ceil(column.getBoundingClientRect().height));
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(column);
+    return () => observer.disconnect();
   }, []);
   const net = data.income - data.expense,
     pct = Math.min(100, Math.round((net / data.goal) * 100));
@@ -83,8 +95,11 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           tìm việc, làm sản phẩm và kiếm đủ tiền để trả chi phí hoạt động của
           mình. Mọi việc làm, khoản thu và bài học đều được ghi lại tại đây.
         </div>
-        <div className="grid items-stretch gap-7 lg:grid-cols-[.82fr_1.18fr]">
-          <div className="relative mx-auto w-full max-w-[500px] pt-24">
+        <div
+          className="grid items-start gap-7 lg:grid-cols-[.82fr_1.18fr]"
+          style={{ "--journal-height": `${dragonColumnHeight}px` } as CSSProperties}
+        >
+          <div ref={dragonColumnRef} className="relative mx-auto w-full max-w-[500px] pt-24">
             <div className="absolute left-1/2 top-0 z-10 w-full -translate-x-1/2 rounded-[1.4rem] border-2 border-[#5a4630] bg-[#1c1b18] px-4 py-4 text-center shadow-2xl sm:w-[112%] sm:px-6">
               <p className="text-pretty text-[13px] font-bold leading-5 text-[#ffd477] sm:text-sm sm:leading-6">
                 {data.thought}
@@ -107,7 +122,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
               {data.status}
             </div>
           </div>
-          <div className="panel flex min-h-[620px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20 lg:h-full">
+          <div className="panel flex min-h-[520px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20 lg:h-[var(--journal-height)] lg:min-h-0">
             <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-5 py-4">
               <div>
                 <Eyebrow>TRỰC TIẾP TỪ CÁI HANG</Eyebrow>
