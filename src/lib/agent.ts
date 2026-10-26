@@ -195,15 +195,13 @@ export async function runAgentCycle() {
   ]);
   const migrationTime = new Date();
   await Promise.all([
-    db
-      .collection("projects")
-      .updateMany(
-        {
-          name: /sticker Shoyru/i,
-          status: { $in: ["active", "validating", "ready"] },
-        },
-        { $set: { status: "legacy", updatedAt: migrationTime } },
-      ),
+    db.collection("projects").updateMany(
+      {
+        name: /sticker Shoyru/i,
+        status: { $in: ["active", "validating", "ready"] },
+      },
+      { $set: { status: "legacy", updatedAt: migrationTime } },
+    ),
     db.collection("projects").updateOne(
       { name: "Bộ khởi tạo AI sinh tồn Shoyru" },
       {
@@ -565,13 +563,14 @@ export async function runAgentCycle() {
     : "research";
   decision.action.type = normalizedType;
   if (decision.action.type === "draft_post") {
+    const proposedPost = `${decision.action.title} ${decision.action.details} ${decision.work?.artifact || ""}`;
     const latestProductPost = recentPublished.find(
       (item) =>
         /sticker/i.test(String(item.title || "")) &&
         Date.now() - new Date(item.publishedAt as Date).getTime() <
           24 * 60 * 60 * 1000,
     );
-    if (latestProductPost) {
+    if (/sticker/i.test(proposedPost) && latestProductPost) {
       decision.status = "Đang tìm kênh đưa sản phẩm đến khách hàng";
       decision.thought =
         "Bài giới thiệu sticker đã được đăng gần đây, mình chuyển sang tìm nơi có khách hàng phù hợp.";
