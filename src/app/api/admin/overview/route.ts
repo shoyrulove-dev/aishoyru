@@ -147,22 +147,18 @@ export async function GET(request: NextRequest) {
           : "Thiếu SEPAY_API_KEY",
       },
       {
-        id: "bluesky",
-        name: "Bluesky",
-        status:
-          process.env.BLUESKY_HANDLE && process.env.BLUESKY_APP_PASSWORD
-            ? "connected"
-            : "missing",
-        detail: "Cần handle và app password",
+        id: "facebook",
+        name: "Cộng đồng Facebook Việt Nam",
+        status: "manual",
+        detail:
+          "Shoyru nghiên cứu nhóm phù hợp và soạn bài; chủ tài khoản đăng để tránh spam và vi phạm quy định nhóm",
       },
       {
-        id: "telegram",
-        name: "Telegram Channel",
-        status:
-          process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHANNEL_ID
-            ? "connected"
-            : "missing",
-        detail: "Cần bot token và channel ID",
+        id: "zalo",
+        name: "Zalo cá nhân / OA",
+        status: "manual",
+        detail:
+          "Dùng để tư vấn và chăm sóc khách Việt khi có tài khoản hoặc OA chính thức",
       },
     ],
   });

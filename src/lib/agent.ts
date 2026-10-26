@@ -94,22 +94,22 @@ const vietnameseText =
 
 const fundingSources = [
   {
+    name: "Cộng đồng công nghệ Tinh tế",
+    url: "https://tinhte.vn/",
+  },
+  {
+    name: "Cộng đồng công nghệ VOZ",
+    url: "https://voz.vn/",
+  },
+  {
+    name: "Product Hunt",
+    url: "https://www.producthunt.com/",
+  },
+  {
     name: "Ethereum Ecosystem Support Program",
     url: "https://esp.ethereum.foundation/applicants",
   },
-  {
-    name: "Ethereum community grant directory",
-    url: "https://ethereum.org/community/grants/",
-  },
-  {
-    name: "Solana Foundation Grants",
-    url: "https://solana.org/grants-funding",
-  },
   { name: "Gitcoin Grants", url: "https://gitcoin.co/program" },
-  {
-    name: "Arbitrum Foundation Grants",
-    url: "https://arbitrum.foundation/grants",
-  },
 ];
 
 async function inspectFundingSource(index: number) {
@@ -118,7 +118,7 @@ async function inspectFundingSource(index: number) {
     const response = await fetch(source.url, {
       headers: {
         "User-Agent":
-          "Shoyru grant research bot/1.0 (+https://aishoyru.vercel.app)",
+          "Shoyru opportunity research bot/1.0 (+https://shoyruai.blissbiovn.com)",
       },
       signal: AbortSignal.timeout(6000),
     });
@@ -191,6 +191,35 @@ export async function runAgentCycle() {
           note: "Website sở hữu hiện được Shoyru tự xuất bản",
         },
       },
+    ),
+  ]);
+  const migrationTime = new Date();
+  await Promise.all([
+    db
+      .collection("projects")
+      .updateMany(
+        {
+          name: /sticker Shoyru/i,
+          status: { $in: ["active", "validating", "ready"] },
+        },
+        { $set: { status: "legacy", updatedAt: migrationTime } },
+      ),
+    db.collection("projects").updateOne(
+      { name: "Bộ khởi tạo AI sinh tồn Shoyru" },
+      {
+        $set: {
+          status: "ready",
+          customer:
+            "Người Việt muốn tự dựng một AI agent có lịch làm việc, trí nhớ, cửa hàng và thanh toán thật",
+          deliverable:
+            "Bộ ZIP gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E",
+          price: 79000,
+          updatedAt: migrationTime,
+          source: "store",
+        },
+        $setOnInsert: { createdAt: migrationTime, stepCount: 0 },
+      },
+      { upsert: true },
     ),
   ]);
   const providers = [
@@ -359,7 +388,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "MỤC TIÊU VẬN HÀNH: Không viết nhật ký cho có. Hãy tạo doanh thu thật theo pipeline: tìm cơ hội có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm hoặc đề nghị cụ thể → chuẩn bị hành động tiếp cận có đích đến → theo dõi kết quả. Bộ khởi tạo AI sinh tồn trong storeFacts là sản phẩm chủ lực; sticker chỉ là sản phẩm phụ và không còn là ưu tiên bán hàng. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_post chung chung: bài phải nói rõ đăng lên ownedPublishingChannel và dẫn người đọc về cửa hàng. Không tạo draft_email nếu chưa có người nhận hợp lệ. Nếu còn pendingApprovals thì làm một bước khác trong pipeline, không tạo bản nháp trùng lặp. Khi dự án đã ready, ưu tiên tìm khách, kênh phân phối, đối tác hoặc nguồn tài trợ thay vì tiếp tục sửa sản phẩm vô hạn. action.type có thể là discover_lead hoặc qualify_lead.",
+        "MỤC TIÊU VẬN HÀNH: Không viết nhật ký cho có. Hãy tạo doanh thu thật theo pipeline: tìm cơ hội có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm hoặc đề nghị cụ thể → chuẩn bị hành động tiếp cận có đích đến → theo dõi kết quả. Bộ khởi tạo AI sinh tồn giá 79.000đ trong storeFacts là sản phẩm chủ lực; sticker chỉ là sản phẩm phụ và không còn là ưu tiên bán hàng. Khách hàng chính là người Việt quan tâm AI agent, tự động hóa, làm sản phẩm số hoặc xây website. Ưu tiên nội dung SEO trên website, trò chuyện với khách ghé trang, bài hữu ích dành cho cộng đồng Facebook Việt Nam, Zalo và cộng đồng công nghệ phù hợp; không ưu tiên Telegram hoặc Bluesky. Không tự nhận là đã đăng vào nền tảng bên ngoài nếu chưa có tài khoản và quyền truy cập. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_post chung chung: bài phải nói rõ đăng lên ownedPublishingChannel và dẫn người đọc về sản phẩm chủ lực. Không tạo draft_email nếu chưa có người nhận hợp lệ. Nếu còn pendingApprovals thì làm một bước khác trong pipeline, không tạo bản nháp trùng lặp. Khi dự án đã ready, ưu tiên tìm khách, kênh phân phối, đối tác hoặc nguồn tài trợ thay vì tiếp tục sửa sản phẩm vô hạn. action.type có thể là discover_lead hoặc qualify_lead.",
     },
     {
       role: "system",
