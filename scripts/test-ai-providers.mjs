@@ -46,7 +46,7 @@ let providers = [
   ["Mistral", "MISTRAL", "openai", "https://api.mistral.ai/v1", "mistral-small-latest"],
   ["SambaNova", "SAMBANOVA", "openai", "https://api.sambanova.ai/v1", ""],
   ["Vercel AI Gateway", "VERCEL_AI_GATEWAY", "openai", "https://ai-gateway.vercel.sh/v1", "openai/gpt-oss-20b"],
-  ["NVIDIA NIM", "NVIDIA_NIM", "openai", "https://integrate.api.nvidia.com/v1", "meta/llama-3.1-8b-instruct"],
+  ["NVIDIA NIM", "NVIDIA_NIM", "openai", "https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3.5-bolt-e4b"],
 ].map(([name, prefix, protocol, defaultBaseURL, defaultModel]) => ({
   name,
   protocol,
@@ -133,11 +133,14 @@ async function oneRequest(provider, model) {
       ? body?.message?.content?.map?.((item) => item?.text || "").join("")
       : body?.choices?.[0]?.message?.content;
     const usage = body?.usage || {};
+    const textContent = String(content || "").trim();
     return {
       status: response.status,
       result: classify(response.status, body),
       latencyMs: Math.round(performance.now() - started),
-      hasText: Boolean(String(content || "").trim()),
+      hasText: Boolean(textContent),
+      hasVietnamese: /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i.test(textContent),
+      validJson: (() => { try { JSON.parse(textContent); return true; } catch { return false; } })(),
       inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? "",
       outputTokens: usage.completion_tokens ?? usage.output_tokens ?? "",
       errorCode: body?.error?.code || body?.error?.type || "",
@@ -149,6 +152,8 @@ async function oneRequest(provider, model) {
       result: error?.name === "TimeoutError" ? "TIMEOUT" : "NETWORK",
       latencyMs: Math.round(performance.now() - started),
       hasText: false,
+      hasVietnamese: false,
+      validJson: false,
       inputTokens: "",
       outputTokens: "",
       limit: "",
