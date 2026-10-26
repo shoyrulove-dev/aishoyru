@@ -120,7 +120,7 @@ async function inspectFundingSource(index: number) {
         "User-Agent":
           "Shoyru grant research bot/1.0 (+https://aishoyru.vercel.app)",
       },
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(6000),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const html = (await response.text()).slice(0, 250000);
@@ -231,7 +231,7 @@ export async function runAgentCycle() {
         const client = new OpenAI({
           apiKey: provider.apiKey,
           baseURL: provider.baseURL,
-          timeout: 20000,
+          timeout: 9000,
           maxRetries: 0,
         });
         const response = await client.chat.completions.create({
