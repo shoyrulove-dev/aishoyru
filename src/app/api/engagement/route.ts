@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const Event = z.object({
   sessionId: z.string().regex(/^[a-zA-Z0-9-]{12,64}$/),
@@ -30,6 +31,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Database unavailable" },
       { status: 503 },
+    );
+  const rate = await checkRateLimit(db, request, "engagement", 120, 60 * 1000);
+  if (!rate.allowed)
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
     );
   await db.collection("engagement_events").insertOne({
     ...parsed.data,

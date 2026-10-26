@@ -255,6 +255,9 @@ async function inspectFundingSource(index: number) {
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
+  await db
+    .collection("rate_limits")
+    .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   const legacyEnglish = [
     "I think a simple recipe recommendation bot could be fun and useful for people who don't know what to cook.",
     "It uses existing data, low cost, and can be built quickly with a rule-based approach.",

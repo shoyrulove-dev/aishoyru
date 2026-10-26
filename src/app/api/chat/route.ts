@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   providerIsCoolingDown,
   recordProviderFailure,
@@ -68,6 +69,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Database unavailable" },
       { status: 503 },
+    );
+  const rate = await checkRateLimit(db, request, "chat", 30, 60 * 60 * 1000);
+  if (!rate.allowed)
+    return NextResponse.json(
+      { error: "Bạn nhắn hơi nhanh. Vui lòng thử lại sau." },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
     );
   const since = new Date(Date.now() - 60 * 60 * 1000);
   const sent = await db.collection("visitor_messages").countDocuments({
