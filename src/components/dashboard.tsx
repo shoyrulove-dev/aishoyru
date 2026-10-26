@@ -67,9 +67,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           href="#top"
           className="flex items-center gap-3 font-black tracking-tight"
         >
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff6b35] text-xl">
-            🔥
-          </span>
+          <Image src="/shoyru-icon-192.png" alt="Logo Shoyru AI" width={40} height={40} className="rounded-xl bg-[#ff6b35]" priority />
           <span>
             <span className="text-[#ffbd3e]">Shoyru</span> · Rồng Ham Ăn
           </span>
@@ -301,9 +299,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
                   );
                 return (
                   <div key={message.id} className="flex gap-3">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ff6b35] text-sm">
-                      🐲
-                    </div>
+                    <Image src="/shoyru-icon-192.png" alt="Shoyru" width={36} height={36} className="h-9 w-9 shrink-0 rounded-xl bg-[#ff6b35]" />
                     <div className="max-w-[86%]">
                       <div className="mb-1 text-[10px] font-black tracking-[.15em] text-[#777f81]">
                         SHOYRU · {message.at}

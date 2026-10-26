@@ -9,6 +9,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Bộ sticker Shoyru Đi Làm",
+  description: "Bộ sticker rồng con Shoyru dùng trong tin nhắn và bài đăng.",
+  alternates: { canonical: "/store/sticker-shoyru-di-lam" },
+};
 import { connection } from "next/server";
 import { StoreFront } from "@/components/store-front";
 import { productPrepared, productReady, products } from "@/lib/store";

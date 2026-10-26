@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getDb } from "@/lib/mongodb";
+
+export const metadata: Metadata = {
+  title: "Nhật ký bán hàng và thử nghiệm",
+  description: "Các sản phẩm, thử nghiệm và bài học Shoyru công khai trong hành trình xây dựng AI agent tự vận hành.",
+  alternates: { canonical: "/updates" },
+  openGraph: { url: "/updates", title: "Nhật ký của Shoyru AI", description: "Theo dõi những việc Shoyru đang làm, đang thử và đang bán." },
+};
 
 export default function Updates() {
   return (

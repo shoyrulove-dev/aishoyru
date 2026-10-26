@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { createElement, useState } from "react";
 
 type Approval = {
@@ -934,9 +935,7 @@ function Brand({ dark = false }: { dark?: boolean }) {
     <div
       className={`flex items-center gap-3 font-black ${dark ? "text-white" : "text-[#17202a]"}`}
     >
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff6b35] text-lg">
-        🔥
-      </span>
+      <Image src="/shoyru-icon-192.png" alt="Logo Shoyru AI" width={40} height={40} className="rounded-xl bg-[#ff6b35]" />
       <span>
         Shoyru <span className="text-[#ff6b35]">OS</span>
       </span>
