@@ -43,7 +43,8 @@ function paymentReady() {
 export function productReady(slug: string) {
   if (!paymentReady()) return false;
   if (slug === "moi-shoyru-mot-bua") return true;
-  if (slug === "bo-khoi-tao-ai-shoyru") return true;
+  if (slug === "bo-khoi-tao-ai-shoyru")
+    return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN || deliveryUrl(slug));
 }
 

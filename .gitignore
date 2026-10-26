@@ -43,6 +43,7 @@ next-env.d.ts
 
 # paid product source files stay outside the public repository
 /product-source/
+/product-assets/
 
 .vercel
 .env*

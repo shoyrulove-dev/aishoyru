@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- VietQR is generated dynamically by the payment API. */
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Product = {
   slug: string;
@@ -16,6 +16,24 @@ type Product = {
 type Order = { code: string; amount: number; qrUrl: string };
 const money = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(value) + "đ";
+
+function visitorId() {
+  let value = localStorage.getItem("shoyru_visitor_id");
+  if (!value) {
+    value = crypto.randomUUID();
+    localStorage.setItem("shoyru_visitor_id", value);
+  }
+  return value;
+}
+
+function track(type: string) {
+  fetch("/api/engagement", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId: visitorId(), type, path: location.pathname }),
+    keepalive: true,
+  }).catch(() => {});
+}
 
 export function StoreFront({
   products,
@@ -32,6 +50,9 @@ export function StoreFront({
     [order, setOrder] = useState<Order | null>(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (productOnly) track("product_view");
+  }, [productOnly]);
   async function createOrder() {
     if (!selected) return;
     setBusy(true);
@@ -39,7 +60,7 @@ export function StoreFront({
     const response = await fetch("/api/store/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product: selected.slug, name, contact }),
+      body: JSON.stringify({ product: selected.slug, name, contact, sessionId: visitorId() }),
     });
     const data = await response.json();
     setBusy(false);
@@ -48,6 +69,7 @@ export function StoreFront({
       return;
     }
     setOrder(data);
+    track("qr_created");
   }
   async function verify() {
     if (!order) return;
@@ -140,6 +162,7 @@ export function StoreFront({
                     setSelected(product);
                     setOrder(null);
                     setMessage("");
+                    track("checkout_start");
                   }}
                   className="rounded-xl bg-[#ff6b35] px-5 py-3 font-extrabold disabled:cursor-not-allowed disabled:bg-[#4c4944]"
                 >
@@ -179,6 +202,7 @@ export function StoreFront({
                   href={offer.url}
                   target="_blank"
                   rel="sponsored noopener"
+                  onClick={() => track("affiliate_click")}
                   className="panel max-w-3xl rounded-2xl p-5 font-extrabold"
                 >
                   {offer.name} →

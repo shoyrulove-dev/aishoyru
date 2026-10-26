@@ -494,6 +494,7 @@ export async function runAgentCycle() {
     recentOpportunities,
     pendingApprovals,
     recentPublished,
+    funnel24h,
   ] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
@@ -535,6 +536,13 @@ export async function runAgentCycle() {
       .find({})
       .sort({ publishedAt: -1 })
       .limit(10)
+      .toArray(),
+    db
+      .collection("engagement_events")
+      .aggregate([
+        { $match: { createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } },
+        { $group: { _id: "$type", total: { $sum: 1 } } },
+      ])
       .toArray(),
   ]);
   const storeFacts = {
@@ -591,7 +599,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được hệ thống đăng tự động lên /updates. Không lặp lại nội dung trong recentPublished. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh, không được chỉ là tên tệp. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tìm khách hàng hoặc kênh phân phối thay vì đăng lặp. Email ra ngoài vẫn cần chủ nhân duyệt. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
+        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất thay vì tạo nội dung tùy hứng. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được hệ thống đăng tự động lên /updates. Không lặp lại nội dung trong recentPublished. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh, không được chỉ là tên tệp. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tìm khách hàng hoặc kênh phân phối thay vì đăng lặp. Email ra ngoài vẫn cần chủ nhân duyệt. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
       role: "user",
@@ -631,6 +639,9 @@ export async function runAgentCycle() {
           title: item.title,
           publishedAt: item.publishedAt,
         })),
+        funnel24h: Object.fromEntries(
+          funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
+        ),
         storeFacts,
         outreachTargets,
         fundingResearch: {

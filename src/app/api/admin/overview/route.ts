@@ -130,6 +130,11 @@ export async function GET(request: NextRequest) {
       visitors24h: Number(event("page_view")?.sessions?.length || 0),
       chatOpens24h: Number(event("chat_open")?.total || 0),
       unreadChats: chats.filter((item) => !item.read).length,
+      productViews24h: Number(event("product_view")?.total || 0),
+      checkoutStarts24h: Number(event("checkout_start")?.total || 0),
+      qrCreated24h: Number(event("qr_created")?.total || 0),
+      payments24h: Number(event("payment_verified")?.total || 0),
+      downloads24h: Number(event("download_started")?.total || 0),
     },
     channels: [
       {

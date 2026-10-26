@@ -17,6 +17,7 @@ export async function POST(req:NextRequest){
  if(result.upsertedCount){
   await db.collection("orders").updateOne({_id:order._id,status:"pending"},{$set:{status:"paid",paidAt:new Date(),transactionId:String(p.id)}});
   await db.collection("activities").insertOne({kind:"CÓ VÀNG",text:`Shoyru vừa nhận thanh toán cho đơn ${orderCode}.`,amount:p.transferAmount,orderCode,public:true,createdAt:new Date(),source:"sepay"});
+  if(order.sessionId)await db.collection("engagement_events").insertOne({sessionId:order.sessionId,type:"payment_verified",path:"/store",orderCode,createdAt:new Date()});
  }
  return NextResponse.json({success:true,duplicate:!result.upsertedCount});
 }

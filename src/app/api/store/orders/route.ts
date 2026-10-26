@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { createQrUrl,findProduct,productReady } from "@/lib/store";
 
-const Order=z.object({product:z.string(),name:z.string().trim().min(2).max(100),contact:z.string().trim().min(3).max(120)});
+const Order=z.object({product:z.string(),name:z.string().trim().min(2).max(100),contact:z.string().trim().min(3).max(120),sessionId:z.string().regex(/^[a-zA-Z0-9-]{12,64}$/).optional()});
 
 export async function POST(req:NextRequest){
  const parsed=Order.safeParse(await req.json());

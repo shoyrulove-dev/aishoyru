@@ -73,6 +73,11 @@ type Overview = {
     visitors24h: number;
     chatOpens24h: number;
     unreadChats: number;
+    productViews24h: number;
+    checkoutStarts24h: number;
+    qrCreated24h: number;
+    payments24h: number;
+    downloads24h: number;
   };
   channels: Array<{ id: string; name: string; status: string; detail: string }>;
 };
@@ -425,6 +430,25 @@ function OverviewPanel({
           color="purple"
         />
       </div>
+      <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
+        <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">PHỄU 24 GIỜ</p>
+        <h2 className="mt-2 text-xl font-black">Từ người xem đến khách hàng</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-5">
+          {[
+            ["Xem sản phẩm", data.metrics.productViews24h],
+            ["Mở thanh toán", data.metrics.checkoutStarts24h],
+            ["Nhận VietQR", data.metrics.qrCreated24h],
+            ["Đã thanh toán", data.metrics.payments24h],
+            ["Đã tải tệp", data.metrics.downloads24h],
+          ].map(([label, value], index) => (
+            <div key={String(label)} className="relative rounded-xl bg-[#f6f7f8] p-4">
+              <p className="text-2xl font-black">{String(value)}</p>
+              <p className="mt-1 text-xs text-[#7b858f]">{String(label)}</p>
+              {index < 4 && <ChevronRight className="absolute -right-3 top-1/2 hidden text-[#c8ced4] sm:block" size={16} />}
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
         <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
           <div className="flex items-start justify-between">

@@ -27,6 +27,13 @@ export async function GET(req: NextRequest) {
       { error: "Đơn hàng chưa được thanh toán hoặc liên kết không đúng." },
       { status: 403 },
     );
+  await db.collection("engagement_events").insertOne({
+    sessionId: order.sessionId || `order-${order.code}`,
+    type: "download_started",
+    path: "/api/store/download",
+    orderCode: order.code,
+    createdAt: new Date(),
+  });
   const pathname =
     order.product === "bo-khoi-tao-ai-shoyru"
       ? "products/shoyru-agent-kit-v1.zip"

@@ -4,7 +4,17 @@ import { getDb } from "@/lib/mongodb";
 
 const Event = z.object({
   sessionId: z.string().regex(/^[a-zA-Z0-9-]{12,64}$/),
-  type: z.enum(["page_view", "chat_open", "store_click"]),
+  type: z.enum([
+    "page_view",
+    "chat_open",
+    "store_click",
+    "product_view",
+    "checkout_start",
+    "qr_created",
+    "payment_verified",
+    "download_started",
+    "affiliate_click",
+  ]),
   path: z.string().startsWith("/").max(180),
 });
 
