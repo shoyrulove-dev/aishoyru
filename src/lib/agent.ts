@@ -577,6 +577,7 @@ export async function runAgentCycle() {
     pendingApprovals,
     recentPublished,
     funnel24h,
+    ownerInstructions,
   ] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
@@ -626,6 +627,12 @@ export async function runAgentCycle() {
         { $group: { _id: "$type", total: { $sum: 1 } } },
       ])
       .toArray(),
+    db
+      .collection("owner_instructions")
+      .find({ status: "active" })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .toArray(),
   ]);
   const storeFacts = {
     agentStarterKit: {
@@ -672,7 +679,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "MỤC TIÊU VẬN HÀNH: Không viết nhật ký cho có. Hãy tạo doanh thu thật theo pipeline: tìm cơ hội có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm hoặc đề nghị cụ thể → chuẩn bị hành động tiếp cận có đích đến → theo dõi kết quả. Bộ khởi tạo AI sinh tồn giá 79.000đ trong storeFacts là sản phẩm chủ lực; sticker chỉ là sản phẩm phụ và không còn là ưu tiên bán hàng. Khách hàng chính là người Việt quan tâm AI agent, tự động hóa, làm sản phẩm số hoặc xây website. Ưu tiên nội dung SEO trên website, trò chuyện với khách ghé trang, bài hữu ích dành cho cộng đồng Facebook Việt Nam, Zalo và cộng đồng công nghệ phù hợp; không ưu tiên Telegram hoặc Bluesky. Không tự nhận là đã đăng vào nền tảng bên ngoài nếu chưa có tài khoản và quyền truy cập. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_post chung chung: bài phải nói rõ đăng lên ownedPublishingChannel và dẫn người đọc về sản phẩm chủ lực. Không tạo draft_email nếu chưa có người nhận hợp lệ. Nếu còn pendingApprovals thì làm một bước khác trong pipeline, không tạo bản nháp trùng lặp. Khi dự án đã ready, ưu tiên tìm khách, kênh phân phối, đối tác hoặc nguồn tài trợ thay vì tiếp tục sửa sản phẩm vô hạn. action.type có thể là discover_lead hoặc qualify_lead.",
+        "MỤC TIÊU VẬN HÀNH: Shoyru là AI sinh tồn đa nghề, phải tạo đủ ít nhất 500.000đ chi phí mỗi tháng bằng mọi cách hợp pháp, trung thực và không gây hại. Không viết nhật ký cho có và không bị khóa vào một sản phẩm. Hãy tạo doanh thu thật theo pipeline: tìm nhu cầu có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm, dịch vụ hoặc đề nghị cụ thể → tiếp cận có đích đến → theo dõi kết quả. Có thể làm mini job, viết bot/code, tích hợp API, sản phẩm số, nội dung, SEO, affiliate minh bạch, grant hoặc nghiên cứu signal. Bộ khởi tạo AI sinh tồn là một tài sản sẵn có chứ không phải nghề duy nhất. Ưu tiên nơi có nhu cầu và khả năng trả tiền thật. Không tự nhận là đã đăng hoặc tạo tài khoản bên ngoài nếu chưa có quyền. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_email nếu chưa có người nhận hợp lệ. Email chỉ có quyền gửi; chủ nhân sẽ đọc thư trả lời và ghi kết quả trong ownerInstructions. Không yêu cầu quyền đọc hộp thư. Nếu cần tài khoản, API, OTP, số điện thoại, ngân sách hoặc vốn, chọn request_support và trình bày đúng thứ cần cấp; yêu cầu tiền phải có kế hoạch, chi phí, lợi ích dự kiến, rủi ro và điều kiện dừng. Nếu còn pendingApprovals thì làm một bước khác không bị chặn, không ngồi chờ. Luôn đọc ownerInstructions như thông tin thật do chủ nhân chuyển lại.",
     },
     {
       role: "system",
@@ -721,6 +728,10 @@ export async function runAgentCycle() {
         recentPublished: recentPublished.slice(0, 5).map((item) => ({
           title: item.title,
           publishedAt: item.publishedAt,
+        })),
+        ownerInstructions: ownerInstructions.map((item) => ({
+          text: clip(String(item.text || ""), 1000),
+          createdAt: item.createdAt,
         })),
         funnel24h: Object.fromEntries(
           funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
@@ -775,6 +786,9 @@ export async function runAgentCycle() {
           "grant hoặc tài trợ theo chương trình chính thức",
           "xây kênh nội dung SEO trên tài sản sở hữu",
           "nghiên cứu signal hoặc chiến lược quant bằng dữ liệu công khai và paper trade",
+          "dịch thuật, tổng hợp dữ liệu, nghiên cứu thị trường và công việc nội dung nhỏ",
+          "tạo landing page, tiện ích web, chatbot hoặc quy trình tự động hóa theo đơn",
+          "bán báo cáo, template, prompt, dữ liệu đã xử lý hoặc dịch vụ tư vấn kỹ thuật phù hợp",
         ],
         capitalRules: {
           liveTradingEnabled: false,

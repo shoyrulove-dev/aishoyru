@@ -90,7 +90,8 @@ export default function Admin() {
     [data, setData] = useState<Overview | null>(null),
     [msg, setMsg] = useState(""),
     [loading, setLoading] = useState(false),
-    [tab, setTab] = useState("overview");
+    [tab, setTab] = useState("overview"),
+    [ownerNote, setOwnerNote] = useState("");
   async function load() {
     setLoading(true);
     const r = await fetch("/api/admin/overview", {
@@ -144,6 +145,17 @@ export default function Admin() {
         : result.error || "Không gửi được tin nhắn.",
     );
     if (r.ok) await load();
+  }
+  async function sendOwnerNote() {
+    const r = await fetch("/api/admin/instructions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: ownerNote }),
+    });
+    const result = await r.json();
+    if (!r.ok) return setMsg(result.error || "Không lưu được thông tin cho Shoyru.");
+    setOwnerNote("");
+    setMsg("Đã chuyển thông tin cho Shoyru dùng ở lượt làm việc tiếp theo.");
   }
   if (!data)
     return (
@@ -276,7 +288,7 @@ export default function Admin() {
           )}
           {tab === "overview" && <OverviewPanel data={data} setTab={setTab} />}{" "}
           {tab === "actions" && (
-            <Actions approvals={data.approvals} decide={decide} />
+            <Actions approvals={data.approvals} decide={decide} ownerNote={ownerNote} setOwnerNote={setOwnerNote} sendOwnerNote={sendOwnerNote} />
           )}{" "}
           {tab === "pipeline" && <Pipeline data={data} />}{" "}
           {tab === "channels" && <Channels channels={data.channels} />}
@@ -510,8 +522,8 @@ function OverviewPanel({
           </p>
           <p className="mt-3 text-4xl font-black">{data.metrics.pending}</p>
           <p className="mt-2 text-sm leading-6 text-[#aeb7c0]">
-            Chỉ báo bạn khi cần gửi email, cấp tài khoản, API, vốn hoặc quyết
-            định bên ngoài.
+            Chỉ báo bạn khi cần tài khoản, API, OTP, vốn hoặc quyết định bên
+            ngoài.
           </p>
           <button
             onClick={() => setTab("actions")}
@@ -528,9 +540,15 @@ function OverviewPanel({
 function Actions({
   approvals,
   decide,
+  ownerNote,
+  setOwnerNote,
+  sendOwnerNote,
 }: {
   approvals: Approval[];
   decide: (id: string, status: string) => void;
+  ownerNote: string;
+  setOwnerNote: (value: string) => void;
+  sendOwnerNote: () => void;
 }) {
   return (
     <SectionTitle
@@ -539,6 +557,14 @@ function Actions({
       text="Chỉ xuất hiện khi Shoyru thiếu tài khoản, xác minh, vốn hoặc quyền ngoài hệ thống."
     >
       <div className="space-y-4">
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+          <h2 className="font-black">Báo kết quả hoặc giao thêm dữ liệu</h2>
+          <p className="mt-1 text-sm text-[#75808a]">Dán thư trả lời, kết quả đăng ký hoặc thông tin Shoyru cần biết.</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <textarea value={ownerNote} onChange={(event) => setOwnerNote(event.target.value)} rows={3} placeholder="Ví dụ: Đối tác đã trả lời và yêu cầu gửi báo giá..." className="min-w-0 flex-1 resize-y rounded-xl border border-[#dfe4e8] px-4 py-3 text-sm outline-none focus:border-[#ff6b35]" />
+            <button onClick={sendOwnerNote} disabled={ownerNote.trim().length < 3} className="rounded-xl bg-[#17202a] px-5 py-3 text-sm font-bold text-white disabled:opacity-40">Gửi cho Shoyru</button>
+          </div>
+        </div>
         {!approvals.length && <Empty text="Không có hành động nào đang chờ." />}
         {approvals.map((item) => (
           <article
