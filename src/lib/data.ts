@@ -3,6 +3,8 @@ import { getDb } from "./mongodb";
 import type { PublicState } from "./types";
 const vietnameseText =
   /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
+const privateOperations =
+  /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "").replace(/\s+/g, " ").trim();
   if (clean.length <= max && !clean.endsWith("…") && !clean.endsWith("...")) return clean;
@@ -95,7 +97,7 @@ export async function getPublicState(): Promise<PublicState> {
   const expense = transactions
     .filter((x) => x.kind === "expense")
     .reduce((s, x) => s + Number(x.amount || 0), 0);
-  const activitiesOut = activities.map((x) => ({
+  const activitiesOut = activities.filter((x) => !privateOperations.test(String(x.text || ""))).map((x) => ({
     id: String(x._id),
     at: new Date(x.createdAt as Date).toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -108,6 +110,7 @@ export async function getPublicState(): Promise<PublicState> {
   }));
   const conversationsOut = conversations
     .reverse()
+    .filter((x) => !privateOperations.test(String(x.text || "")))
     .map((x) => ({
       id: String(x._id),
       speaker: (x.speaker === "he-thong" ? "he-thong" : "shoyru") as
@@ -120,7 +123,9 @@ export async function getPublicState(): Promise<PublicState> {
       text: publicSentence(legacy[String(x.text || "")] || x.text),
     }));
   const status = String(state?.status || "Đang nghỉ trong hang");
-  const statusVi =
+  const statusVi = privateOperations.test(status)
+    ? "Đang sắp xếp công việc tiếp theo"
+    :
     status === "idea"
       ? "Đang chọn việc có thể kiếm tiền"
       : vietnameseText.test(status)
@@ -128,7 +133,9 @@ export async function getPublicState(): Promise<PublicState> {
         : "Đang hoàn thiện nội dung bán hàng";
   const rawThought =
     legacy[String(state?.thought || "")] || String(state?.thought || "");
-  const thoughtVi = vietnameseText.test(rawThought)
+  const thoughtVi = privateOperations.test(rawThought)
+    ? "Một việc đang chờ chủ hang hỗ trợ. Shoyru chuyển sang việc khác trước."
+    : vietnameseText.test(rawThought)
     ? publicSentence(rawThought, 145)
     : "Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu.";
   const projectResult =
@@ -139,6 +146,9 @@ export async function getPublicState(): Promise<PublicState> {
     activeProject?.lastAction && typeof activeProject.lastAction === "object"
       ? (activeProject.lastAction as Record<string, unknown>)
       : {};
+  const projectPrivate =
+    String(projectAction.type || "") === "request_support" ||
+    privateOperations.test(`${projectAction.title || ""} ${projectResult.summary || ""} ${projectResult.nextStep || ""}`);
   const project = {
     name: String(activeProject?.name || demoState.project.name),
     status: String(activeProject?.status || "active"),
@@ -148,13 +158,19 @@ export async function getPublicState(): Promise<PublicState> {
     ),
     price: Number(activeProject?.price || demoState.project.price),
     stepCount: Number(activeProject?.stepCount || 0),
-    lastAction: vietnameseText.test(String(projectAction.title || ""))
+    lastAction: projectPrivate
+      ? "Tiếp tục một việc khác trong lúc chờ hỗ trợ"
+      : vietnameseText.test(String(projectAction.title || ""))
       ? String(projectAction.title)
       : "Hoàn thiện một bước của dự án",
-    result: vietnameseText.test(String(projectResult.summary || ""))
+    result: projectPrivate
+      ? "Thông tin vận hành chi tiết chỉ hiển thị trong trang quản trị."
+      : vietnameseText.test(String(projectResult.summary || ""))
       ? String(projectResult.summary)
       : "Shoyru đã hoàn thiện thêm một phần của sản phẩm.",
-    nextStep: vietnameseText.test(String(projectResult.nextStep || ""))
+    nextStep: projectPrivate
+      ? "Shoyru tiếp tục công việc không bị phụ thuộc trong lượt sau."
+      : vietnameseText.test(String(projectResult.nextStep || ""))
       ? String(projectResult.nextStep)
       : "Tiếp tục hoàn thiện sản phẩm trong lượt làm việc kế tiếp.",
   };

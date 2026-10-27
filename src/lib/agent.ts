@@ -325,6 +325,22 @@ export async function runAgentCycle() {
     db
       .collection("activities")
       .deleteMany({ source: "agent", text: { $not: vietnameseText } }),
+    db.collection("conversations").deleteMany({
+      public: true,
+      text: {
+        $regex:
+          "api[_\\s-]?key|discover_lead|qualify_lead|request_support|webResearch|BRAVE_SEARCH|GROQ|OPENROUTER|RESEND|MONGODB|OTP|CAPTCHA",
+        $options: "i",
+      },
+    }),
+    db.collection("activities").deleteMany({
+      public: true,
+      text: {
+        $regex:
+          "api[_\\s-]?key|discover_lead|qualify_lead|request_support|webResearch|BRAVE_SEARCH|GROQ|OPENROUTER|RESEND|MONGODB|OTP|CAPTCHA",
+        $options: "i",
+      },
+    }),
     db
       .collection("transactions")
       .deleteMany({ provider: "sepay", note: { $not: /SHO-[A-F0-9]{6}/i } }),
@@ -1035,6 +1051,15 @@ export async function runAgentCycle() {
     decision.work.nextStep = "Chuyển sang nghiên cứu một đầu mối khác trong lượt sau.";
   }
   const needsApproval = decision.action.type === "request_support";
+  const publicStatus = needsApproval
+    ? "Đang chuyển sang một việc khác"
+    : decision.status;
+  const publicThought = needsApproval
+    ? "Một việc đang chờ chủ hang hỗ trợ. Shoyru làm việc khác trước, không ngồi chờ."
+    : decision.thought;
+  const publicReflection = needsApproval
+    ? "Chi tiết vận hành đã được gửi riêng vào trang quản trị."
+    : decision.reflection;
   await db.collection("published_posts").deleteMany({
     automatic: true,
     $or: [
@@ -1058,8 +1083,8 @@ export async function runAgentCycle() {
       { key: "main" },
       {
         $set: {
-          status: decision.status,
-          thought: decision.thought,
+          status: publicStatus,
+          thought: publicThought,
           lastRunAt: now,
           nextWake: "Mỗi giờ, vào phút 17",
           fundingSourceIndex: (fundingSourceIndex + 1) % fundingSources.length,
@@ -1070,7 +1095,7 @@ export async function runAgentCycle() {
     ),
     db.collection("activities").insertOne({
       kind: "SUY NGHĨ",
-      text: decision.reflection,
+      text: publicReflection,
       public: true,
       createdAt: now,
       source: "agent",
@@ -1078,14 +1103,14 @@ export async function runAgentCycle() {
     db.collection("conversations").insertMany([
       {
         speaker: "shoyru",
-        text: decision.thought,
+        text: publicThought,
         public: true,
         createdAt: new Date(now.getTime() - 1000),
         source: "agent",
       },
       {
         speaker: "shoyru",
-        text: decision.reflection,
+        text: publicReflection,
         public: true,
         createdAt: now,
         source: "agent",
@@ -1116,16 +1141,17 @@ export async function runAgentCycle() {
         source: "agent",
       }),
     );
-    writes.push(
-      db.collection("activities").insertOne({
-        kind: "ĐÃ LÀM",
-        text: workResult.summary,
-        public: true,
-        createdAt: new Date(now.getTime() + 1),
-        source: "agent",
-      }),
-    );
-    if (activeProject)
+    if (!needsApproval)
+      writes.push(
+        db.collection("activities").insertOne({
+          kind: "ĐÃ LÀM",
+          text: workResult.summary,
+          public: true,
+          createdAt: new Date(now.getTime() + 1),
+          source: "agent",
+        }),
+      );
+    if (activeProject && !needsApproval)
       writes.push(
         db.collection("projects").updateOne(
           { _id: activeProject._id },
