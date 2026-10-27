@@ -300,8 +300,6 @@ async function searchSurvivalOpportunities(
     const url = new URL("https://api.search.brave.com/res/v1/web/search");
     url.searchParams.set("q", query);
     url.searchParams.set("count", "8");
-    url.searchParams.set("country", "VN");
-    url.searchParams.set("search_lang", "vi");
     const response = await fetch(url, {
       headers: {
         Accept: "application/json",
