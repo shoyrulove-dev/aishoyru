@@ -264,10 +264,38 @@ const survivalQueries = [
   'creator tools affiliate program Vietnam',
 ];
 
-async function searchSurvivalOpportunities(index: number) {
+async function searchSurvivalOpportunities(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  index: number,
+) {
   const query = survivalQueries[index % survivalQueries.length];
   if (!process.env.BRAVE_SEARCH_API_KEY)
     return { query, provider: "brave", results: [], error: "Thiếu BRAVE_SEARCH_API_KEY" };
+  const monthlyLimit = Math.max(
+    1,
+    Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000)),
+  );
+  const month = new Date().toISOString().slice(0, 7);
+  const usage = await db.collection("api_usage").findOne({
+    provider: "brave-search",
+    month,
+  });
+  if (Number(usage?.used || 0) >= monthlyLimit)
+    return {
+      query,
+      provider: "brave",
+      results: [],
+      error: `Đã dùng hết hạn mức ${monthlyLimit} lượt trong tháng`,
+    };
+  await db.collection("api_usage").updateOne(
+    { provider: "brave-search", month },
+    {
+      $inc: { used: 1 },
+      $set: { limit: monthlyLimit, updatedAt: new Date() },
+      $setOnInsert: { createdAt: new Date() },
+    },
+    { upsert: true },
+  );
   try {
     const url = new URL("https://api.search.brave.com/res/v1/web/search");
     url.searchParams.set("q", query);
@@ -308,6 +336,11 @@ async function searchSurvivalOpportunities(index: number) {
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
+  await db.collection("approvals").deleteMany({
+    status: "pending",
+    title: "Cấp API tìm kiếm web cho Shoyru",
+    supportKey: { $ne: "brave-search" },
+  });
   await db
     .collection("rate_limits")
     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
@@ -690,7 +723,7 @@ export async function runAgentCycle() {
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
   const fundingResearch = await inspectFundingSource(fundingSourceIndex);
-  const webResearch = await searchSurvivalOpportunities(fundingSourceIndex);
+  const webResearch = await searchSurvivalOpportunities(db, fundingSourceIndex);
   const decisionResponse = await completeJson([
     {
       role: "system",

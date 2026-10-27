@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     engagement,
     chats,
     aiHealth,
+    braveUsage,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -110,6 +111,10 @@ export async function GET(request: NextRequest) {
       .find({})
       .sort({ updatedAt: -1 })
       .toArray(),
+    db.collection("api_usage").findOne({
+      provider: "brave-search",
+      month: new Date().toISOString().slice(0, 7),
+    }),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
@@ -137,6 +142,14 @@ export async function GET(request: NextRequest) {
       downloads24h: Number(event("download_started")?.total || 0),
     },
     channels: [
+      {
+        id: "search",
+        name: "Tìm kiếm web",
+        status: process.env.BRAVE_SEARCH_API_KEY ? "connected" : "missing",
+        detail: process.env.BRAVE_SEARCH_API_KEY
+          ? `Brave Search · đã dùng ${Number(braveUsage?.used || 0)}/${Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000))} lượt tháng này`
+          : "Thiếu BRAVE_SEARCH_API_KEY",
+      },
       {
         id: "website",
         name: "Website Shoyru",
