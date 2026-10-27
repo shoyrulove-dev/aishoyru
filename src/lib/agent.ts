@@ -454,7 +454,7 @@ export async function runAgentCycle() {
         public: true,
         text: {
           $regex:
-            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin tài trợs|API Freelance Jobs|mức lương hợp lý|100[–-]200\\$|đủ 500k|các bài đã đăng gần đây",
+            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin|API Freelance Jobs|mức lương hợp lý|100[–-]200\\$|đủ 500k|các bài đã đăng gần đây",
           $options: "i",
         },
       },
@@ -465,7 +465,7 @@ export async function runAgentCycle() {
         public: true,
         text: {
           $regex:
-            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin tài trợs|API Freelance Jobs|mức lương hợp lý|100[–-]200\\$|đủ 500k|các bài đã đăng gần đây",
+            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin|API Freelance Jobs|mức lương hợp lý|100[–-]200\\$|đủ 500k|các bài đã đăng gần đây",
           $options: "i",
         },
       },

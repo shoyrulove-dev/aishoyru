@@ -6,7 +6,7 @@ const vietnameseText =
 const privateOperations =
   /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
 const unverifiedClaims =
-  /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin tài trợs|API Freelance Jobs|mức lương hợp lý|100[–-]200\$|đủ 500k|các bài đã đăng gần đây)/i;
+  /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin|API Freelance Jobs|mức lương hợp lý|100[–-]200\$|đủ 500k|các bài đã đăng gần đây)/i;
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
@@ -161,10 +161,14 @@ export async function getPublicState(): Promise<PublicState> {
         .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
     };
   });
-  const activitiesOut = activities.filter((x) =>
-    !privateOperations.test(String(x.text || "")) &&
-    !unverifiedClaims.test(String(x.text || "")),
-  ).map((x) => ({
+  const seenActivityText = new Set<string>();
+  const activitiesOut = activities.filter((x) => {
+    const text = String(x.text || "").trim();
+    if (privateOperations.test(text) || unverifiedClaims.test(text) || seenActivityText.has(text))
+      return false;
+    seenActivityText.add(text);
+    return true;
+  }).map((x) => ({
     id: String(x._id),
     at: new Date(x.createdAt as Date).toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -175,12 +179,16 @@ export async function getPublicState(): Promise<PublicState> {
       text: publicSentence(x.text, 180),
     amount: x.amount ? Number(x.amount) : undefined,
   }));
+  const seenConversationText = new Set<string>();
   const conversationsOut = conversations
     .reverse()
-    .filter((x) =>
-      !privateOperations.test(String(x.text || "")) &&
-      !unverifiedClaims.test(String(x.text || "")),
-    )
+    .filter((x) => {
+      const text = String(x.text || "").trim();
+      if (privateOperations.test(text) || unverifiedClaims.test(text) || seenConversationText.has(text))
+        return false;
+      seenConversationText.add(text);
+      return true;
+    })
     .map((x) => ({
       id: String(x._id),
       speaker: (x.speaker === "he-thong" ? "he-thong" : "shoyru") as
