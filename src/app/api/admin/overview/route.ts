@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
         name: "Email tiếp cận",
         status: process.env.RESEND_API_KEY ? "connected" : "missing",
         detail: process.env.RESEND_API_KEY
-          ? "shoyru@blissbiovn.com qua Resend"
+          ? "Shoyru tự gửi qua Resend · tối đa 3 thư/ngày · không lặp người nhận trong 30 ngày"
           : "Thiếu RESEND_API_KEY",
       },
       {

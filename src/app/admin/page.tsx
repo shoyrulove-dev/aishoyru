@@ -159,7 +159,7 @@ export default function Admin() {
     { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
     {
       id: "actions",
-      label: "Hành động",
+      label: "Cần bạn hỗ trợ",
       icon: Zap,
       count: data.metrics.pending,
     },
@@ -534,9 +534,9 @@ function Actions({
 }) {
   return (
     <SectionTitle
-      eyebrow="ACTION QUEUE"
-      title="Hành động cần cấp quyền"
-      text="Mỗi thẻ cho biết chính xác Shoyru sẽ làm gì và ở đâu."
+      eyebrow="OWNER SUPPORT"
+      title="Việc Shoyru cần bạn hỗ trợ"
+      text="Chỉ xuất hiện khi Shoyru thiếu tài khoản, xác minh, vốn hoặc quyền ngoài hệ thống."
     >
       <div className="space-y-4">
         {!approvals.length && <Empty text="Không có hành động nào đang chờ." />}

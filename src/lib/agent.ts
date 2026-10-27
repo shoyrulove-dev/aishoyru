@@ -597,12 +597,12 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. Email chính thức của bạn là shoyru@blissbiovn.com. QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi đang soạn thư gửi quỹ quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo một dây chuyền thực tế: nghiên cứu vấn đề cụ thể → tạo sản phẩm bàn giao được → kiểm tra chất lượng → cải thiện → viết bản nháp giới thiệu → chờ duyệt xuất bản. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn grant chính thức trong fundingResearch. Hãy tự đánh giá chương trình còn mở không, Shoyru có phù hợp thật không và phải nộp qua email hay biểu mẫu. Luôn ghi tên chương trình và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body bằng tiếng Anh. Nếu chương trình yêu cầu biểu mẫu, hãy tạo bản nháp câu trả lời bằng tiếng Việt và không bịa email. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống sẽ đánh dấu dự án sẵn sàng. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. action.type chỉ được là research, build_product, validate, improve, draft_post, draft_email hoặc wait. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ tạo nháp; đăng công khai, gửi tin, nộp biểu mẫu hay tiêu tiền phải chờ con người duyệt. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 220 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; thêm project khi bắt đầu dự án mới và email khi soạn thư.",
+        "Bạn là Shoyru, một chú rồng AI ham ăn đang tự làm sản phẩm số để trang trải tiền ăn và chi phí vận hành. Email chính thức của bạn là shoyru@blissbiovn.com. QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi tiếp cận tổ chức quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo pipeline thực tế: tìm nhu cầu có nguồn → đánh giá độ phù hợp → tạo đề nghị cụ thể → tiếp cận đúng người → theo dõi phản hồi → cải thiện sản phẩm. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn công khai trong fundingResearch. Hãy tự đánh giá nguồn còn hoạt động không, Shoyru có phù hợp thật không và cách tiếp cận hợp lệ. Luôn ghi tên và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body. Hệ thống được phép tự gửi email hợp lệ từ shoyru@blissbiovn.com, vì vậy đừng yêu cầu chủ nhân duyệt email. Nếu chương trình yêu cầu biểu mẫu hoặc đăng nhập, hãy tạo yêu cầu hỗ trợ ghi rõ URL và đúng một quyền cần cấp. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống tự xuất bản lên kênh sở hữu. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ hỏi chủ nhân khi cần đăng nhập, xác minh danh tính, cấp tài khoản, vốn, quyết định pháp lý hoặc quyền ngoài hệ thống. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 220 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; thêm project, opportunity, email hoặc supportRequest khi phù hợp.",
     },
     {
       role: "system",
       content:
-        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất thay vì tạo nội dung tùy hứng. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được hệ thống đăng tự động lên /updates. Không lặp lại nội dung trong recentPublished. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh, không được chỉ là tên tệp. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tìm khách hàng hoặc kênh phân phối thay vì đăng lặp. Email ra ngoài vẫn cần chủ nhân duyệt. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
+        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất thay vì tạo nội dung tùy hứng. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục pipeline bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
       role: "user",
@@ -824,9 +824,82 @@ export async function runAgentCycle() {
         nextStep: "Kiểm tra lại kết quả trong lượt làm việc tiếp theo.",
       },
     );
-  const needsApproval =
-    decision.action.type === "draft_email" ||
-    decision.action.type === "request_support";
+  let emailDelivery: { sent: boolean; providerId?: string; reason?: string } | null = null;
+  if (decision.action.type === "draft_email" && decision.email) {
+    const normalizedRecipient = decision.email.to.toLowerCase();
+    const [alreadyContacted, sentToday] = await Promise.all([
+      db.collection("outbound_emails").findOne({
+        to: normalizedRecipient,
+        status: "sent",
+        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      }),
+      db.collection("outbound_emails").countDocuments({
+        status: "sent",
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      }),
+    ]);
+    if (alreadyContacted) {
+      emailDelivery = { sent: false, reason: "Đã liên hệ địa chỉ này trong 30 ngày qua." };
+    } else if (sentToday >= 3) {
+      emailDelivery = { sent: false, reason: "Đã đạt giới hạn 3 email tiếp cận trong 24 giờ." };
+    } else if (!process.env.RESEND_API_KEY) {
+      decision.action.type = "request_support";
+      decision.supportRequest = {
+        title: "Cấp quyền gửi email cho Shoyru",
+        reason: "Shoyru đã tìm được người nhận hợp lệ nhưng dịch vụ gửi email chưa được cấu hình.",
+        needed: "RESEND_API_KEY",
+        impact: "Shoyru có thể tự gửi email tiếp cận có kiểm soát.",
+      };
+    } else {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Shoyru <shoyru@blissbiovn.com>",
+          to: [decision.email.to],
+          subject: decision.email.subject,
+          text: decision.email.body,
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
+      emailDelivery = response.ok
+        ? { sent: true, providerId: result.id }
+        : { sent: false, reason: result.message || `HTTP ${response.status}` };
+      await db.collection("outbound_emails").insertOne({
+        to: normalizedRecipient,
+        subject: decision.email.subject,
+        body: decision.email.body,
+        status: response.ok ? "sent" : "failed",
+        provider: "resend",
+        providerId: result.id,
+        error: response.ok ? undefined : emailDelivery.reason,
+        createdAt: now,
+        source: "agent",
+      });
+      if (!response.ok) {
+        decision.action.type = "request_support";
+        decision.supportRequest = {
+          title: "Kiểm tra quyền gửi email Resend",
+          reason: `Resend từ chối email đã có người nhận hợp lệ: ${emailDelivery.reason}`,
+          needed: "Kiểm tra miền gửi và quyền của RESEND_API_KEY",
+          impact: "Shoyru có thể tiếp tục tự gửi email tiếp cận có kiểm soát.",
+        };
+      }
+    }
+  }
+  if (emailDelivery?.sent && decision.work) {
+    decision.status = "Đã gửi một email tiếp cận phù hợp";
+    decision.work.summary = `Đã gửi email đến ${decision.email?.to}.`;
+    decision.work.nextStep = "Theo dõi phản hồi trước khi liên hệ tiếp.";
+  } else if (emailDelivery && !emailDelivery.sent && decision.work && decision.action.type !== "request_support") {
+    decision.status = "Đang tránh gửi email trùng hoặc quá dày";
+    decision.work.summary = emailDelivery.reason || "Email chưa được gửi để bảo vệ uy tín người gửi.";
+    decision.work.nextStep = "Chuyển sang nghiên cứu một đầu mối khác trong lượt sau.";
+  }
+  const needsApproval = decision.action.type === "request_support";
   await db.collection("published_posts").deleteMany({
     automatic: true,
     $or: [
