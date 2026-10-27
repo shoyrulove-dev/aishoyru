@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow changes verify tolerant decisions; scheduled cycles pursue the highest-value safe action.
+# Workflow changes trigger one safe production smoke test; scheduled cycles pursue the highest-value action.
 
 on:
   schedule:
