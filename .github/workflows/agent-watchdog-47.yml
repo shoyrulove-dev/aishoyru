@@ -1,8 +1,8 @@
-name: Shoyru watchdog at minute 47
+name: Shoyru watchdog at minute 37
 
 on:
   schedule:
-    - cron: "47 * * * *"
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 concurrency:

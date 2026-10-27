@@ -16,6 +16,13 @@ const publicSentence = (value: unknown, max = 190) => {
   const short = clean.slice(0, max).replace(/\s+\S*$/, "").replace(/[,:;.…\-]+$/, "");
   return short ? short + "." : "Shoyru đang tiếp tục công việc.";
 };
+const nextWakeLabel = (now: Date) => {
+  const shifted = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  shifted.setUTCSeconds(0, 0);
+  if (shifted.getUTCMinutes() >= 17) shifted.setUTCHours(shifted.getUTCHours() + 1);
+  shifted.setUTCMinutes(17);
+  return `${String(shifted.getUTCHours()).padStart(2, "0")}:17`;
+};
 export async function getPublicState(): Promise<PublicState> {
   const db = await getDb();
   if (!db) return { ...demoState, updatedAt: new Date().toISOString() };
@@ -158,7 +165,7 @@ export async function getPublicState(): Promise<PublicState> {
     expense,
     status: statusVi,
     thought: thoughtVi,
-    nextWake: String(state?.nextWake || "Mỗi giờ, vào phút 17 hoặc 47"),
+    nextWake: nextWakeLabel(now),
     streak: Number(state?.streak || 0),
     visitors: Number(state?.visitors || 0),
     activeViewers,
