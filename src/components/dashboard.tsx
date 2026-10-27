@@ -53,6 +53,8 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
   }, []);
   const net = data.income - data.expense,
     pct = Math.min(100, Math.round((net / data.goal) * 100));
+  const dragonImage = routineImage(data.status);
+  const dragonImageIsWide = dragonImage === "/be-rong-mascot.png";
   const max = useMemo(
     () => Math.max(...data.chart.map((x) => x.value), 1),
     [data.chart],
@@ -107,10 +109,10 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
             </div>
             <div className="glow overflow-hidden rounded-[2rem] border border-[#ff8b4c]/20 bg-[#17140f]">
               <Image
-                className="dragon aspect-square h-auto w-full object-cover"
-                src={routineImage(data.status)}
-                width={1254}
-                height={1254}
+                className={`dragon h-auto w-full object-contain ${dragonImageIsWide ? "aspect-[3/2]" : "aspect-square"}`}
+                src={dragonImage}
+                width={dragonImageIsWide ? 1536 : 1254}
+                height={dragonImageIsWide ? 1024 : 1254}
                 priority
                 alt="Shoyru đang làm việc"
               />
@@ -255,10 +257,10 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="relative mx-auto w-full max-w-[620px]">
           <div className="glow overflow-hidden rounded-[2.2rem] border border-[#ff8b4c]/20 bg-[#17140f]">
             <Image
-              className="dragon aspect-square h-auto w-full object-cover"
-              src={routineImage(data.status)}
-              width={1254}
-              height={1254}
+              className={`dragon h-auto w-full object-contain ${dragonImageIsWide ? "aspect-[3/2]" : "aspect-square"}`}
+              src={dragonImage}
+              width={dragonImageIsWide ? 1536 : 1254}
+              height={dragonImageIsWide ? 1024 : 1254}
               priority
               alt="Shoyru đang làm việc"
             />
