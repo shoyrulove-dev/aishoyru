@@ -307,7 +307,10 @@ async function searchSurvivalOpportunities(
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new Error(`Brave Search HTTP ${response.status}`);
+    if (!response.ok) {
+      const detail = clip(await response.text(), 300);
+      throw new Error(`Brave Search HTTP ${response.status}: ${detail}`);
+    }
     const payload = (await response.json()) as {
       web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
     };

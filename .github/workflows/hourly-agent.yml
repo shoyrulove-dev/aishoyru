@@ -1,5 +1,5 @@
 name: Shoyru hourly work cycle
-# Workflow edits trigger a safe production smoke test; scheduled cycles pursue the highest-value action.
+# Workflow edits trigger one production smoke test; scheduled cycles pursue the highest-value action.
 
 on:
   schedule:
