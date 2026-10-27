@@ -42,6 +42,12 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
+    const heartbeat = () => void fetch("/api/heartbeat", { cache: "no-store" }).catch(() => {});
+    heartbeat();
+    const timer = setInterval(heartbeat, 60000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
     const column = dragonColumnRef.current;
     if (!column) return;
     const updateHeight = () => setDragonColumnHeight(Math.ceil(column.getBoundingClientRect().height));
