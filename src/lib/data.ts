@@ -7,6 +7,11 @@ const privateOperations =
   /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
 const unverifiedClaims =
   /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin|API Freelance Jobs|mức lương hợp lý|100[–-]200\$|đủ 500k|các bài đã đăng gần đây)/i;
+const truthfulJournalStartedAt = new Date("2026-10-28T02:14:00+07:00");
+const isLegacyAgentEntry = (item: Record<string, unknown>) =>
+  item.source === "agent" &&
+  item.createdAt &&
+  new Date(item.createdAt as Date).getTime() < truthfulJournalStartedAt.getTime();
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
@@ -164,7 +169,7 @@ export async function getPublicState(): Promise<PublicState> {
   const seenActivityText = new Set<string>();
   const activitiesOut = activities.filter((x) => {
     const text = String(x.text || "").trim();
-    if (privateOperations.test(text) || unverifiedClaims.test(text) || seenActivityText.has(text))
+    if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || seenActivityText.has(text))
       return false;
     seenActivityText.add(text);
     return true;
@@ -184,7 +189,7 @@ export async function getPublicState(): Promise<PublicState> {
     .reverse()
     .filter((x) => {
       const text = String(x.text || "").trim();
-      if (privateOperations.test(text) || unverifiedClaims.test(text) || seenConversationText.has(text))
+      if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || seenConversationText.has(text))
         return false;
       seenConversationText.add(text);
       return true;

@@ -471,6 +471,14 @@ export async function runAgentCycle() {
       },
       { $set: { public: false, hiddenReason: "Không có bằng chứng thực thi" } },
     ),
+    db.collection("conversations").updateMany(
+      { source: "agent", public: true, createdAt: { $lt: new Date("2026-10-28T02:14:00+07:00") } },
+      { $set: { public: false, hiddenReason: "Nhật ký cũ trước cơ chế bằng chứng" } },
+    ),
+    db.collection("activities").updateMany(
+      { source: "agent", public: true, createdAt: { $lt: new Date("2026-10-28T02:14:00+07:00") } },
+      { $set: { public: false, hiddenReason: "Nhật ký cũ trước cơ chế bằng chứng" } },
+    ),
     db
       .collection("transactions")
       .deleteMany({ provider: "sepay", note: { $not: /SHO-[A-F0-9]{6}/i } }),
