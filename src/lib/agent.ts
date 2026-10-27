@@ -900,7 +900,7 @@ export async function runAgentCycle() {
           createdAt: item.createdAt,
         })),
         transactions: transactions.slice(0, 10).map((item) => ({
-          type: item.type,
+          type: item.kind,
           amount: item.amount,
           note: clip(String(item.note || ""), 120),
         })),
