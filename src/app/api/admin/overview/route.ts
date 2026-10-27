@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     db
       .collection("transactions")
       .aggregate([
-        { $match: { verified: true, type: "income" } },
+        { $match: { verified: true, kind: "income" } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ])
       .toArray(),

@@ -698,6 +698,22 @@ function Pipeline({ data }: { data: Overview }) {
                 <p className="mt-3 text-sm leading-6 text-[#66717c]">
                   {String(item.fit || item.nextAction || "")}
                 </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-bold">
+                  <span className="rounded-full bg-[#eef3f7] px-2.5 py-1 text-[#536170]">
+                    Điểm phù hợp {Number(item.fitScore || 0)}/100
+                  </span>
+                  <span className={`rounded-full px-2.5 py-1 ${item.contactStatus === "contactable" ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff3e8] text-[#a86120]"}`}>
+                    {item.contactStatus === "contactable" ? "Có đầu mối liên hệ" : "Cần tìm đầu mối"}
+                  </span>
+                  <span className="rounded-full bg-[#fff0e9] px-2.5 py-1 text-[#d95b2e]">
+                    {String(item.status || "discovered")}
+                  </span>
+                </div>
+                {Boolean(item.nextAction) && (
+                  <p className="mt-3 rounded-xl bg-[#f6f7f8] p-3 text-xs leading-5 text-[#596570]">
+                    <b>Bước tiếp:</b> {String(item.nextAction)}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -717,7 +733,10 @@ function Pipeline({ data }: { data: Overview }) {
                   {String(item.deliverable || "")}
                 </p>
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf0f2]">
-                  <div className="h-full w-3/4 rounded-full bg-[#ff6b35]" />
+                  <div
+                    className="h-full rounded-full bg-[#ff6b35]"
+                    style={{ width: `${String(item.status) === "ready" ? 100 : Math.max(8, Math.min(92, Number(item.stepCount || 0) * 8))}%` }}
+                  />
                 </div>
               </div>
             ))}

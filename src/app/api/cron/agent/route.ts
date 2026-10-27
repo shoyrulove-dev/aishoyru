@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runAgentCycle } from "@/lib/agent";
+import { runClaimedAgentCycle } from "@/lib/agent-cycle";
 import { getDb } from "@/lib/mongodb";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
@@ -53,7 +53,11 @@ export async function GET(req: NextRequest) {
       lastRunAt: state?.lastRunAt,
     });
   try {
-    return NextResponse.json(await runAgentCycle());
+    return NextResponse.json(
+      await runClaimedAgentCycle(db!, "github-cron", {
+        force: req.nextUrl.searchParams.get("force") === "1",
+      }),
+    );
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Agent failed" },

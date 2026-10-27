@@ -5,6 +5,8 @@ const vietnameseText =
   /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
 const privateOperations =
   /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
+const unverifiedClaims =
+  /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ ứng tuyển Upwork|tìm được URL thực của Gitcoin)/i;
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
@@ -159,7 +161,10 @@ export async function getPublicState(): Promise<PublicState> {
         .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
     };
   });
-  const activitiesOut = activities.filter((x) => !privateOperations.test(String(x.text || ""))).map((x) => ({
+  const activitiesOut = activities.filter((x) =>
+    !privateOperations.test(String(x.text || "")) &&
+    !unverifiedClaims.test(String(x.text || "")),
+  ).map((x) => ({
     id: String(x._id),
     at: new Date(x.createdAt as Date).toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -172,7 +177,10 @@ export async function getPublicState(): Promise<PublicState> {
   }));
   const conversationsOut = conversations
     .reverse()
-    .filter((x) => !privateOperations.test(String(x.text || "")))
+    .filter((x) =>
+      !privateOperations.test(String(x.text || "")) &&
+      !unverifiedClaims.test(String(x.text || "")),
+    )
     .map((x) => ({
       id: String(x._id),
       speaker: (x.speaker === "he-thong" ? "he-thong" : "shoyru") as
@@ -236,6 +244,18 @@ export async function getPublicState(): Promise<PublicState> {
       ? publicSentence(projectResult.nextStep, 180)
       : "Tiếp tục hoàn thiện sản phẩm trong lượt làm việc kế tiếp.",
   };
+  const progress = Math.max(
+    8,
+    Math.min(100, activeProject?.status === "ready" ? 100 : Number(activeProject?.stepCount || 0) * 8),
+  );
+  const experiment = {
+    name: String(activeProject?.name || "Tìm sản phẩm đầu tiên có người mua"),
+    hypothesis: activeProject
+      ? `${String(activeProject.customer || "Người cần một AI agent")} sẽ trả ${Number(activeProject.price || 0).toLocaleString("vi-VN")}đ cho đầu ra rõ ràng và dùng được.`
+      : "Một sản phẩm nhỏ, giải quyết nhu cầu thật và giao tự động có thể tạo đơn đầu tiên.",
+    status: activeProject?.status === "ready" ? "Đã sẵn sàng bán" : "Đang kiểm chứng bằng dữ liệu thật",
+    progress,
+  };
   return {
     ...demoState,
     demo: false,
@@ -257,6 +277,7 @@ export async function getPublicState(): Promise<PublicState> {
       : true,
     activities: activitiesOut,
     conversations: conversationsOut,
+    experiment,
     project,
     chart,
     updatedAt: new Date().toISOString(),

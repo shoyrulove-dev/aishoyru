@@ -19,6 +19,6 @@ export async function POST(req:NextRequest){
  if(!rate.allowed)return NextResponse.json({error:"Bạn đã tạo quá nhiều đơn. Vui lòng thử lại sau."},{status:429,headers:{"Retry-After":String(rate.retryAfter)}});
  const code=`SHO-${randomBytes(3).toString("hex").toUpperCase()}`;
  const deliveryToken=randomBytes(24).toString("hex");
- await db.collection("orders").insertOne({code,product:product.slug,productName:product.name,amount:product.price,buyerName:parsed.data.name,contact:parsed.data.contact,deliveryToken,status:"pending",createdAt:new Date()});
+ await db.collection("orders").insertOne({code,product:product.slug,productName:product.name,amount:product.price,buyerName:parsed.data.name,contact:parsed.data.contact,sessionId:parsed.data.sessionId,deliveryToken,status:"pending",createdAt:new Date()});
  return NextResponse.json({ok:true,code,amount:product.price,qrUrl:createQrUrl(product.price,code)});
 }

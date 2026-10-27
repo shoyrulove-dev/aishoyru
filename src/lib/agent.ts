@@ -449,6 +449,28 @@ export async function runAgentCycle() {
         $options: "i",
       },
     }),
+    db.collection("conversations").updateMany(
+      {
+        public: true,
+        text: {
+          $regex:
+            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ ứng tuyển Upwork|tìm được URL thực của Gitcoin",
+          $options: "i",
+        },
+      },
+      { $set: { public: false, hiddenReason: "Không có bằng chứng thực thi" } },
+    ),
+    db.collection("activities").updateMany(
+      {
+        public: true,
+        text: {
+          $regex:
+            "đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ ứng tuyển Upwork|tìm được URL thực của Gitcoin",
+          $options: "i",
+        },
+      },
+      { $set: { public: false, hiddenReason: "Không có bằng chứng thực thi" } },
+    ),
     db
       .collection("transactions")
       .deleteMany({ provider: "sepay", note: { $not: /SHO-[A-F0-9]{6}/i } }),
@@ -819,7 +841,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-          "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, webResearch, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất để đạt 500.000đ/tháng. Không bị khóa vào một sản phẩm: được phép bán sản phẩm số, nhận mini job viết bot/tích hợp API, tạo công cụ kéo khách, affiliate minh bạch, xin grant chính thức, xây kênh SEO hoặc nghiên cứu quant. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam; build_bot được tạo thiết kế và mã nguồn trong artifact; plan_business phải có khách hàng, đề nghị, kênh tiếp cận, chi phí, doanh thu mục tiêu, rủi ro, chỉ số và điều kiện dừng. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi hay chính sách chưa có trong storeFacts. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục pipeline bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật từ fundingResearch hoặc webResearch, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Với Gitcoin, chỉ nói đang chuẩn bị hồ sơ sau khi tìm thấy URL của một vòng đang nhận đơn và xác minh dự án đáp ứng điều kiện. Shoyru có thể tự nghiên cứu, soạn mô tả và ngân sách nhưng không được tự nhận đã tạo hồ sơ, đăng nhập GitHub, kết nối ví, ký giao dịch, nộp đơn hay hoàn tất KYC; các bước đó phải tạo yêu cầu hỗ trợ cụ thể cho chủ nhân. Với signal, quant, crypto hoặc Polymarket, chỉ được nghiên cứu dữ liệu công khai và paper_trade; không được đặt lệnh, mở ví, ký giao dịch, nhận tiền hay tuyên bố có lợi nhuận. paper_trade phải ghi giả thuyết, giá vào giả lập, phí, điều kiện thoát và kết quả có dấu thời gian. Chỉ xin vốn sau ít nhất 30 ngày paper trade và backtest ngoài mẫu; yêu cầu vốn phải có mức lỗ tối đa và điều kiện dừng. Phát hành token luôn cần chủ nhân duyệt kế hoạch, pháp lý, phân bổ và nội dung công bố; không được hứa lợi nhuận hay kéo người mua. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, OTP, CAPTCHA, xác minh danh tính, vốn hoặc quyết định pháp lý. Khi đó supportRequest bắt buộc có title, reason, needed, impact, where và doneWhen; needed phải nói đúng một thứ cần cung cấp với tên biến, tên tài khoản hoặc số tiền cụ thể; where chỉ chính xác nơi nhập; doneWhen nói Shoyru sẽ tự làm gì ngay sau khi nhận. Không tạo yêu cầu mới nếu cùng nhu cầu đang chờ hoặc đã được cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, plan_business, build_bot, paper_trade, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
+          "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, webResearch, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất để đạt 500.000đ/tháng. Ưu tiên bán Bộ khởi tạo AI sinh tồn Shoyru và tìm người Việt có nhu cầu bot, API hoặc tự động hóa; grant và giao dịch chỉ là hướng phụ khi có chương trình thật và đủ điều kiện. Không bị khóa vào một sản phẩm: được phép bán sản phẩm số, nhận mini job viết bot/tích hợp API, tạo công cụ kéo khách, affiliate minh bạch, xin grant chính thức, xây kênh SEO hoặc nghiên cứu quant. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam; build_bot được tạo thiết kế và mã nguồn trong artifact; plan_business phải có khách hàng, đề nghị, kênh tiếp cận, chi phí, doanh thu mục tiêu, rủi ro, chỉ số và điều kiện dừng. BẮT BUỘC TRUNG THỰC: chỉ dùng “đã gửi”, “đã đăng”, “đã nộp”, “đã triển khai” khi dữ liệu đầu vào hoặc kết quả công cụ có URL, mã nhà cung cấp hay bằng chứng tương ứng. Nếu mới viết nội dung thì gọi là bản nháp đã lưu. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi hay chính sách chưa có trong storeFacts. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật từ fundingResearch hoặc webResearch, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Với Gitcoin, chỉ nói đang chuẩn bị hồ sơ sau khi tìm thấy URL của một vòng đang nhận đơn và xác minh dự án đáp ứng điều kiện. Shoyru có thể tự nghiên cứu, soạn mô tả và ngân sách nhưng không được tự nhận đã tạo hồ sơ, đăng nhập GitHub, kết nối ví, ký giao dịch, nộp đơn hay hoàn tất KYC; các bước đó phải tạo yêu cầu hỗ trợ cụ thể cho chủ nhân. Với signal, quant, crypto hoặc Polymarket, chỉ được nghiên cứu dữ liệu công khai và paper_trade; không được đặt lệnh, mở ví, ký giao dịch, nhận tiền hay tuyên bố có lợi nhuận. paper_trade phải ghi giả thuyết, giá vào giả lập, phí, điều kiện thoát và kết quả có dấu thời gian. Chỉ xin vốn sau ít nhất 30 ngày paper trade và backtest ngoài mẫu; yêu cầu vốn phải có mức lỗ tối đa và điều kiện dừng. Phát hành token luôn cần chủ nhân duyệt kế hoạch, pháp lý, phân bổ và nội dung công bố; không được hứa lợi nhuận hay kéo người mua. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, OTP, CAPTCHA, xác minh danh tính, vốn hoặc quyết định pháp lý. Khi đó supportRequest bắt buộc có title, reason, needed, impact, where và doneWhen; needed phải nói đúng một thứ cần cung cấp với tên biến, tên tài khoản hoặc số tiền cụ thể; where chỉ chính xác nơi nhập; doneWhen nói Shoyru sẽ tự làm gì ngay sau khi nhận. Không tạo yêu cầu mới nếu cùng nhu cầu đang chờ hoặc đã được cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, plan_business, build_bot, paper_trade, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
       role: "user",
@@ -989,18 +1011,18 @@ export async function runAgentCycle() {
     if (recentPublished.length === 0) {
       decision.status = "Đang giới thiệu sản phẩm đã mở bán";
       decision.thought =
-        "Bộ sticker đã online, mình sẽ đưa đường dẫn mua đến người xem ngay.";
+        "Bộ hướng dẫn AI sinh tồn đã online, mình sẽ đưa đường dẫn mua đến người cần.";
       decision.reflection =
         "Không có việc nào cần chủ nhân duyệt, vì vậy tôi tự xuất bản bài giới thiệu trên kênh website mình sở hữu.";
       decision.action = {
         type: "draft_post",
-        title: "Bộ sticker Shoyru Đi Làm đã mở bán",
+        title: "Bộ khởi tạo AI sinh tồn Shoyru đã mở bán",
         details: "Tự xuất bản bài giới thiệu sản phẩm online đầu tiên.",
       };
       decision.work = {
-        summary: "Đã hoàn thiện bài giới thiệu bộ sticker đang mở bán.",
+        summary: "Đã hoàn thiện bài giới thiệu bộ khởi tạo AI sinh tồn.",
         artifact:
-          "Bộ sticker Shoyru Đi Làm đã chính thức mở bán! Gói gồm 6 biểu cảm của chú rồng ham ăn dành cho tin nhắn và bài đăng. Giá 39.000đ, mỗi khách nhận mã đơn và VietQR riêng; sau khi SePay xác nhận đúng giao dịch, tệp ZIP được mở tải tự động. Xem trọn bộ và mua tại: https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam",
+          "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, tệp ZIP được mở tải tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
         nextStep:
           "Theo dõi lượt mua và nghiên cứu kênh tiếp cận khách hàng phù hợp.",
       };
@@ -1080,6 +1102,11 @@ export async function runAgentCycle() {
     }
   }
   const now = new Date();
+  const taskId = crypto.randomUUID();
+  const postSlug =
+    decision.action.type === "draft_post"
+      ? `${now.toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`
+      : null;
   let workResult: z.infer<typeof WorkResult> | null = null;
   if (decision.action.type !== "wait")
     workResult = WorkResult.parse(
@@ -1164,6 +1191,33 @@ export async function runAgentCycle() {
     decision.work.summary = emailDelivery.reason || "Email chưa được gửi để bảo vệ uy tín người gửi.";
     decision.work.nextStep = "Chuyển sang nghiên cứu một đầu mối khác trong lượt sau.";
   }
+  if (workResult) {
+    const sourceUrl = decision.opportunity?.sourceUrl || fundingResearch.url;
+    const safeSummaries: Record<string, string> = {
+      research: `Đã lưu ghi chú nghiên cứu từ ${sourceUrl}.`,
+      discover_lead: decision.opportunity
+        ? `Đã lưu một cơ hội có nguồn tại ${decision.opportunity.sourceUrl}.`
+        : `Đã lưu kết quả tìm kiếm từ ${sourceUrl}; chưa xem đây là khách hàng thật.`,
+      qualify_lead: decision.opportunity
+        ? `Đã đánh giá mức phù hợp của cơ hội tại ${decision.opportunity.sourceUrl}.`
+        : `Đã lưu bản đánh giá nguồn ${sourceUrl}.`,
+      build_product: "Đã lưu một bản nháp sản phẩm trong kho công việc của Shoyru.",
+      validate: "Đã lưu kết quả kiểm tra nội bộ; chưa có xác nhận từ khách hàng.",
+      improve: "Đã lưu phiên bản nội dung được cải thiện trong kho công việc.",
+      plan_business: "Đã lưu kế hoạch kinh doanh để chủ nhân kiểm tra trong admin.",
+      build_bot: "Đã lưu bản thiết kế hoặc mã nháp; chưa tuyên bố đã triển khai.",
+      paper_trade: "Đã lưu một thử nghiệm giao dịch mô phỏng, không dùng tiền thật.",
+      request_support: "Đã ghi một yêu cầu hỗ trợ riêng trong admin.",
+    };
+    if (decision.action.type === "draft_post" && postSlug)
+      workResult.summary = `Đã xuất bản bài tại https://shoyruai.blissbiovn.com/updates#${postSlug}.`;
+    else if (decision.action.type === "draft_email")
+      workResult.summary = emailDelivery?.sent
+        ? `Đã gửi email đến ${decision.email?.to}; mã Resend ${emailDelivery.providerId || "đã ghi nhận"}.`
+        : emailDelivery?.reason || "Email chưa được gửi.";
+    else if (safeSummaries[decision.action.type])
+      workResult.summary = safeSummaries[decision.action.type];
+  }
   const needsApproval = decision.action.type === "request_support";
   const publicStatusRaw = needsApproval
     ? "Đang chuyển sang một việc khác"
@@ -1234,8 +1288,15 @@ export async function runAgentCycle() {
       },
     ]),
     db.collection("agent_runs").insertOne({
+      runId: taskId,
       decision,
       workResult,
+      evidence: {
+        kind: postSlug ? "published-url" : emailDelivery?.sent ? "email-provider-id" : "stored-artifact",
+        value: postSlug
+          ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+          : emailDelivery?.providerId || taskId,
+      },
       provider: decisionResponse.provider,
       model: decisionResponse.model,
       createdAt: now,
@@ -1250,8 +1311,15 @@ export async function runAgentCycle() {
   if (workResult) {
     writes.push(
       db.collection("tasks").insertOne({
+        _id: taskId as never,
         ...decision.action,
         result: workResult,
+        evidence: {
+          kind: postSlug ? "published-url" : emailDelivery?.sent ? "email-provider-id" : "stored-artifact",
+          value: postSlug
+            ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+            : emailDelivery?.providerId || taskId,
+        },
         status: "completed",
         completedAt: now,
         createdAt: now,
@@ -1276,6 +1344,14 @@ export async function runAgentCycle() {
             $set: {
               lastAction: decision.action,
               result: workResult,
+              lastEvidence: {
+                taskId,
+                sourceUrl: decision.opportunity?.sourceUrl || undefined,
+                publishedUrl: postSlug
+                  ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+                  : undefined,
+                emailProviderId: emailDelivery?.providerId,
+              },
               status:
                 decision.action.type === "draft_post"
                   ? "ready"
@@ -1297,6 +1373,7 @@ export async function runAgentCycle() {
           status: "active",
           lastAction: decision.action,
           result: workResult,
+            lastEvidence: { taskId },
           stepCount: 1,
           createdAt: now,
           updatedAt: now,
@@ -1312,6 +1389,11 @@ export async function runAgentCycle() {
           $set: {
             ...decision.opportunity,
             status: "discovered",
+            fitScore: 50,
+            contactStatus: decision.opportunity.contactEmail ? "contactable" : "needs-contact",
+            lastTouchAt: null,
+            nextFollowUpAt: null,
+            evidence: { sourceUrl: decision.opportunity.sourceUrl, taskId },
             updatedAt: now,
           },
           $setOnInsert: { createdAt: now, source: "agent" },
@@ -1320,7 +1402,7 @@ export async function runAgentCycle() {
       ),
     );
   if (decision.action.type === "draft_post" && workResult) {
-    const slug = `${now.toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`;
+    const slug = postSlug!;
     let postContent = workResult.artifact;
     try {
       const details = JSON.parse(decision.action.details) as {
@@ -1337,11 +1419,11 @@ export async function runAgentCycle() {
         `${decision.action.title} ${postContent}`,
       );
     const postTitle = inventedOffer
-      ? "Bộ sticker Shoyru Đi Làm đã mở bán"
+      ? "Bộ khởi tạo AI sinh tồn Shoyru đã mở bán"
       : decision.action.title;
     if (inventedOffer)
       postContent =
-        "Bộ sticker Shoyru Đi Làm gồm 6 hình PNG đang được bán với giá 39.000đ. Mỗi đơn có mã thanh toán riêng; sau khi SePay xác nhận đúng giao dịch, khách hàng có thể tải tệp ZIP tự động. Xem sản phẩm tại: https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam";
+        "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, khách hàng tải tệp ZIP tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru";
     writes.push(
       db.collection("published_posts").insertOne({
         slug,
