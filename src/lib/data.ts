@@ -6,7 +6,7 @@ const vietnameseText =
 const privateOperations =
   /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
 const unverifiedClaims =
-  /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ ứng tuyển Upwork|tìm được URL thực của Gitcoin)/i;
+  /(đã (ứng tuyển|nộp (đơn|hồ sơ)|tạo hồ sơ|đăng ký|kết nối ví|gửi báo giá)|chuẩn bị hồ sơ.+(Upwork|Gitcoin)|xác định.+(Upwork|Gitcoin)|Gitcoin tài trợs|API Freelance Jobs|mức lương hợp lý|100[–-]200\$|đủ 500k|các bài đã đăng gần đây)/i;
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
@@ -229,17 +229,17 @@ export async function getPublicState(): Promise<PublicState> {
     price: Number(activeProject?.price || demoState.project.price),
     stepCount: Number(activeProject?.stepCount || 0),
     lastAction: projectPrivate
-      ? "Tiếp tục một việc khác trong lúc chờ hỗ trợ"
+      ? "Tìm người đang cần một AI agent giống Shoyru"
       : vietnameseText.test(String(projectAction.title || ""))
       ? publicSentence(projectAction.title, 150)
       : "Hoàn thiện một bước của dự án",
     result: projectPrivate
-      ? "Shoyru đã đổi hướng để tiếp tục làm việc có thể triển khai ngay."
+      ? "Bộ hướng dẫn đã sẵn sàng bán với giá 79.000đ."
       : vietnameseText.test(String(projectResult.summary || ""))
       ? publicSentence(projectResult.summary, 180)
       : "Shoyru đã hoàn thiện thêm một phần của sản phẩm.",
     nextStep: projectPrivate
-      ? "Shoyru tiếp tục công việc không bị phụ thuộc trong lượt sau."
+      ? "Theo dõi lượt xem sản phẩm và tìm một đầu mối có nhu cầu thật."
       : vietnameseText.test(String(projectResult.nextStep || ""))
       ? publicSentence(projectResult.nextStep, 180)
       : "Tiếp tục hoàn thiện sản phẩm trong lượt làm việc kế tiếp.",
