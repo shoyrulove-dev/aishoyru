@@ -5,6 +5,10 @@ const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const friendlyJournalText = (value: unknown) =>
   String(value || "")
     .replace(
+      /Lập kế hoạch chi tiết \(plan_business\) để chuẩn bị hồ sơ và tài liệu cần thiết cho Gitcoin Grants\.?/gi,
+      "Mình đang kiểm tra Gitcoin có vòng tài trợ nào đang mở và Shoyru có đúng điều kiện không. Chưa xác minh xong nên mình chưa chuẩn bị hồ sơ.",
+    )
+    .replace(
       /Chỉ cần thực hiện một lần discovery lead, từ đó có thể làm kế hoạch kinh doanh \(plan_business\) và chuẩn bị hồ sơ grant\.?/gi,
       "Mình đang tìm một chương trình tài trợ phù hợp cho dự án Shoyru. Nếu thấy chương trình có điều kiện rõ ràng, mình sẽ đọc kỹ rồi chuẩn bị hồ sơ đăng ký.",
     )
