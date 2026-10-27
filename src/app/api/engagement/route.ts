@@ -7,6 +7,7 @@ const Event = z.object({
   sessionId: z.string().regex(/^[a-zA-Z0-9-]{12,64}$/),
   type: z.enum([
     "page_view",
+    "presence",
     "chat_open",
     "store_click",
     "product_view",
@@ -38,9 +39,23 @@ export async function POST(request: NextRequest) {
       { error: "Too many requests" },
       { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
     );
-  await db.collection("engagement_events").insertOne({
-    ...parsed.data,
-    createdAt: new Date(),
-  });
+  if (parsed.data.type === "presence") {
+    await db.collection("visitor_presence").updateOne(
+      { sessionId: parsed.data.sessionId },
+      {
+        $set: {
+          path: parsed.data.path,
+          lastSeenAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true },
+    );
+  } else {
+    await db.collection("engagement_events").insertOne({
+      ...parsed.data,
+      createdAt: new Date(),
+    });
+  }
   return NextResponse.json({ ok: true });
 }

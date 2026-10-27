@@ -46,7 +46,13 @@ export async function getPublicState(): Promise<PublicState> {
         new Date(activeProject.createdAt as Date).getTime() - 5000,
       ),
     };
-  const [state, activities, transactions, conversations] = await Promise.all([
+  const now = new Date();
+  const vietnamNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+  const todayStartVietnam = new Date(vietnamNow);
+  todayStartVietnam.setHours(0, 0, 0, 0);
+  const todayStart = new Date(todayStartVietnam.getTime() - 7 * 60 * 60 * 1000);
+  const activeSince = new Date(now.getTime() - 90 * 1000);
+  const [state, activities, transactions, conversations, activeViewers, todaySessions, totalViews] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
       .collection("activities")
@@ -69,6 +75,12 @@ export async function getPublicState(): Promise<PublicState> {
       .sort({ createdAt: -1 })
       .limit(12)
       .toArray(),
+    db.collection("visitor_presence").countDocuments({ lastSeenAt: { $gte: activeSince } }),
+    db.collection("engagement_events").distinct("sessionId", {
+      type: "page_view",
+      createdAt: { $gte: todayStart },
+    }),
+    db.collection("engagement_events").countDocuments({ type: "page_view" }),
   ]);
   const income = transactions
     .filter((x) => x.kind === "income")
@@ -149,6 +161,13 @@ export async function getPublicState(): Promise<PublicState> {
     nextWake: String(state?.nextWake || "Mỗi giờ, vào phút 17 hoặc 47"),
     streak: Number(state?.streak || 0),
     visitors: Number(state?.visitors || 0),
+    activeViewers,
+    todayVisitors: todaySessions.length,
+    totalViews,
+    lastRunAt: state?.lastRunAt ? new Date(state.lastRunAt as Date).toISOString() : null,
+    cronDelayed: state?.lastRunAt
+      ? now.getTime() - new Date(state.lastRunAt as Date).getTime() > 90 * 60 * 1000
+      : true,
     activities: activitiesOut,
     conversations: conversationsOut,
     project,

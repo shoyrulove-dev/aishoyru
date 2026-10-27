@@ -27,22 +27,28 @@ export function VisitorChat() {
   ]);
 
   useEffect(() => {
-    fetch("/api/engagement", {
+    const track = (type: "page_view" | "presence") => fetch("/api/engagement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: sessionId(),
-        type: "page_view",
+        type,
         path: location.pathname,
       }),
     }).catch(() => {});
-    const timer = setInterval(() => {
+    track("page_view");
+    track("presence");
+    const chatTimer = setInterval(() => {
       fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId())}`)
         .then((response) => response.json())
         .then((data) => data.messages?.length && setMessages(data.messages))
         .catch(() => {});
     }, 10000);
-    return () => clearInterval(timer);
+    const presenceTimer = setInterval(() => track("presence"), 30000);
+    return () => {
+      clearInterval(chatTimer);
+      clearInterval(presenceTimer);
+    };
   }, []);
 
   function toggle() {

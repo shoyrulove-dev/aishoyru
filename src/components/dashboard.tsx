@@ -115,10 +115,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
                 alt="Shoyru đang làm việc"
               />
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-[#77d78e]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-current" />
-              {data.status}
-            </div>
+            <ActivityBar data={data} />
           </div>
           <div className="panel flex min-h-[520px] flex-col overflow-hidden rounded-[2rem] border-[#ff8a55]/20 lg:h-[var(--journal-height)] lg:min-h-0">
             <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-5 py-4">
@@ -501,6 +498,43 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
       </footer>
       <VisitorChat />
     </main>
+  );
+}
+function ActivityBar({ data }: { data: PublicState }) {
+  const [clock, setClock] = useState("");
+  useEffect(() => {
+    const update = () =>
+      setClock(
+        new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date()),
+      );
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#f7f1e7] text-[#24211d] shadow-xl">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-black/10 px-4 py-3 text-sm">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${data.cronDelayed ? "bg-[#ef9a35]" : "animate-pulse bg-[#59b873]"}`} />
+        <b className="whitespace-nowrap">{data.status}</b>
+        <span className="whitespace-nowrap text-[#6f675d]">{clock} giờ Việt Nam</span>
+        <span className="min-w-fit text-[#6f675d]">Lượt tự chạy tiếp theo: <b className="text-[#24211d]">{data.cronDelayed ? "đang thử lại" : data.nextWake}</b></span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1 px-4 py-3 text-sm">
+        <span className="whitespace-nowrap"><b className="mr-2 text-lg">{data.activeViewers}</b> người đang xem Shoyru làm việc</span>
+        <span className="whitespace-nowrap text-[#6f675d]">hôm nay: <b className="text-[#24211d]">{data.todayVisitors}</b> người · tổng: <b className="text-[#24211d]">{new Intl.NumberFormat("vi-VN").format(data.totalViews)}</b> lượt xem</span>
+      </div>
+      {data.cronDelayed && (
+        <div className="border-t border-[#d89945]/30 bg-[#fff0d7] px-4 py-2 text-xs font-semibold text-[#945812]">
+          Lượt tự chạy đang trễ. Hệ thống sẽ thử lại khi bộ hẹn giờ gọi tới.
+        </div>
+      )}
+    </div>
   );
 }
 function Eyebrow({ children }: { children: React.ReactNode }) {
