@@ -62,6 +62,8 @@ type Overview = {
   orders: Array<Record<string, unknown>>;
   published: Array<Record<string, unknown>>;
   chats: Array<Record<string, unknown>>;
+  activePlan?: Record<string, unknown> | null;
+  artifacts: Array<Record<string, unknown>>;
   aiHealth: Array<{
     provider: string;
     model?: string;
@@ -298,7 +300,7 @@ export default function Admin() {
           {tab === "actions" && (
             <Actions approvals={data.approvals} decide={decide} ownerNote={ownerNote} setOwnerNote={setOwnerNote} sendOwnerNote={sendOwnerNote} />
           )}{" "}
-          {tab === "pipeline" && <Pipeline data={data} />}{" "}
+          {tab === "pipeline" && <Pipeline data={data} adminKey={key} />}{" "}
           {tab === "channels" && <Channels channels={data.channels} />}
           {tab === "work-log" && <WorkLog runs={data.runs} />}
           {tab === "ai-health" && <AiHealth providers={data.aiHealth} />}
@@ -659,7 +661,23 @@ function Actions({
   );
 }
 
-function Pipeline({ data }: { data: Overview }) {
+function Pipeline({ data, adminKey }: { data: Overview; adminKey: string }) {
+  const planSteps = Array.isArray(data.activePlan?.steps)
+    ? (data.activePlan.steps as Array<Record<string, unknown>>)
+    : [];
+  const downloadArtifact = async (id: string, name: string) => {
+    const response = await fetch(`/api/admin/artifacts/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${adminKey}` },
+    });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${name.replace(/[^a-z0-9_-]+/gi, "-") || "shoyru-artifact"}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
   return (
     <SectionTitle
       eyebrow="GROWTH PIPELINE"
@@ -740,6 +758,55 @@ function Pipeline({ data }: { data: Overview }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+          <p className="text-xs font-bold tracking-[.12em] text-[#f2612c]">KẾ HOẠCH TỰ CHẠY</p>
+          <h2 className="mt-2 text-lg font-black">
+            {String(data.activePlan?.objective || "Đang khởi tạo kế hoạch sinh tồn")}
+          </h2>
+          <div className="mt-5 space-y-3">
+            {planSteps.map((step, index) => (
+              <div key={String(step.key || index)} className="flex items-center gap-3">
+                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-black ${step.status === "completed" ? "bg-[#eaf8ef] text-[#25864b]" : step.status === "active" ? "bg-[#ff6b35] text-white" : "bg-[#edf0f2] text-[#88929c]"}`}>
+                  {step.status === "completed" ? "✓" : index + 1}
+                </span>
+                <span className={`text-sm ${step.status === "active" ? "font-black text-[#17202a]" : "text-[#6f7a84]"}`}>
+                  {String(step.label || step.key)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white">
+          <PanelHead title="Artifact đã tạo" count={data.artifacts.length} />
+          <div className="divide-y divide-[#edf0f2]">
+            {!data.artifacts.length && <Empty text="Chưa có artifact mới sau khi bật bộ máy tác nghiệp." />}
+            {data.artifacts.slice(0, 6).map((item, index) => {
+              const validation = (item.validation || {}) as Record<string, unknown>;
+              return (
+                <div key={String(item._id || index)} className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold">{String(item.name || "Artifact chưa đặt tên")}</p>
+                      <p className="mt-1 text-xs text-[#89939d]">{Number(item.fileCount || 0)} tệp · {String(item.actionType || "work")}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${validation.valid ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff3e8] text-[#a86120]"}`}>
+                      {validation.valid ? "ĐÃ KIỂM TRA" : "CẦN SỬA"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => downloadArtifact(String(item._id), String(item.name || "shoyru-artifact"))}
+                    className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#dfe4e8] px-3 py-2 text-xs font-bold text-[#536170] hover:border-[#ff6b35] hover:text-[#e85c28]"
+                  >
+                    <ArrowUpRight size={14} /> Tải tệp công việc
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

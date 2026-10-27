@@ -118,6 +118,8 @@ export async function GET(request: NextRequest) {
     chats,
     aiHealth,
     braveUsage,
+    activePlan,
+    artifacts,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -205,6 +207,17 @@ export async function GET(request: NextRequest) {
       provider: "brave-search",
       month: new Date().toISOString().slice(0, 7),
     }),
+    db.collection("agent_plans").findOne(
+      { status: "active" },
+      { sort: { updatedAt: -1 } },
+    ),
+    db
+      .collection("work_artifacts")
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .project({ files: 0 })
+      .toArray(),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
@@ -216,6 +229,8 @@ export async function GET(request: NextRequest) {
     published,
     chats,
     aiHealth,
+    activePlan,
+    artifacts,
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,

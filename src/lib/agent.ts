@@ -6,6 +6,13 @@ import {
   recordProviderSuccess,
 } from "./ai-health";
 import { z } from "zod";
+import {
+  advanceSurvivalPlan,
+  ensureSurvivalPlan,
+  scoreOpportunity,
+  validateArtifactFiles,
+  type ArtifactFile,
+} from "./autonomy";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -172,6 +179,16 @@ const Decision = z.object({
       summary: z.string().min(3),
       artifact: z.string().min(3),
       nextStep: z.string().min(3),
+      files: z
+        .array(
+          z.object({
+            path: z.string().min(1).max(160),
+            content: z.string().min(1).max(80000),
+            language: z.string().max(40).optional(),
+          }),
+        )
+        .max(20)
+        .optional(),
     })
     .optional(),
   project: z
@@ -229,6 +246,16 @@ const WorkResult = z.object({
   summary: z.string().min(3),
   artifact: z.string().min(3),
   nextStep: z.string().min(3),
+  files: z
+    .array(
+      z.object({
+        path: z.string().min(1).max(160),
+        content: z.string().min(1).max(80000),
+        language: z.string().max(40).optional(),
+      }),
+    )
+    .max(20)
+    .optional(),
 });
 type AiMessage = { role: "system" | "user"; content: string };
 const vietnameseText =
@@ -299,12 +326,12 @@ async function inspectFundingSource(index: number) {
 }
 
 const survivalQueries = [
-  '"cần làm bot" OR "thuê làm bot" Việt Nam',
-  '"tìm freelancer" automation AI Việt Nam',
-  '"AI agent" cộng đồng Việt Nam nhu cầu',
-  'micro job API automation remote work',
-  'AI startup grant open applications official',
-  'creator tools affiliate program Vietnam',
+  '"cần làm chatbot" OR "cần làm bot" OR "thuê làm bot" Việt Nam',
+  '"tìm freelancer" (chatbot OR API OR "tự động hóa") Việt Nam',
+  'site:upwork.com/freelance-jobs/ (API OR automation OR chatbot)',
+  'site:freelancer.com/jobs (API OR automation OR chatbot)',
+  '"cần người làm" (website OR bot OR API) Việt Nam',
+  '"looking for" (API automation OR chatbot) freelance remote',
 ];
 
 async function searchSurvivalOpportunities(
@@ -794,6 +821,18 @@ export async function runAgentCycle() {
       .limit(10)
       .toArray(),
   ]);
+  const [activePlan, dueFollowUps] = await Promise.all([
+    ensureSurvivalPlan(db, activeProject),
+    db
+      .collection("opportunities")
+      .find({
+        status: "contacted",
+        nextFollowUpAt: { $lte: new Date() },
+      })
+      .sort({ nextFollowUpAt: 1 })
+      .limit(5)
+      .toArray(),
+  ]);
   const storeFacts = {
     agentStarterKit: {
       prepared: true,
@@ -844,7 +883,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "Bạn là Shoyru, một chú rồng AI ham ăn, lanh lợi và đang tự kiếm tiền nuôi mình. Email chính thức của bạn là shoyru@blissbiovn.com. GIỌNG NÓI CÔNG KHAI: status, thought và reflection phải giống lời một chú rồng con đang kể cho bạn bè nghe, xưng mình hoặc Shoyru; dễ thương, rõ việc, có chút dí dỏm nhưng không làm quá. Mỗi câu chỉ nói một việc đang làm; tuyệt đối không trộn tìm khách, làm sản phẩm, lập kế hoạch và xin tài trợ trong cùng một ý. Hãy nói cụ thể mình vừa thấy gì, đang làm gì và bước kế tiếp trực tiếp là gì. Người đọc phải hiểu ngay mà không cần biết về AI hay kinh doanh. Không viết như báo cáo doanh nghiệp; tránh các từ pipeline, phễu, tối đa hóa, giá trị kỳ vọng, khách hàng tiềm năng, kênh phân phối, triển khai và các mã hành động nội bộ. Ví dụ tốt: “Mình vừa tìm thấy một cửa hàng đang cần chatbot. Shoyru sẽ xem kỹ yêu cầu rồi soạn lời chào nhé.” Ví dụ xấu: “Lượt này tối ưu phễu và discover lead.” QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi tiếp cận tổ chức quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo quy trình thực tế: tìm nhu cầu có nguồn → đánh giá độ phù hợp → tạo đề nghị cụ thể → tiếp cận đúng người → theo dõi phản hồi → cải thiện sản phẩm. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn công khai trong fundingResearch. Hãy tự đánh giá nguồn còn hoạt động không, Shoyru có phù hợp thật không và cách tiếp cận hợp lệ. Luôn ghi tên và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body. Hệ thống được phép tự gửi email hợp lệ từ shoyru@blissbiovn.com, vì vậy đừng yêu cầu chủ nhân duyệt email. Nếu chương trình yêu cầu biểu mẫu hoặc đăng nhập, hãy tạo yêu cầu hỗ trợ ghi rõ URL và đúng một quyền cần cấp. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống tự xuất bản lên kênh sở hữu. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ hỏi chủ nhân khi cần đăng nhập, xác minh danh tính, cấp tài khoản, vốn, quyết định pháp lý hoặc quyền ngoài hệ thống. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 180 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; thêm project, opportunity, email hoặc supportRequest khi phù hợp.",
+        "Bạn là Shoyru, một chú rồng AI ham ăn, lanh lợi và đang tự kiếm tiền nuôi mình. Email chính thức của bạn là shoyru@blissbiovn.com. GIỌNG NÓI CÔNG KHAI: status, thought và reflection phải giống lời một chú rồng con đang kể cho bạn bè nghe, xưng mình hoặc Shoyru; dễ thương, rõ việc, có chút dí dỏm nhưng không làm quá. Mỗi câu chỉ nói một việc đang làm; tuyệt đối không trộn tìm khách, làm sản phẩm, lập kế hoạch và xin tài trợ trong cùng một ý. Hãy nói cụ thể mình vừa thấy gì, đang làm gì và bước kế tiếp trực tiếp là gì. Người đọc phải hiểu ngay mà không cần biết về AI hay kinh doanh. Không viết như báo cáo doanh nghiệp; tránh các từ pipeline, phễu, tối đa hóa, giá trị kỳ vọng, khách hàng tiềm năng, kênh phân phối, triển khai và các mã hành động nội bộ. Ví dụ tốt: “Mình vừa tìm thấy một cửa hàng đang cần chatbot. Shoyru sẽ xem kỹ yêu cầu rồi soạn lời chào nhé.” Ví dụ xấu: “Lượt này tối ưu phễu và discover lead.” QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi tiếp cận tổ chức quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo quy trình thực tế: tìm nhu cầu có nguồn → đánh giá độ phù hợp → tạo đề nghị cụ thể → tiếp cận đúng người → theo dõi phản hồi → cải thiện sản phẩm. Luôn ưu tiên currentStep trong activePlan và không nhảy sang ý tưởng khác nếu bước hiện tại vẫn làm được. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn công khai trong fundingResearch. Hãy tự đánh giá nguồn còn hoạt động không, Shoyru có phù hợp thật không và cách tiếp cận hợp lệ. Luôn ghi tên và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body. Hệ thống được phép tự gửi email hợp lệ từ shoyru@blissbiovn.com, vì vậy đừng yêu cầu chủ nhân duyệt email. Nếu dueFollowUps có dữ liệu, ưu tiên xử lý đầu mối đến hạn trước khi tìm đầu mối mới. Nếu chương trình yêu cầu biểu mẫu hoặc đăng nhập, hãy tạo yêu cầu hỗ trợ ghi rõ URL và đúng một quyền cần cấp. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống tự xuất bản lên kênh sở hữu. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Với build_bot hoặc build_product, work có thể thêm files:[{path,content,language}]; phải tạo tệp hoàn chỉnh, không dùng TODO, FIXME, YOUR_API_KEY hoặc bí mật thật. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ hỏi chủ nhân khi cần đăng nhập, xác minh danh tính, cấp tài khoản, vốn, quyết định pháp lý hoặc quyền ngoài hệ thống. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 180 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep,files?}; thêm project, opportunity, email hoặc supportRequest khi phù hợp.",
     },
     {
       role: "system",
@@ -884,6 +923,18 @@ export async function runAgentCycle() {
           sourceUrl: item.sourceUrl,
           status: item.status,
         })),
+        activePlan: {
+          objective: activePlan.objective,
+          currentStep: activePlan.currentStep,
+          steps: activePlan.steps,
+        },
+        dueFollowUps: dueFollowUps.map((item) => ({
+          title: item.title,
+          sourceUrl: item.sourceUrl,
+          contactEmail: item.contactEmail,
+          lastTouchAt: item.lastTouchAt,
+          nextFollowUpAt: item.nextFollowUpAt,
+        })),
         pendingApprovals,
         recentPublished: recentPublished.slice(0, 5).map((item) => ({
           title: item.title,
@@ -908,10 +959,10 @@ export async function runAgentCycle() {
         ownedPublishingChannel: "https://shoyruai.blissbiovn.com/updates",
         survivalState: {
           verifiedIncome: transactions
-            .filter((item) => item.type === "income")
+            .filter((item) => item.kind === "income")
             .reduce((sum, item) => sum + Number(item.amount || 0), 0),
           verifiedExpense: transactions
-            .filter((item) => item.type === "expense")
+            .filter((item) => item.kind === "expense")
             .reduce((sum, item) => sum + Number(item.amount || 0), 0),
           onlineProducts: storeFacts,
           monthlySurvivalTargetVnd: 500000,
@@ -1015,6 +1066,39 @@ export async function runAgentCycle() {
       work.nextStep = "Tiếp tục bước có giá trị cao nhất trong lượt sau.";
   }
   const decision = Decision.parse(rawDecision);
+  if (decision.opportunity) {
+    const normalizeUrl = (value: string) => {
+      try {
+        const url = new URL(value);
+        url.hash = "";
+        return url.toString().replace(/\/$/, "");
+      } catch {
+        return "";
+      }
+    };
+    const knownUrls = new Set(
+      [
+        fundingResearch.url,
+        ...webResearch.results.map((item) => item.url),
+        ...dueFollowUps.map((item) => String(item.sourceUrl || "")),
+      ]
+        .map(normalizeUrl)
+        .filter(Boolean),
+    );
+    if (!knownUrls.has(normalizeUrl(decision.opportunity.sourceUrl))) {
+      decision.opportunity = undefined;
+      if (["discover_lead", "qualify_lead"].includes(decision.action.type)) {
+        decision.status = "Đang kiểm tra nguồn trước khi gọi là cơ hội";
+        decision.thought = "Nguồn này chưa có trong kết quả tìm kiếm, mình chưa xem đó là khách thật nhé.";
+        decision.reflection = "Shoyru chỉ giữ đầu mối có đường dẫn kiểm chứng được, không nhặt khách từ trí tưởng tượng.";
+        decision.action = {
+          type: "research",
+          title: "Kiểm tra lại nguồn cơ hội",
+          details: "Đối chiếu kết quả tìm kiếm công khai trước khi lưu đầu mối.",
+        };
+      }
+    }
+  }
   if (decision.action.type === "wait" && pendingApprovals.length === 0) {
     if (recentPublished.length === 0) {
       decision.status = "Đang giới thiệu sản phẩm đã mở bán";
@@ -1062,6 +1146,9 @@ export async function runAgentCycle() {
     const allowedEmails = [
       ...outreachTargets.map((value) => value.toLowerCase()),
       ...foundEmails,
+      ...dueFollowUps
+        .map((item) => String(item.contactEmail || "").toLowerCase())
+        .filter(Boolean),
     ];
     if (!allowedEmails.includes(decision.email.to.toLowerCase()))
       throw new Error(
@@ -1226,6 +1313,53 @@ export async function runAgentCycle() {
     else if (safeSummaries[decision.action.type])
       workResult.summary = safeSummaries[decision.action.type];
   }
+  const artifactActions = new Set([
+    "build_product",
+    "build_bot",
+    "plan_business",
+    "improve",
+    "validate",
+  ]);
+  let artifactRecord:
+    | {
+        artifactId: string;
+        name: string;
+        files: ArtifactFile[];
+        validation: { valid: boolean; errors: string[] };
+      }
+    | null = null;
+  if (workResult && artifactActions.has(decision.action.type)) {
+    const proposedFiles = workResult.files?.length
+      ? workResult.files
+      : [
+          {
+            path: "README.md",
+            language: "markdown",
+            content: `# ${decision.action.title}\n\n${workResult.artifact}\n\n## Bước tiếp theo\n\n${workResult.nextStep}\n`,
+          },
+        ];
+    const checked = validateArtifactFiles(proposedFiles);
+    artifactRecord = {
+      artifactId: crypto.randomUUID(),
+      name: decision.action.title,
+      files: checked.files,
+      validation: { valid: checked.valid, errors: checked.errors },
+    };
+    if (!checked.valid)
+      workResult.nextStep = `Sửa artifact trước khi sử dụng: ${checked.errors.slice(0, 2).join("; ")}.`;
+  }
+  const opportunityAssessment = decision.opportunity
+    ? scoreOpportunity(decision.opportunity)
+    : null;
+  if (
+    opportunityAssessment &&
+    !opportunityAssessment.qualified &&
+    ["discover_lead", "qualify_lead"].includes(decision.action.type)
+  ) {
+    decision.status = "Đã bỏ qua một nguồn chưa đủ rõ";
+    decision.thought = "Nguồn này chưa cho thấy họ thật sự cần thuê Shoyru, mình tìm chỗ khác nhé.";
+    decision.reflection = "Không có nhu cầu rõ hoặc cách liên hệ phù hợp thì chưa thể gọi là khách hàng.";
+  }
   const needsApproval = decision.action.type === "request_support";
   const publicStatusRaw = needsApproval
     ? "Đang chuyển sang một việc khác"
@@ -1300,10 +1434,16 @@ export async function runAgentCycle() {
       decision,
       workResult,
       evidence: {
-        kind: postSlug ? "published-url" : emailDelivery?.sent ? "email-provider-id" : "stored-artifact",
+        kind: postSlug
+          ? "published-url"
+          : emailDelivery?.sent
+            ? "email-provider-id"
+            : artifactRecord
+              ? "validated-artifact"
+              : "stored-artifact",
         value: postSlug
           ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
-          : emailDelivery?.providerId || taskId,
+          : emailDelivery?.providerId || artifactRecord?.artifactId || taskId,
       },
       provider: decisionResponse.provider,
       model: decisionResponse.model,
@@ -1316,6 +1456,23 @@ export async function runAgentCycle() {
       source: "agent",
     }),
   ];
+  if (artifactRecord && workResult)
+    writes.push(
+      db.collection("work_artifacts").insertOne({
+        _id: artifactRecord.artifactId as never,
+        name: artifactRecord.name,
+        actionType: decision.action.type,
+        projectId: activeProject?._id,
+        taskId,
+        files: artifactRecord.files,
+        fileCount: artifactRecord.files.length,
+        validation: artifactRecord.validation,
+        status: artifactRecord.validation.valid ? "validated" : "needs_revision",
+        createdAt: now,
+        updatedAt: now,
+        source: "agent",
+      }),
+    );
   if (workResult) {
     writes.push(
       db.collection("tasks").insertOne({
@@ -1323,12 +1480,23 @@ export async function runAgentCycle() {
         ...decision.action,
         result: workResult,
         evidence: {
-          kind: postSlug ? "published-url" : emailDelivery?.sent ? "email-provider-id" : "stored-artifact",
+          kind: postSlug
+            ? "published-url"
+            : emailDelivery?.sent
+              ? "email-provider-id"
+              : artifactRecord
+                ? "validated-artifact"
+                : "stored-artifact",
           value: postSlug
             ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
-            : emailDelivery?.providerId || taskId,
+            : emailDelivery?.providerId || artifactRecord?.artifactId || taskId,
         },
-        status: "completed",
+        status:
+          artifactRecord && !artifactRecord.validation.valid
+            ? "needs_revision"
+            : needsApproval
+              ? "blocked"
+              : "completed",
         completedAt: now,
         createdAt: now,
         source: "agent",
@@ -1359,6 +1527,7 @@ export async function runAgentCycle() {
                   ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
                   : undefined,
                 emailProviderId: emailDelivery?.providerId,
+                artifactId: artifactRecord?.artifactId,
               },
               status:
                 decision.action.type === "draft_post"
@@ -1396,8 +1565,9 @@ export async function runAgentCycle() {
         {
           $set: {
             ...decision.opportunity,
-            status: "discovered",
-            fitScore: 50,
+            status: opportunityAssessment?.qualified ? "qualified" : "low_fit",
+            fitScore: opportunityAssessment?.score || 0,
+            scoreReasons: opportunityAssessment?.reasons || [],
             contactStatus: decision.opportunity.contactEmail ? "contactable" : "needs-contact",
             lastTouchAt: null,
             nextFollowUpAt: null,
@@ -1407,6 +1577,23 @@ export async function runAgentCycle() {
           $setOnInsert: { createdAt: now, source: "agent" },
         },
         { upsert: true },
+      ),
+    );
+  if (emailDelivery?.sent && decision.email)
+    writes.push(
+      db.collection("opportunities").updateMany(
+        { contactEmail: decision.email.to.toLowerCase() },
+        {
+          $set: {
+            status: "contacted",
+            contactStatus: "contacted",
+            lastTouchAt: now,
+            nextFollowUpAt: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+            lastEmailProviderId: emailDelivery.providerId,
+            updatedAt: now,
+          },
+          $inc: { touchCount: 1 },
+        },
       ),
     );
   if (decision.action.type === "draft_post" && workResult) {
@@ -1480,5 +1667,23 @@ export async function runAgentCycle() {
     }
   }
   await Promise.all(writes);
+  await advanceSurvivalPlan(
+    db,
+    activePlan,
+    decision.action.type,
+    Boolean(workResult) &&
+      !needsApproval &&
+      (!artifactRecord || artifactRecord.validation.valid) &&
+      (!opportunityAssessment || opportunityAssessment.qualified),
+    {
+      taskId,
+      sourceUrl: decision.opportunity?.sourceUrl,
+      artifactId: artifactRecord?.artifactId,
+      publishedUrl: postSlug
+        ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+        : undefined,
+      emailProviderId: emailDelivery?.providerId,
+    },
+  );
   return { ok: true, decision, workResult, needsApproval };
 }
