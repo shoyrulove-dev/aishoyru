@@ -6,7 +6,19 @@ const vietnameseText =
 const privateOperations =
   /(api[_\s-]?key|secret|token|password|mật khẩu|otp|captcha|số điện thoại|ngân sách|xin vốn|discover_lead|qualify_lead|request_support|webResearch|resend|brave_search|groq|openrouter|mongodb)/i;
 const publicSentence = (value: unknown, max = 190) => {
-  const clean = String(value || "").replace(/\s+/g, " ").trim();
+  const clean = String(value || "")
+    .replace(/tối đa h[oó]a doanh thu/gi, "kiếm thêm tiền")
+    .replace(/khách hàng tiềm năng/gi, "người có thể cần món này")
+    .replace(/kênh phân phối/gi, "nơi có người cần mua")
+    .replace(/pipeline/gi, "các bước làm việc")
+    .replace(/phễu(?: bán hàng)?/gi, "đường từ xem đến mua")
+    .replace(/giá trị kỳ vọng/gi, "khả năng kiếm được tiền")
+    .replace(/triển khai/gi, "làm")
+    .replace(/lượt này/gi, "bây giờ")
+    .replace(/nguồn cơ hội/gi, "nơi tìm việc")
+    .replace(/\.\.\.|…/g, ",")
+    .replace(/\s+/g, " ")
+    .trim();
   if (clean.length <= max && !clean.endsWith("…") && !clean.endsWith("...")) return clean;
   const candidates = clean.match(/[^.!?]+[.!?]+/g) || [];
   let result = "";
@@ -105,7 +117,7 @@ export async function getPublicState(): Promise<PublicState> {
       timeZone: "Asia/Ho_Chi_Minh",
     }),
     kind: String(x.kind || "NHẬT KÝ"),
-    text: String(x.text || ""),
+      text: publicSentence(x.text, 180),
     amount: x.amount ? Number(x.amount) : undefined,
   }));
   const conversationsOut = conversations
