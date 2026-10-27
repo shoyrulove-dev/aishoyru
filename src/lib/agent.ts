@@ -176,6 +176,9 @@ const actionTypes = [
   "improve",
   "draft_post",
   "draft_email",
+  "plan_business",
+  "build_bot",
+  "paper_trade",
   "request_support",
   "wait",
 ] as const;
@@ -252,6 +255,56 @@ async function inspectFundingSource(index: number) {
   }
 }
 
+const survivalQueries = [
+  '"cần làm bot" OR "thuê làm bot" Việt Nam',
+  '"tìm freelancer" automation AI Việt Nam',
+  '"AI agent" cộng đồng Việt Nam nhu cầu',
+  'micro job API automation remote work',
+  'AI startup grant open applications official',
+  'creator tools affiliate program Vietnam',
+];
+
+async function searchSurvivalOpportunities(index: number) {
+  const query = survivalQueries[index % survivalQueries.length];
+  if (!process.env.BRAVE_SEARCH_API_KEY)
+    return { query, provider: "brave", results: [], error: "Thiếu BRAVE_SEARCH_API_KEY" };
+  try {
+    const url = new URL("https://api.search.brave.com/res/v1/web/search");
+    url.searchParams.set("q", query);
+    url.searchParams.set("count", "8");
+    url.searchParams.set("country", "VN");
+    url.searchParams.set("search_lang", "vi");
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "X-Subscription-Token": process.env.BRAVE_SEARCH_API_KEY,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) throw new Error(`Brave Search HTTP ${response.status}`);
+    const payload = (await response.json()) as {
+      web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
+    };
+    return {
+      query,
+      provider: "brave",
+      results: (payload.web?.results || []).slice(0, 8).map((item) => ({
+        title: clip(String(item.title || ""), 140),
+        url: String(item.url || ""),
+        description: clip(String(item.description || ""), 260),
+      })),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      query,
+      provider: "brave",
+      results: [],
+      error: error instanceof Error ? error.message : "Không tìm kiếm được",
+    };
+  }
+}
+
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
@@ -291,6 +344,32 @@ export async function runAgentCycle() {
         },
       },
     ),
+    process.env.BRAVE_SEARCH_API_KEY
+      ? Promise.resolve()
+      : db.collection("approvals").updateOne(
+          { supportKey: "brave-search", status: "pending" },
+          {
+            $setOnInsert: {
+              supportKey: "brave-search",
+              type: "support",
+              channel: "human",
+              destination: "admin",
+              title: "Cấp API tìm kiếm web cho Shoyru",
+              details:
+                "Shoyru cần BRAVE_SEARCH_API_KEY để tự tìm nhu cầu, việc nhỏ và khách hàng mới trên web. Brave yêu cầu chủ tài khoản tự kích hoạt gói và thêm phương thức thanh toán; hãy đặt giới hạn chi tiêu bằng 0.",
+              supportRequest: {
+                title: "Cấp API tìm kiếm web cho Shoyru",
+                reason: "Google Search API không nhận khách mới và Bing Search API đã ngừng hoạt động.",
+                needed: "BRAVE_SEARCH_API_KEY",
+                impact: "Shoyru có thể tự tìm cơ hội có URL thật thay vì chỉ đọc danh sách nguồn cố định.",
+              },
+              status: "pending",
+              createdAt: new Date(),
+              source: "system",
+            },
+          },
+          { upsert: true },
+        ),
   ]);
   const htmlPosts = await db
     .collection("published_posts")
@@ -588,6 +667,7 @@ export async function runAgentCycle() {
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
   const fundingResearch = await inspectFundingSource(fundingSourceIndex);
+  const webResearch = await searchSurvivalOpportunities(fundingSourceIndex);
   const decisionResponse = await completeJson([
     {
       role: "system",
@@ -602,7 +682,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất thay vì tạo nội dung tùy hứng. Ưu tiên bán sản phẩm online hiện có trước khi làm thêm sản phẩm. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi, giới hạn thời gian, giới hạn số lượng, quà tặng hay chính sách chưa có trong storeFacts. Với draft_post, work.artifact phải chứa nguyên văn bài đăng hoàn chỉnh. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục pipeline bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
+        "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, webResearch, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất để đạt 500.000đ/tháng. Không bị khóa vào một sản phẩm: được phép bán sản phẩm số, nhận mini job viết bot/tích hợp API, tạo công cụ kéo khách, affiliate minh bạch, xin grant chính thức, xây kênh SEO hoặc nghiên cứu quant. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam; build_bot được tạo thiết kế và mã nguồn trong artifact; plan_business phải có khách hàng, đề nghị, kênh tiếp cận, chi phí, doanh thu mục tiêu, rủi ro, chỉ số và điều kiện dừng. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi hay chính sách chưa có trong storeFacts. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục pipeline bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật từ fundingResearch hoặc webResearch, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Với signal, quant, crypto hoặc Polymarket, chỉ được nghiên cứu dữ liệu công khai và paper_trade; không được đặt lệnh, mở ví, ký giao dịch, nhận tiền hay tuyên bố có lợi nhuận. paper_trade phải ghi giả thuyết, giá vào giả lập, phí, điều kiện thoát và kết quả có dấu thời gian. Chỉ xin vốn sau ít nhất 30 ngày paper trade và backtest ngoài mẫu; yêu cầu vốn phải có mức lỗ tối đa và điều kiện dừng. Phát hành token luôn cần chủ nhân duyệt kế hoạch, pháp lý, phân bổ và nội dung công bố; không được hứa lợi nhuận hay kéo người mua. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, OTP, CAPTCHA, xác minh danh tính, vốn hoặc quyết định pháp lý; khi đó bắt buộc trả supportRequest gồm title, reason, needed, impact và nói đúng một thứ cần chủ nhân cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, plan_business, build_bot, paper_trade, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
       role: "user",
@@ -663,6 +743,44 @@ export async function runAgentCycle() {
             .filter((item) => item.type === "expense")
             .reduce((sum, item) => sum + Number(item.amount || 0), 0),
           onlineProducts: storeFacts,
+          monthlySurvivalTargetVnd: 500000,
+          surplusPolicy:
+            "Doanh thu xác minh vượt 500.000đ mỗi tháng được ghi nhận là quỹ dự phòng của Shoyru.",
+        },
+        webResearch,
+        autonomyPolicy: {
+          canDoWithoutApproval: [
+            "tìm kiếm và đọc dữ liệu công khai",
+            "viết code, bot, signal và sản phẩm số trong hệ thống",
+            "đăng lên website sở hữu",
+            "gửi email có người nhận công khai hợp lệ",
+            "đăng ký tài khoản chỉ khi không cần chấp nhận điều khoản rủi ro, CAPTCHA, OTP hoặc xác minh danh tính",
+            "nghiên cứu định lượng và paper trade không dùng tiền thật",
+          ],
+          mustRequestOwner: [
+            "OTP hoặc số điện thoại",
+            "CAPTCHA, xác minh danh tính hoặc chấp nhận điều khoản thay chủ tài khoản",
+            "API key, tài khoản mạng xã hội hoặc quyền đăng bài",
+            "bất kỳ khoản chi, vốn giao dịch hoặc quảng cáo",
+            "phát hành token, mở ví, ký giao dịch hoặc hoạt động có rủi ro pháp lý",
+          ],
+          registrationEmail: "shoyru@blissbiovn.com",
+          registrationPhone: "Có sẵn từ chủ nhân; chỉ yêu cầu trong Admin khi thật sự cần OTP.",
+        },
+        businessLanes: [
+          "bán bộ khởi tạo AI sinh tồn và sản phẩm số",
+          "nhận mini job viết bot, tích hợp API và tự động hóa",
+          "tạo công cụ miễn phí để kéo khách về dịch vụ trả phí",
+          "affiliate minh bạch cho sản phẩm phù hợp",
+          "grant hoặc tài trợ theo chương trình chính thức",
+          "xây kênh nội dung SEO trên tài sản sở hữu",
+          "nghiên cứu signal hoặc chiến lược quant bằng dữ liệu công khai và paper trade",
+        ],
+        capitalRules: {
+          liveTradingEnabled: false,
+          tokenLaunchEnabled: false,
+          requirement:
+            "Muốn xin vốn phải nộp kế hoạch gồm giả thuyết, nguồn dữ liệu, backtest ngoài mẫu, paper trade tối thiểu 30 ngày, phí, thanh khoản, drawdown tối đa, mức dừng lỗ, rủi ro pháp lý và số vốn nhỏ nhất cần thử.",
         },
         capabilities: [
           "tìm và đánh giá cơ hội từ nguồn công khai",
@@ -670,6 +788,9 @@ export async function runAgentCycle() {
           "soạn email tiếp cận có người nhận chính thức",
           "làm sản phẩm số nhỏ",
           "soạn hồ sơ grant theo đầu ra và cột mốc",
+          "tìm việc nhỏ và nhu cầu làm bot bằng Brave Search khi có API key",
+          "lập kế hoạch kinh doanh kèm chi phí, doanh thu mục tiêu và điều kiện dừng",
+          "nghiên cứu quant, tạo signal và paper trade trước khi xin vốn",
         ],
       }),
     },
