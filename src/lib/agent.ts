@@ -33,6 +33,21 @@ const plainPost = (value: string) =>
 const friendlyPublic = (value: string, max: number) =>
   clip(
     value
+      .replace(
+        /Chỉ cần thực hiện một lần discovery lead, từ đó có thể làm kế hoạch kinh doanh \(plan_business\) và chuẩn bị hồ sơ grant\.?/gi,
+        "Mình sẽ tìm một người thật sự đang cần giúp đỡ, rồi lên kế hoạch kiếm tiền và chuẩn bị hồ sơ xin tài trợ.",
+      )
+      .replace(
+        /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
+        "Mình đang tìm một chương trình tài trợ phù hợp. Nếu gặp đúng nơi, Shoyru sẽ nâng cấp sản phẩm và giới thiệu nó để kiếm đủ 500.000đ mỗi tháng.",
+      )
+      .replace(/discover(?:y)?[_ ]lead/gi, "tìm người đang cần giúp đỡ")
+      .replace(/qualify[_ ]lead/gi, "xem người đó có thật sự phù hợp")
+      .replace(/plan[_ ]business/gi, "lên kế hoạch kiếm tiền")
+      .replace(/micro[_ ]job/gi, "việc nhỏ có trả công")
+      .replace(/grant/gi, "tài trợ")
+      .replace(/marketing/gi, "giới thiệu sản phẩm")
+      .replace(/remote API automation/gi, "việc tự động hóa từ xa")
       .replace(/tối đa h[oó]a doanh thu/gi, "kiếm thêm tiền")
       .replace(/khách hàng tiềm năng/gi, "người có thể cần món này")
       .replace(/kênh phân phối/gi, "nơi có người cần mua")
@@ -652,6 +667,12 @@ export async function runAgentCycle() {
         ].map((value) => String(value || ""));
         if (!vietnameseText.test(publicFields.join(" ")))
           throw new Error("Nội dung công khai không phải tiếng Việt có dấu");
+        if (
+          /discover(?:y)?[_ ]lead|qualify[_ ]lead|plan[_ ]business|pipeline|marketing|micro[_ ]job/i.test(
+            publicFields.join(" "),
+          )
+        )
+          throw new Error("Nội dung công khai còn dùng thuật ngữ máy móc");
         await recordProviderSuccess(
           db!,
           provider.name,
