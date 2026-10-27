@@ -132,6 +132,33 @@ export async function getPublicState(): Promise<PublicState> {
   const expense = transactions
     .filter((x) => x.kind === "expense")
     .reduce((s, x) => s + Number(x.amount || 0), 0);
+  const launchAt = new Date("2026-10-27T00:00:00+07:00");
+  const operatingDays = Math.max(
+    1,
+    Math.floor((now.getTime() - launchAt.getTime()) / (24 * 60 * 60 * 1000)) + 1,
+  );
+  const dayKey = (value: Date) =>
+    value.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+  const chart = Array.from({ length: 14 }, (_, index) => {
+    const day = new Date(now.getTime() - (13 - index) * 24 * 60 * 60 * 1000);
+    const key = dayKey(day);
+    return {
+      label: day.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: "Asia/Ho_Chi_Minh",
+      }),
+      value: transactions
+        .filter(
+          (transaction) =>
+            transaction.kind === "income" &&
+            transaction.verified === true &&
+            transaction.createdAt &&
+            dayKey(new Date(transaction.createdAt as Date)) === key,
+        )
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
+    };
+  });
   const activitiesOut = activities.filter((x) => !privateOperations.test(String(x.text || ""))).map((x) => ({
     id: String(x._id),
     at: new Date(x.createdAt as Date).toLocaleTimeString("vi-VN", {
@@ -196,17 +223,17 @@ export async function getPublicState(): Promise<PublicState> {
     lastAction: projectPrivate
       ? "Tiếp tục một việc khác trong lúc chờ hỗ trợ"
       : vietnameseText.test(String(projectAction.title || ""))
-      ? String(projectAction.title)
+      ? publicSentence(projectAction.title, 150)
       : "Hoàn thiện một bước của dự án",
     result: projectPrivate
       ? "Shoyru đã đổi hướng để tiếp tục làm việc có thể triển khai ngay."
       : vietnameseText.test(String(projectResult.summary || ""))
-      ? String(projectResult.summary)
+      ? publicSentence(projectResult.summary, 180)
       : "Shoyru đã hoàn thiện thêm một phần của sản phẩm.",
     nextStep: projectPrivate
       ? "Shoyru tiếp tục công việc không bị phụ thuộc trong lượt sau."
       : vietnameseText.test(String(projectResult.nextStep || ""))
-      ? String(projectResult.nextStep)
+      ? publicSentence(projectResult.nextStep, 180)
       : "Tiếp tục hoàn thiện sản phẩm trong lượt làm việc kế tiếp.",
   };
   return {
@@ -214,10 +241,12 @@ export async function getPublicState(): Promise<PublicState> {
     demo: false,
     income,
     expense,
+    fundedBudget: 500000,
+    operatingDays,
     status: statusVi,
     thought: thoughtVi,
     nextWake: nextWakeLabel(now),
-    streak: Number(state?.streak || 0),
+    streak: operatingDays,
     visitors: Number(state?.visitors || 0),
     activeViewers,
     todayVisitors: todaySessions.length,
@@ -229,6 +258,7 @@ export async function getPublicState(): Promise<PublicState> {
     activities: activitiesOut,
     conversations: conversationsOut,
     project,
+    chart,
     updatedAt: new Date().toISOString(),
   };
 }

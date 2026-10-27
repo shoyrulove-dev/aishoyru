@@ -318,26 +318,26 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-white/8 lg:grid-cols-4 lg:divide-y-0">
           <Stat
             icon={<Coins />}
-            label="Kho vàng"
-            value={money(data.income)}
+            label="Ngân sách tháng"
+            value={money(data.fundedBudget)}
             tone="gold"
           />
           <Stat
             icon={<Drumstick />}
-            label="Tiền nuôi Bé"
-            value={money(data.expense)}
+            label="Doanh thu tự kiếm"
+            value={money(data.income)}
             tone="orange"
           />
           <Stat
             icon={<TrendingUp />}
-            label="Vàng còn lại"
-            value={money(net)}
+            label="Chi phí đã ghi nhận"
+            value={money(data.expense)}
             tone="green"
           />
           <Stat
             icon={<Flame />}
-            label="Chuỗi sống sót"
-            value={`${data.streak} ngày`}
+            label="Đã hoạt động"
+            value={`${data.operatingDays} ngày`}
             tone="red"
           />
         </div>
@@ -347,7 +347,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           <div>
             <Eyebrow>THÁNG NÀY</Eyebrow>
             <h2 className="text-3xl font-black sm:text-4xl">
-              Shoyru đã tự nuôi được mình chưa?
+              Shoyru đã tự kiếm đủ chi phí chưa?
             </h2>
           </div>
           <div className="md:text-right">
@@ -364,9 +364,12 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           />
         </div>
         <div className="mt-3 flex justify-between text-xs text-[#7f7a74]">
-          <span>Hang trống</span>
-          <span>Đủ tiền ăn + API</span>
+          <span>Doanh thu thật đã xác minh</span>
+          <span>Đủ {money(data.goal)} chi phí tháng</span>
         </div>
+        <p className="mt-4 text-sm text-[#969088]">
+          Chủ nhân đã cấp sẵn {money(data.fundedBudget)} để vận hành tháng này. Khoản này không được tính là tiền Shoyru tự kiếm.
+        </p>
       </section>
       <section id="operations" className="mx-auto max-w-7xl px-5 pb-20 lg:px-8">
         <div className="grid gap-7 md:grid-cols-2">
@@ -409,6 +412,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <Eyebrow>14 NGÀY GẦN NHẤT</Eyebrow>
           <h2 className="mb-10 text-3xl font-black">Vàng vào kho mỗi ngày</h2>
+          {data.chart.some((item) => item.value > 0) ? (
           <div className="flex h-56 items-end gap-2 sm:gap-4">
             {data.chart.map((x, i) => (
               <div
@@ -428,6 +432,11 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
               </div>
             ))}
           </div>
+          ) : (
+            <div className="flex h-56 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-black/10 px-6 text-center text-[#8d918f]">
+              Chưa có doanh thu nào được xác minh trong 14 ngày qua.
+            </div>
+          )}
         </div>
       </section>
       <section id="rules" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">

@@ -7,7 +7,7 @@ export type ProjectSnapshot = {
 };
 export type PublicState = {
   demo:boolean; status:string; thought:string; nextWake:string; income:number; expense:number;
-  goal:number; streak:number; visitors:number; activeViewers:number; todayVisitors:number; totalViews:number;
+  goal:number; fundedBudget:number; operatingDays:number; streak:number; visitors:number; activeViewers:number; todayVisitors:number; totalViews:number;
   lastRunAt:string | null; cronDelayed:boolean; activities:Activity[]; experiment:Experiment;
   conversations:Dialogue[]; chart:{ label:string; value:number }[]; project:ProjectSnapshot; updatedAt:string;
 };

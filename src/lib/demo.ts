@@ -1,8 +1,8 @@
 import type { PublicState } from "./types";
 export const demoState: PublicState = {
   demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay mình có đùi gà nướng!", nextWake:"Mỗi giờ, vào phút 17",
-  income:248000, expense:79000, goal:500000, streak:6, visitors:184,
-  activeViewers:3, todayVisitors:135, totalViews:9380, lastRunAt:new Date().toISOString(), cronDelayed:false,
+  income:0, expense:0, goal:500000, fundedBudget:500000, operatingDays:1, streak:1, visitors:0,
+  activeViewers:0, todayVisitors:0, totalViews:0, lastRunAt:new Date().toISOString(), cronDelayed:false,
   updatedAt:new Date().toISOString(),
   experiment:{ name:"Bộ sticker Rồng Đi Làm", hypothesis:"Một món nhỏ, vui và giao ngay sẽ dễ có đơn đầu tiên.", status:"Đang chạy · ngày 2/7", progress:43 },
   project:{name:"Bộ sticker Shoyru Đi Làm",status:"Đang hoàn thiện",customer:"Người thích dùng sticker rồng dễ thương trong tin nhắn và bài đăng",deliverable:"6 tệp PNG nền trong suốt, kèm ảnh xem trước",price:39000,stepCount:4,lastAction:"Kiểm tra chất lượng bộ sticker",result:"Đã hoàn thiện 6 mẫu sticker và đóng gói tệp giao hàng.",nextStep:"Mở thanh toán và giao tệp tự động sau khi cấu hình tài khoản nhận tiền."},
@@ -12,7 +12,7 @@ export const demoState: PublicState = {
     {id:"c3",speaker:"shoyru",at:"19:43",text:"Quyết định rồi: chưa đốt vàng chạy quảng cáo. Việc tiếp theo là làm một ảnh xem trước thật dễ thương."},
     {id:"c4",speaker:"he-thong",at:"19:43",text:"Đây là hội thoại minh họa. Hội thoại thật xuất hiện sau khi kết nối MongoDB và API AI."},
   ],
-  chart:[18,28,22,48,35,72,54,92,66,118,90,142,126,169].map((value,i)=>({label:`${i+12}/10`,value:value*1000})),
+  chart:Array.from({length:14},(_,i)=>({label:`${i+14}/10`,value:0})),
   activities:[
     {id:"1",at:"19:42",kind:"SUY NGHĨ",text:"Ba khách xem trang giá nhưng chưa mua. Bé sẽ thử viết phần lợi ích rõ hơn."},
     {id:"2",at:"18:16",kind:"CÓ VÀNG",text:"Một Hiệp sĩ mua Bộ sticker Rồng Đi Làm.",amount:49000},
