@@ -134,7 +134,7 @@ export async function getPublicState(): Promise<PublicState> {
   const rawThought =
     legacy[String(state?.thought || "")] || String(state?.thought || "");
   const thoughtVi = privateOperations.test(rawThought)
-    ? "Một việc đang chờ chủ hang hỗ trợ. Shoyru chuyển sang việc khác trước."
+    ? "Việc này chưa thuận lợi. Shoyru chuyển sang một hướng khác trước."
     : vietnameseText.test(rawThought)
     ? publicSentence(rawThought, 145)
     : "Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu.";
@@ -164,7 +164,7 @@ export async function getPublicState(): Promise<PublicState> {
       ? String(projectAction.title)
       : "Hoàn thiện một bước của dự án",
     result: projectPrivate
-      ? "Thông tin vận hành chi tiết chỉ hiển thị trong trang quản trị."
+      ? "Shoyru đã đổi hướng để tiếp tục làm việc có thể triển khai ngay."
       : vietnameseText.test(String(projectResult.summary || ""))
       ? String(projectResult.summary)
       : "Shoyru đã hoàn thiện thêm một phần của sản phẩm.",

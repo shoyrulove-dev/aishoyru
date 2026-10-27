@@ -1055,10 +1055,10 @@ export async function runAgentCycle() {
     ? "Đang chuyển sang một việc khác"
     : decision.status;
   const publicThought = needsApproval
-    ? "Một việc đang chờ chủ hang hỗ trợ. Shoyru làm việc khác trước, không ngồi chờ."
+    ? "Việc này chưa thuận lợi. Shoyru đổi sang một hướng khác trước, không ngồi chờ."
     : decision.thought;
   const publicReflection = needsApproval
-    ? "Chi tiết vận hành đã được gửi riêng vào trang quản trị."
+    ? "Đổi hướng sớm giúp Shoyru dành thời gian cho việc có thể tiến hành ngay."
     : decision.reflection;
   await db.collection("published_posts").deleteMany({
     automatic: true,
