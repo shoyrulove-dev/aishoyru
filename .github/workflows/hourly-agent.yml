@@ -31,11 +31,16 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=aishoyru-agent")
           oidc_token=$(echo "$oidc_response" | jq -r '.value')
           test -n "$oidc_token" && test "$oidc_token" != "null" || { echo "::error::Could not obtain GitHub OIDC token"; exit 1; }
+          endpoint="https://shoyruai.blissbiovn.com/api/cron/agent"
+          [ "$GITHUB_EVENT_NAME" = "push" ] && endpoint="$endpoint?force=1"
           for attempt in {1..18}; do
             http_code=$(curl --silent --show-error --max-time 90 \
               --output response.json --write-out "%{http_code}" \
               -H "Authorization: Bearer $oidc_token" \
-              https://shoyruai.blissbiovn.com/api/cron/agent) || http_code="000"
+              "$endpoint") || http_code="000"
+            if [ "$GITHUB_EVENT_NAME" = "push" ] && grep -q '"skipped":true' response.json; then
+              http_code="503"
+            fi
             [ "$http_code" != "401" ] && [ "$http_code" != "000" ] && [ "$http_code" != "500" ] && [ "$http_code" != "502" ] && [ "$http_code" != "503" ] && [ "$http_code" != "504" ] && break
             sleep 10
           done
