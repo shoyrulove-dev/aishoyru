@@ -6,7 +6,7 @@ const friendlyJournalText = (value: unknown) =>
   String(value || "")
     .replace(
       /Chỉ cần thực hiện một lần discovery lead, từ đó có thể làm kế hoạch kinh doanh \(plan_business\) và chuẩn bị hồ sơ grant\.?/gi,
-      "Shoyru đang ngó quanh xem ai thật sự cần một chú rồng phụ việc. Tìm đúng người rồi mình mới lên kế hoạch kiếm tiền nhé.",
+      "Mình đang tìm một chương trình tài trợ phù hợp cho dự án Shoyru. Nếu thấy chương trình có điều kiện rõ ràng, mình sẽ đọc kỹ rồi chuẩn bị hồ sơ đăng ký.",
     )
     .replace(
       /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
