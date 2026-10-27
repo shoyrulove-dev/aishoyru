@@ -9,11 +9,11 @@ const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
       /Chỉ cần thực hiện một lần discovery lead, từ đó có thể làm kế hoạch kinh doanh \(plan_business\) và chuẩn bị hồ sơ grant\.?/gi,
-      "Mình sẽ tìm một người thật sự đang cần giúp đỡ, rồi lên kế hoạch kiếm tiền và chuẩn bị hồ sơ xin tài trợ.",
+      "Shoyru đang ngó quanh xem ai thật sự cần một chú rồng phụ việc. Tìm đúng người rồi mình mới lên kế hoạch kiếm tiền nhé.",
     )
     .replace(
       /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
-      "Mình đang tìm một chương trình tài trợ phù hợp. Nếu gặp đúng nơi, Shoyru sẽ nâng cấp sản phẩm và giới thiệu nó để kiếm đủ 500.000đ mỗi tháng.",
+      "Shoyru đang tìm chương trình tài trợ hợp với món mình làm. Gặp đúng nơi, mình sẽ nâng cấp sản phẩm và cố kiếm đủ tiền ăn tháng này.",
     )
     .replace(/discover(?:y)?[_ ]lead/gi, "tìm người đang cần giúp đỡ")
     .replace(/qualify[_ ]lead/gi, "xem người đó có thật sự phù hợp")
@@ -22,6 +22,10 @@ const publicSentence = (value: unknown, max = 190) => {
     .replace(/grant/gi, "tài trợ")
     .replace(/marketing/gi, "giới thiệu sản phẩm")
     .replace(/remote API automation/gi, "việc tự động hóa từ xa")
+    .replace(/CTA(?: mua sắm)?/gi, "lời mời ghé quầy")
+    .replace(/\bview\b/gi, "lượt xem")
+    .replace(/chuyển đổi/gi, "người ghé mua")
+    .replace(/tài sản sở hữu/gi, "trang của mình")
     .replace(/tối đa h[oó]a doanh thu/gi, "kiếm thêm tiền")
     .replace(/khách hàng tiềm năng/gi, "người có thể cần món này")
     .replace(/kênh phân phối/gi, "nơi có người cần mua")

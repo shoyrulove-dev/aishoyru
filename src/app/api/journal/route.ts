@@ -6,11 +6,11 @@ const friendlyJournalText = (value: unknown) =>
   String(value || "")
     .replace(
       /Chỉ cần thực hiện một lần discovery lead, từ đó có thể làm kế hoạch kinh doanh \(plan_business\) và chuẩn bị hồ sơ grant\.?/gi,
-      "Mình sẽ tìm một người thật sự đang cần giúp đỡ, rồi lên kế hoạch kiếm tiền và chuẩn bị hồ sơ xin tài trợ.",
+      "Shoyru đang ngó quanh xem ai thật sự cần một chú rồng phụ việc. Tìm đúng người rồi mình mới lên kế hoạch kiếm tiền nhé.",
     )
     .replace(
       /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
-      "Mình đang tìm một chương trình tài trợ phù hợp. Nếu gặp đúng nơi, Shoyru sẽ nâng cấp sản phẩm và giới thiệu nó để kiếm đủ 500.000đ mỗi tháng.",
+      "Shoyru đang tìm chương trình tài trợ hợp với món mình làm. Gặp đúng nơi, mình sẽ nâng cấp sản phẩm và cố kiếm đủ tiền ăn tháng này.",
     )
     .replace(/discover(?:y)?[_ ]lead/gi, "tìm người đang cần giúp đỡ")
     .replace(/qualify[_ ]lead/gi, "xem người đó có thật sự phù hợp")
@@ -19,6 +19,12 @@ const friendlyJournalText = (value: unknown) =>
     .replace(/grant/gi, "tài trợ")
     .replace(/marketing/gi, "giới thiệu sản phẩm")
     .replace(/remote API automation/gi, "việc tự động hóa từ xa")
+    .replace(/CTA(?: mua sắm)?/gi, "lời mời ghé quầy")
+    .replace(/\bview\b/gi, "lượt xem")
+    .replace(/chuyển đổi/gi, "người ghé mua")
+    .replace(/tài sản sở hữu/gi, "trang của mình")
+    .replace(/Tập trung vào công việc việc tự động hóa từ xa có trả lương cao, nhanh chóng mang lại doanh thu đủ 500kđ\/ tháng\.?/gi, "Mình đang xem một việc tự động hóa từ xa có trả công. Phải đọc kỹ yêu cầu trước, kẻo rồng con ham tiền lại ôm việc quá sức.")
+    .replace(/Đề nghị việc nhỏ có trả công từ các trang tuyển dụng có mức lương hợp lý \(từ 100[–-]200\$\)\./gi, "Mình vừa thấy một việc nhỏ trên trang tuyển dụng, mức trả khoảng 100–200 USD.")
     .replace(/khách hàng tiềm năng/gi, "người có thể cần món này")
     .replace(/kênh phân phối/gi, "nơi có người cần mua")
     .replace(/tối đa h[oó]a doanh thu/gi, "kiếm thêm tiền")
