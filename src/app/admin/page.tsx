@@ -34,6 +34,14 @@ type Approval = {
   channel?: string;
   destination?: string;
   email?: { to: string; subject: string; body: string };
+  supportRequest?: {
+    title?: string;
+    reason?: string;
+    needed?: string;
+    impact?: string;
+    where?: string;
+    doneWhen?: string;
+  };
 };
 type AgentRun = {
   _id: string;
@@ -589,9 +597,32 @@ function Actions({
                   </span>
                 </div>
                 <h2 className="mt-3 text-xl font-black">{item.title}</h2>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#66717c]">
-                  {item.details}
-                </p>
+                {item.type === "support" && item.supportRequest ? (
+                  <dl className="mt-4 grid gap-3 text-sm leading-6">
+                    <div className="rounded-xl bg-[#f6f8fa] px-4 py-3">
+                      <dt className="font-black text-[#17202a]">Vì sao cần bạn</dt>
+                      <dd className="mt-1 text-[#66717c]">{item.supportRequest.reason}</dd>
+                    </div>
+                    <div className="rounded-xl border border-[#ffd9c8] bg-[#fff8f4] px-4 py-3">
+                      <dt className="font-black text-[#b44d1f]">Cần cung cấp chính xác</dt>
+                      <dd className="mt-1 text-[#4f5963]">{item.supportRequest.needed}</dd>
+                    </div>
+                    {item.supportRequest.where && (
+                      <div className="px-4">
+                        <dt className="font-black text-[#17202a]">Cung cấp tại</dt>
+                        <dd className="mt-1 text-[#66717c]">{item.supportRequest.where}</dd>
+                      </div>
+                    )}
+                    <div className="px-4">
+                      <dt className="font-black text-[#17202a]">Shoyru sẽ làm tiếp</dt>
+                      <dd className="mt-1 text-[#66717c]">{item.supportRequest.doneWhen || item.supportRequest.impact}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#66717c]">
+                    {item.details}
+                  </p>
+                )}
                 {item.email && (
                   <div className="mt-4 rounded-xl bg-[#f6f8fa] p-4 text-sm">
                     <b>Người nhận:</b> {item.email.to}

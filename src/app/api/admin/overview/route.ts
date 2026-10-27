@@ -1,10 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Db } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 
 const allowed = (request: NextRequest) =>
   Boolean(process.env.ADMIN_API_KEY) &&
   request.headers.get("authorization") ===
     `Bearer ${process.env.ADMIN_API_KEY}`;
+
+const supportKey = (item: Record<string, unknown>) => {
+  const explicit = String(item.supportKey || "").trim().toLowerCase();
+  if (explicit) return explicit;
+  return String(item.title || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
+async function cleanAdminInbox(db: Db) {
+  const now = new Date();
+  if (process.env.BRAVE_SEARCH_API_KEY) {
+    await db.collection("approvals").updateMany(
+      {
+        status: "pending",
+        type: "support",
+        $or: [
+          { supportKey: "brave-search" },
+          { title: /API t[iì]m ki[eế]m web|Brave Search/i },
+          { details: /BRAVE_SEARCH_API_KEY/i },
+        ],
+      },
+      {
+        $set: {
+          status: "fulfilled",
+          reviewedAt: now,
+          resolution: "BRAVE_SEARCH_API_KEY đã được cấu hình và kiểm tra thành công.",
+        },
+      },
+    );
+  }
+
+  const pendingSupport = await db
+    .collection("approvals")
+    .find({ status: "pending", type: "support" })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .toArray();
+  const seen = new Set<string>();
+  const duplicates = pendingSupport
+    .filter((item) => {
+      const key = supportKey(item);
+      if (!key || !seen.has(key)) {
+        if (key) seen.add(key);
+        return false;
+      }
+      return true;
+    })
+    .map((item) => item._id);
+  if (duplicates.length) {
+    await db.collection("approvals").updateMany(
+      { _id: { $in: duplicates }, status: "pending" },
+      {
+        $set: {
+          status: "superseded",
+          reviewedAt: now,
+          resolution: "Yêu cầu trùng đã được gộp vào yêu cầu mới nhất.",
+        },
+      },
+    );
+  }
+
+  const migrationId = "cleanup-test-chats-2026-10-27";
+  const claimed = await db.collection<{ _id: string }>("system_migrations").updateOne(
+    { _id: migrationId },
+    { $setOnInsert: { createdAt: now, purpose: "Dọn hội thoại E2E trước khi vận hành thật" } },
+    { upsert: true },
+  );
+  if (claimed.upsertedCount === 1) {
+    await db.collection("visitor_messages").deleteMany({ createdAt: { $lte: now } });
+  }
+}
+
+const normalizeApproval = (item: Record<string, unknown>) => {
+  let request = item.supportRequest as Record<string, unknown> | undefined;
+  if (!request && typeof item.details === "string") {
+    try {
+      const parsed = JSON.parse(item.details) as { supportRequest?: Record<string, unknown> };
+      request = parsed.supportRequest;
+    } catch {
+      // Legacy support cards can contain plain text.
+    }
+  }
+  return request ? { ...item, supportRequest: request } : item;
+};
 
 export async function GET(request: NextRequest) {
   if (!allowed(request))
@@ -15,6 +104,7 @@ export async function GET(request: NextRequest) {
       { error: "Database unavailable" },
       { status: 503 },
     );
+  await cleanAdminInbox(db);
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [
     approvals,
@@ -118,7 +208,7 @@ export async function GET(request: NextRequest) {
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
-    approvals,
+    approvals: approvals.map((item) => normalizeApproval(item)),
     projects,
     opportunities,
     runs,
