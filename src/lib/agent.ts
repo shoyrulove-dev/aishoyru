@@ -313,6 +313,10 @@ async function searchSurvivalOpportunities(
     const payload = (await response.json()) as {
       web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
     };
+    await db.collection("api_usage").updateOne(
+      { provider: "brave-search", month },
+      { $set: { lastStatus: "success", lastError: "", lastSuccessAt: new Date() } },
+    );
     return {
       query,
       provider: "brave",
@@ -324,6 +328,16 @@ async function searchSurvivalOpportunities(
       error: "",
     };
   } catch (error) {
+    await db.collection("api_usage").updateOne(
+      { provider: "brave-search", month },
+      {
+        $set: {
+          lastStatus: "failed",
+          lastError: error instanceof Error ? error.message.slice(0, 180) : "Không tìm kiếm được",
+          lastFailureAt: new Date(),
+        },
+      },
+    );
     return {
       query,
       provider: "brave",
@@ -336,6 +350,23 @@ async function searchSurvivalOpportunities(
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
+  if (process.env.BRAVE_SEARCH_API_KEY)
+    await db.collection("approvals").updateMany(
+      {
+        status: "pending",
+        $or: [
+          { supportKey: "brave-search" },
+          { title: "Cấp API tìm kiếm web cho Shoyru" },
+        ],
+      },
+      {
+        $set: {
+          status: "approved",
+          reviewedAt: new Date(),
+          note: "Hệ thống đã tự xác nhận BRAVE_SEARCH_API_KEY trên production.",
+        },
+      },
+    );
   await db.collection("approvals").deleteMany({
     status: "pending",
     title: "Cấp API tìm kiếm web cho Shoyru",
