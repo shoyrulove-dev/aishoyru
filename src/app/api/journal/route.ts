@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+export const preferredRegion = "sin1";
 const friendlyJournalText = (value: unknown) =>
   String(value || "")
     .replace(
