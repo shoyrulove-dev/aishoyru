@@ -3,8 +3,8 @@ name: Shoyru hourly work cycle
 
 on:
   schedule:
-    # Gọi bốn lần để bù khi GitHub trì hoãn/bỏ lịch; API khóa 40 phút nên không chạy trùng.
-    - cron: "2,17,32,47 * * * *"
+    # Watchdog chính; hai workflow độc lập ở phút 27 và 47 dự phòng khi GitHub bỏ lịch.
+    - cron: "7 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
