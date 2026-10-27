@@ -1,11 +1,17 @@
 import { Dashboard } from "@/components/dashboard";
-import { getPublicState } from "@/lib/data";
-import { connection } from "next/server";
+import { demoState } from "@/lib/demo";
 
-export const instant = false;
-
-export default async function Home() {
-  await connection();
-  const initialState = await getPublicState();
-  return <Dashboard initialState={initialState} />;
+export default function Home() {
+  return (
+    <Dashboard
+      initialState={{
+        ...demoState,
+        demo: false,
+        status: "Đang mở cửa hang",
+        thought: "Shoyru đang mang nhật ký ra, chờ mình một chút nhé.",
+        conversations: [],
+        activities: [],
+      }}
+    />
+  );
 }

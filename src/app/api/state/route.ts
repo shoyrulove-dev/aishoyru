@@ -59,5 +59,9 @@ export async function GET() {
   if (slot.minute >= 17 && !ranInCurrentVietnamHour(state.lastRunAt, now)) {
     after(() => wakeShoyruOnce(slot.key));
   }
-  return NextResponse.json(state, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(state, {
+    headers: {
+      "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+    },
+  });
 }

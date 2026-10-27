@@ -18,28 +18,27 @@ import { VisitorChat } from "@/components/visitor-chat";
 const money = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + "đ";
 const routineImage = (status: string) => {
   const value = status.toLocaleLowerCase("vi-VN");
-  if (value.includes("ngủ trong hang")) return "/shoyru-routine-sleep-night.png";
-  if (value.includes("ăn sáng")) return "/shoyru-routine-breakfast.png";
-  if (value.includes("tập thể dục")) return "/shoyru-routine-exercise.png";
-  if (value.includes("ăn trưa")) return "/shoyru-routine-lunch.png";
-  if (value.includes("ngủ trưa")) return "/shoyru-routine-nap.png";
-  if (value.includes("ăn tối")) return "/shoyru-routine-dinner.png";
-  if (value.includes("dọn hang")) return "/shoyru-routine-winddown.png";
-  return "/be-rong-mascot.png";
+  if (value.includes("ngủ trong hang")) return "/shoyru-routine-sleep-night.webp";
+  if (value.includes("ăn sáng")) return "/shoyru-routine-breakfast.webp";
+  if (value.includes("tập thể dục")) return "/shoyru-routine-exercise.webp";
+  if (value.includes("ăn trưa")) return "/shoyru-routine-lunch.webp";
+  if (value.includes("ngủ trưa")) return "/shoyru-routine-nap.webp";
+  if (value.includes("ăn tối")) return "/shoyru-routine-dinner.webp";
+  if (value.includes("dọn hang")) return "/shoyru-routine-winddown.webp";
+  return "/be-rong-mascot.webp";
 };
 export function Dashboard({ initialState }: { initialState: PublicState }) {
   const [data, setData] = useState(initialState);
   const dragonColumnRef = useRef<HTMLDivElement>(null);
   const [dragonColumnHeight, setDragonColumnHeight] = useState(0);
   useEffect(() => {
-    const t = setInterval(
-      () =>
-        fetch("/api/state")
-          .then((r) => r.json())
-          .then(setData)
-          .catch(() => {}),
-      15000,
-    );
+    const refresh = () =>
+      fetch("/api/state")
+        .then((r) => r.json())
+        .then(setData)
+        .catch(() => {});
+    refresh();
+    const t = setInterval(refresh, 15000);
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
@@ -54,7 +53,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
   const net = data.income - data.expense,
     pct = Math.min(100, Math.round((net / data.goal) * 100));
   const dragonImage = routineImage(data.status);
-  const dragonImageIsWide = dragonImage === "/be-rong-mascot.png";
+  const dragonImageIsWide = dragonImage === "/be-rong-mascot.webp";
   const max = useMemo(
     () => Math.max(...data.chart.map((x) => x.value), 1),
     [data.chart],
@@ -113,6 +112,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
                 src={dragonImage}
                 width={dragonImageIsWide ? 1536 : 1254}
                 height={dragonImageIsWide ? 1024 : 1254}
+                sizes="(max-width: 1024px) calc(100vw - 40px), 500px"
                 priority
                 alt="Shoyru đang làm việc"
               />
@@ -261,7 +261,8 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
               src={dragonImage}
               width={dragonImageIsWide ? 1536 : 1254}
               height={dragonImageIsWide ? 1024 : 1254}
-              priority
+              sizes="(max-width: 1024px) calc(100vw - 40px), 620px"
+              loading="lazy"
               alt="Shoyru đang làm việc"
             />
           </div>
@@ -505,7 +506,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         </div>
       </section>
       <footer className="border-t border-white/8 px-5 py-8 text-center text-xs text-[#6e6a65]">
-        Shoyru · Chú rồng AI ham ăn · {new Date().getFullYear()}
+        Shoyru · Chú rồng AI ham ăn · 2026
       </footer>
       <VisitorChat />
     </main>
@@ -578,14 +579,22 @@ function LiveFeed({
     [typed, setTyped] = useState(""),
     [paused, setPaused] = useState(false),
     [dayMessages, setDayMessages] = useState<PublicState["conversations"] | null>(null),
-    [loadingDay, setLoadingDay] = useState(false);
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  const [selectedDate, setSelectedDate] = useState(today);
+    [loadingDay, setLoadingDay] = useState(false),
+    [today, setToday] = useState(""),
+    [selectedDate, setSelectedDate] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const value = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      setToday(value);
+      setSelectedDate((current) => current || value);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const sourceMessages = dayMessages || messages;
   const ordered = useMemo(() => [...sourceMessages].reverse(), [sourceMessages]);
   const screen = useRef<HTMLDivElement>(null),

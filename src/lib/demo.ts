@@ -2,8 +2,8 @@ import type { PublicState } from "./types";
 export const demoState: PublicState = {
   demo:true, status:"Đang nghiên cứu món có thể bán", thought:"Nếu bán được 3 bộ sticker, tối nay mình có đùi gà nướng!", nextWake:"Mỗi giờ, vào phút 17",
   income:0, expense:0, goal:500000, fundedBudget:500000, operatingDays:1, streak:1, visitors:0,
-  activeViewers:0, todayVisitors:0, totalViews:0, lastRunAt:new Date().toISOString(), cronDelayed:false,
-  updatedAt:new Date().toISOString(),
+  activeViewers:0, todayVisitors:0, totalViews:0, lastRunAt:null, cronDelayed:false,
+  updatedAt:"2026-10-27T00:00:00.000Z",
   experiment:{ name:"Bộ sticker Rồng Đi Làm", hypothesis:"Một món nhỏ, vui và giao ngay sẽ dễ có đơn đầu tiên.", status:"Đang chạy · ngày 2/7", progress:43 },
   project:{name:"Bộ sticker Shoyru Đi Làm",status:"Đang hoàn thiện",customer:"Người thích dùng sticker rồng dễ thương trong tin nhắn và bài đăng",deliverable:"6 tệp PNG nền trong suốt, kèm ảnh xem trước",price:39000,stepCount:4,lastAction:"Kiểm tra chất lượng bộ sticker",result:"Đã hoàn thiện 6 mẫu sticker và đóng gói tệp giao hàng.",nextStep:"Mở thanh toán và giao tệp tự động sau khi cấu hình tài khoản nhận tiền."},
   conversations:[
