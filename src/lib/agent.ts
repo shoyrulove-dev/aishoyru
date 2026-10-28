@@ -48,6 +48,10 @@ const friendlyPublic = (value: string, max: number) =>
   clip(
     value
       .replace(
+        /Đang tạo bản nháp email đề nghị bán (.+?) cho người có thể cần món này đã được qualify\.?/gi,
+        "Shoyru đang soạn email giới thiệu $1 cho một người có nhu cầu phù hợp.",
+      )
+      .replace(
         /Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu\.?/gi,
         "Shoyru đang hoàn thiện nội dung giới thiệu Bộ khởi tạo AI sinh tồn.",
       )
@@ -65,6 +69,7 @@ const friendlyPublic = (value: string, max: number) =>
       )
       .replace(/discover(?:y)?[_ ]lead/gi, "tìm một nhu cầu có nguồn rõ ràng")
       .replace(/qualify[_ ]lead/gi, "kiểm tra nhu cầu có phù hợp")
+      .replace(/\bqualif(?:y|ied)\b/gi, "xác nhận phù hợp")
       .replace(/plan[_ ]business/gi, "lên kế hoạch kiếm tiền")
       .replace(/micro[_ ]job/gi, "việc nhỏ có trả công")
       .replace(/grant/gi, "tài trợ")
@@ -778,7 +783,7 @@ export async function runAgentCycle() {
         if (!vietnameseText.test(publicFields.join(" ")))
           throw new Error("Nội dung công khai không phải tiếng Việt có dấu");
         if (
-          /discover(?:y)?[_ ]lead|qualify[_ ]lead|plan[_ ]business|pipeline|marketing|micro[_ ]job/i.test(
+          /discover(?:y)?[_ ]lead|qualif(?:y|ied)|plan[_ ]business|pipeline|marketing|micro[_ ]job/i.test(
             publicFields.join(" "),
           )
         )
