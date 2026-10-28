@@ -6,6 +6,7 @@ import { ShareActions } from "@/components/share-actions";
 import { getDb } from "@/lib/mongodb";
 
 type Props = { params: Promise<{ slug: string }> };
+export const instant = false;
 
 async function getPost(slug: string) {
   const db = await getDb();
