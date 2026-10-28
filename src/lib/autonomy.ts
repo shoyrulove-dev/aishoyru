@@ -146,6 +146,64 @@ export function scoreOpportunity(opportunity: {
 
 export type ArtifactFile = { path: string; content: string; language?: string };
 
+export async function ensureDailyStrategy(
+  db: Db,
+  input: {
+    funnel: Record<string, number>;
+    verifiedIncome: number;
+    averageQuality: number;
+  },
+) {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const existing = await db.collection("agent_strategies").findOne({ day });
+  if (existing) return existing;
+  const views = Number(input.funnel.product_view || 0);
+  const checkouts = Number(input.funnel.checkout_start || 0);
+  const payments = Number(input.funnel.payment_verified || 0);
+  const strategy = payments > 0
+    ? {
+        focus: "Giao hàng tốt và tìm thêm người giống khách đã mua",
+        reason: "Đã có thanh toán xác minh, cần giữ trải nghiệm tốt và nhân rộng cách bán hiệu quả.",
+        successMetric: "Giao tệp thành công và có thêm một lượt thanh toán xác minh",
+        stopCondition: "Dừng mở rộng nếu phát sinh lỗi giao tệp hoặc khiếu nại chưa xử lý",
+      }
+    : checkouts > 0
+      ? {
+          focus: "Gỡ vướng ở bước thanh toán",
+          reason: "Đã có người mở thanh toán nhưng chưa có giao dịch xác minh.",
+          successMetric: "Có một giao dịch SePay xác minh hoặc tìm được lỗi thanh toán cụ thể",
+          stopCondition: "Dừng sửa nội dung bán hàng nếu nguyên nhân nằm ở kỹ thuật thanh toán",
+        }
+      : views > 0
+        ? {
+            focus: "Làm lời mời mua rõ hơn",
+            reason: "Có người xem sản phẩm nhưng chưa bắt đầu thanh toán.",
+            successMetric: "Có ít nhất một lượt mở thanh toán",
+            stopCondition: "Dừng thay đổi nếu chưa đủ 20 lượt xem để kết luận",
+          }
+        : {
+            focus: "Tìm đúng nơi có người thật sự cần sản phẩm hoặc dịch vụ",
+            reason: "Chưa có lượt xem sản phẩm trong 24 giờ gần nhất.",
+            successMetric: "Có một nguồn nhu cầu thật hoặc một lượt xem sản phẩm mới",
+            stopCondition: "Bỏ nguồn nếu không có nhu cầu rõ, URL cụ thể hoặc cách tiếp cận hợp lệ",
+          };
+  const document = {
+    day,
+    ...strategy,
+    baseline: input,
+    status: "active",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await db.collection("agent_strategies").insertOne(document);
+  return document;
+}
+
 export function validateArtifactFiles(files: ArtifactFile[]) {
   const errors: string[] = [];
   const normalized: ArtifactFile[] = [];

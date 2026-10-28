@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
     artifacts,
     evaluations,
     cycleClaims,
+    activeStrategy,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -153,6 +154,7 @@ export async function GET(request: NextRequest) {
         "decision.action": 1,
         "decision.status": 1,
         workResult: 1,
+        critique: 1,
       })
       .toArray(),
     db
@@ -232,6 +234,7 @@ export async function GET(request: NextRequest) {
       .sort({ claimedAt: -1 })
       .limit(30)
       .toArray(),
+    db.collection("agent_strategies").findOne({}, { sort: { createdAt: -1 } }),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
@@ -246,6 +249,7 @@ export async function GET(request: NextRequest) {
     activePlan,
     artifacts,
     evaluations,
+    activeStrategy,
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,

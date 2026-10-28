@@ -53,6 +53,13 @@ type AgentRun = {
     action?: { type?: string; title?: string; details?: string };
   };
   workResult?: { summary?: string; artifact?: string; nextStep?: string };
+  critique?: {
+    approved?: boolean;
+    confidence?: number;
+    issues?: string[];
+    recommendation?: string;
+    provider?: string;
+  };
 };
 type Overview = {
   approvals: Approval[];
@@ -63,6 +70,7 @@ type Overview = {
   published: Array<Record<string, unknown>>;
   chats: Array<Record<string, unknown>>;
   activePlan?: Record<string, unknown> | null;
+  activeStrategy?: Record<string, unknown> | null;
   artifacts: Array<Record<string, unknown>>;
   evaluations: Array<Record<string, unknown>>;
   aiHealth: Array<{
@@ -473,6 +481,23 @@ function OverviewPanel({
           </p>
         </div>
       </div>
+      <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
+        <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">TRỌNG TÂM HÔM NAY</p>
+        <h2 className="mt-2 text-xl font-black">
+          {String(data.activeStrategy?.focus || "Đang chờ lượt làm việc đầu tiên để chọn trọng tâm")}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#66717c]">
+          {String(data.activeStrategy?.reason || "Shoyru sẽ dựa trên dữ liệu thật để chọn việc quan trọng nhất.")}
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl bg-[#eef8f1] p-4 text-sm text-[#286f45]">
+            <b>Đạt khi:</b> {String(data.activeStrategy?.successMetric || "Có kết quả đo được")}
+          </div>
+          <div className="rounded-xl bg-[#fff4e9] p-4 text-sm text-[#8d5928]">
+            <b>Dừng khi:</b> {String(data.activeStrategy?.stopCondition || "Không còn đủ bằng chứng để tiếp tục")}
+          </div>
+        </div>
+      </section>
       <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
         <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">PHỄU 24 GIỜ</p>
         <h2 className="mt-2 text-xl font-black">Từ người xem đến khách hàng</h2>
@@ -1068,6 +1093,13 @@ function WorkLog({ runs }: { runs: AgentRun[] }) {
               <WorkField label="Kết quả" value={run.workResult?.artifact || "Chưa có đầu ra riêng."} />
               <WorkField label="Việc tiếp theo" value={run.workResult?.nextStep || "Chờ lượt kế tiếp."} />
             </div>
+            {run.critique && (
+              <div className={`mt-3 rounded-xl p-4 text-sm ${run.critique.approved ? "bg-[#eef8f1] text-[#286f45]" : "bg-[#fff4e9] text-[#8d5928]"}`}>
+                <b>{run.critique.approved ? "Đã qua phản biện độc lập" : "Cần kiểm tra thêm"}</b>
+                {` · độ tin cậy ${Number(run.critique.confidence || 0)}% · ${run.critique.provider || "AI phản biện"}`}
+                {run.critique.recommendation ? ` — ${run.critique.recommendation}` : ""}
+              </div>
+            )}
           </article>
         ))}
       </div>

@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import {
   advanceSurvivalPlan,
+  ensureDailyStrategy,
   ensureSurvivalPlan,
   scoreOpportunity,
   validateArtifactFiles,
@@ -256,6 +257,12 @@ const WorkResult = z.object({
     )
     .max(20)
     .optional(),
+});
+const Critique = z.object({
+  approved: z.boolean(),
+  confidence: z.number().min(0).max(100),
+  issues: z.array(z.string().min(3)).max(6),
+  recommendation: z.string().min(3),
 });
 type AiMessage = { role: "system" | "user"; content: string };
 const vietnameseText =
@@ -700,11 +707,18 @@ export async function runAgentCycle() {
     throw new Error(
       "Chưa cấu hình API key cho Groq, OpenRouter, Kilo hoặc OpenAI",
     );
-  async function completeJson(messages: AiMessage[]) {
+  async function completeJson(
+    messages: AiMessage[],
+    options: { validatePublic?: boolean; excludeProvider?: string; maxProviders?: number } = {},
+  ) {
     const errors: string[] = [];
-    const compactMessages = messages.slice(-2);
+    const compactMessages = messages.slice(-3);
+    let attempted = 0;
     for (const provider of providers) {
+      if (provider.name === options.excludeProvider) continue;
       if (await providerIsCoolingDown(db!, provider.name)) continue;
+      if (attempted >= (options.maxProviders || Number.POSITIVE_INFINITY)) break;
+      attempted += 1;
       const startedAt = Date.now();
       try {
         const client = new OpenAI({
@@ -720,6 +734,15 @@ export async function runAgentCycle() {
         });
         const content = response.choices[0].message.content || "{}";
         const raw = JSON.parse(content) as Record<string, unknown>;
+        if (options.validatePublic === false) {
+          await recordProviderSuccess(
+            db!,
+            provider.name,
+            provider.model,
+            Date.now() - startedAt,
+          );
+          return { content, provider: provider.name, model: provider.model };
+        }
         const action =
           raw.action && typeof raw.action === "object"
             ? (raw.action as Record<string, unknown>)
@@ -766,6 +789,7 @@ export async function runAgentCycle() {
     funnel24h,
     ownerInstructions,
     recentLessons,
+    recentEvaluations,
   ] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
@@ -827,8 +851,17 @@ export async function runAgentCycle() {
       .sort({ updatedAt: -1 })
       .limit(12)
       .toArray(),
+    db
+      .collection("agent_evaluations")
+      .find({ createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } })
+      .sort({ createdAt: -1 })
+      .limit(24)
+      .toArray(),
   ]);
-  const [activePlan, dueFollowUps] = await Promise.all([
+  const funnelSnapshot = Object.fromEntries(
+    funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
+  );
+  const [activePlan, dueFollowUps, dailyStrategy] = await Promise.all([
     ensureSurvivalPlan(db, activeProject),
     db
       .collection("opportunities")
@@ -839,6 +872,18 @@ export async function runAgentCycle() {
       .sort({ nextFollowUpAt: 1 })
       .limit(5)
       .toArray(),
+    ensureDailyStrategy(db, {
+      funnel: funnelSnapshot,
+      verifiedIncome: transactions
+        .filter((item) => item.kind === "income")
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0),
+      averageQuality: recentEvaluations.length
+        ? Math.round(
+            recentEvaluations.reduce((sum, item) => sum + Number(item.score || 0), 0) /
+              recentEvaluations.length,
+          )
+        : 0,
+    }),
   ]);
   const storeFacts = {
     agentStarterKit: {
@@ -900,7 +945,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "TRÍ NHỚ KINH NGHIỆM: lessons là những kết quả đã được hệ thống kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
+        "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng; chỉ rời trọng tâm khi đã đạt chỉ số, chạm điều kiện dừng hoặc có việc khẩn cấp hơn với bằng chứng rõ. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
     },
     {
       role: "user",
@@ -940,6 +985,12 @@ export async function runAgentCycle() {
           currentStep: activePlan.currentStep,
           steps: activePlan.steps,
         },
+        dailyStrategy: {
+          focus: dailyStrategy.focus,
+          reason: dailyStrategy.reason,
+          successMetric: dailyStrategy.successMetric,
+          stopCondition: dailyStrategy.stopCondition,
+        },
         dueFollowUps: dueFollowUps.map((item) => ({
           title: item.title,
           sourceUrl: item.sourceUrl,
@@ -962,9 +1013,7 @@ export async function runAgentCycle() {
           confidence: item.confidence,
           sourceUrl: item.sourceUrl,
         })),
-        funnel24h: Object.fromEntries(
-          funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
-        ),
+        funnel24h: funnelSnapshot,
         storeFacts,
         outreachTargets,
         fundingResearch: {
@@ -1115,6 +1164,71 @@ export async function runAgentCycle() {
           details: "Đối chiếu kết quả tìm kiếm công khai trước khi lưu đầu mối.",
         };
       }
+    }
+  }
+  let critique:
+    | (z.infer<typeof Critique> & { provider: string; model: string })
+    | null = null;
+  const needsSecondOpinion =
+    Boolean(decision.opportunity) ||
+    ["draft_email", "build_product", "build_bot", "plan_business", "paper_trade"].includes(
+      decision.action.type,
+    );
+  if (needsSecondOpinion && providers.length > 1) {
+    try {
+      const critiqueResponse = await completeJson(
+        [
+          {
+            role: "system",
+            content:
+              "Bạn là người phản biện độc lập cho Shoyru. Kiểm tra quyết định có dựa trên nguồn thật, tạo đầu ra cụ thể, không bịa khách/doanh thu, không spam, không tiêu tiền hoặc thực hiện giao dịch rủi ro. Chỉ phản đối khi có lỗi thực chất. Trả JSON: approved, confidence từ 0 đến 100, issues là mảng ngắn, recommendation bằng tiếng Việt.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              decision,
+              allowedSourceUrls: [
+                fundingResearch.url,
+                ...webResearch.results.map((item) => item.url),
+                ...dueFollowUps.map((item) => item.sourceUrl),
+              ],
+              storeFacts,
+              activePlan: {
+                objective: activePlan.objective,
+                currentStep: activePlan.currentStep,
+              },
+            }),
+          },
+        ],
+        {
+          validatePublic: false,
+          excludeProvider: decisionResponse.provider,
+          maxProviders: 1,
+        },
+      );
+      critique = {
+        ...Critique.parse(JSON.parse(critiqueResponse.content)),
+        provider: critiqueResponse.provider,
+        model: critiqueResponse.model,
+      };
+      if (!critique.approved && ["draft_email", "paper_trade"].includes(decision.action.type)) {
+        decision.status = "Đang kiểm tra kỹ trước khi hành động";
+        decision.thought = "Một bộ não khác vừa phát hiện điểm chưa chắc chắn, mình kiểm tra lại cho an toàn nhé.";
+        decision.reflection = friendlyPublic(critique.recommendation, 180);
+        decision.action = {
+          type: "research",
+          title: "Kiểm tra lại quyết định quan trọng",
+          details: critique.issues.join("; ") || critique.recommendation,
+        };
+        decision.email = undefined;
+        decision.work = {
+          summary: "Đã giữ lại hành động chưa đủ chắc chắn để kiểm tra thêm.",
+          artifact: critique.issues.join("; ") || critique.recommendation,
+          nextStep: "Bổ sung bằng chứng rồi mới tiếp tục hành động bên ngoài.",
+        };
+      }
+    } catch (error) {
+      console.error("Independent critique unavailable", error);
     }
   }
   if (decision.action.type === "wait" && pendingApprovals.length === 0) {
@@ -1411,6 +1525,11 @@ export async function runAgentCycle() {
         ? "Cơ hội đủ điểm phù hợp"
         : "Cơ hội chưa đủ điểm"
       : "Lượt này không tạo cơ hội",
+    critique
+      ? critique.approved
+        ? "Đã qua phản biện độc lập"
+        : "Phản biện yêu cầu kiểm tra thêm"
+      : "Không cần gọi phản biện ở lượt này",
   ];
   const qualityScore = Math.max(
     0,
@@ -1497,6 +1616,7 @@ export async function runAgentCycle() {
       },
       provider: decisionResponse.provider,
       model: decisionResponse.model,
+      critique,
       createdAt: now,
     }),
     db.collection("funding_research").insertOne({
@@ -1510,6 +1630,7 @@ export async function runAgentCycle() {
       score: qualityScore,
       reasons: qualityReasons,
       actionType: decision.action.type,
+      critique,
       evidence: {
         sourceUrl: decision.opportunity?.sourceUrl || fundingResearch.url,
         artifactId: artifactRecord?.artifactId,
