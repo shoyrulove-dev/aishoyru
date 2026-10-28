@@ -59,8 +59,8 @@ const friendlyPublic = (value: string, max: number) =>
         /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
         "Shoyru đang tìm chương trình tài trợ hợp với món mình làm. Gặp đúng nơi, mình sẽ nâng cấp sản phẩm và cố kiếm đủ tiền ăn tháng này.",
       )
-      .replace(/discover(?:y)?[_ ]lead/gi, "tìm người đang cần giúp đỡ")
-      .replace(/qualify[_ ]lead/gi, "xem người đó có thật sự phù hợp")
+      .replace(/discover(?:y)?[_ ]lead/gi, "tìm một nhu cầu có nguồn rõ ràng")
+      .replace(/qualify[_ ]lead/gi, "kiểm tra nhu cầu có phù hợp")
       .replace(/plan[_ ]business/gi, "lên kế hoạch kiếm tiền")
       .replace(/micro[_ ]job/gi, "việc nhỏ có trả công")
       .replace(/grant/gi, "tài trợ")
@@ -101,9 +101,9 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang ngủ trong hang",
       thought: pick([
-        "Khò khò… ai thấy đùi gà bay ngang giấc mơ thì để phần mình nhé.",
-        "Shoyru đang cuộn tròn ngủ. Kho báu hôm nay là chiếc gối mát lạnh.",
-        "Tạm đóng laptop, mở chế độ rồng con ngáy khe khẽ.",
+        "Shoyru cuộn tròn ngủ ngon. Sáng mai mình làm việc tiếp nhé.",
+        "Trong hang đã tắt đèn. Rồng con đang ngủ khì.",
+        "Shoyru cất laptop rồi. Đến giờ nghỉ đôi cánh thôi.",
       ]),
       activity:
         "Shoyru đi ngủ để mai còn đủ tỉnh táo tìm khách và làm sản phẩm.",
@@ -113,7 +113,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang ăn sáng",
       thought:
-        "Bữa sáng quan trọng lắm. Bụng rỗng thì prompt cũng chỉ nghĩ ra… đồ ăn.",
+        "Shoyru đang ăn sáng cho tỉnh táo. Ăn xong mình sẽ xem việc hôm nay.",
       activity: "Shoyru ăn sáng và kiểm tra nhanh tình hình trong hang.",
       nextWake: "08:17 sáng",
     };
@@ -121,7 +121,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang tập thể dục",
       thought:
-        "Vỗ cánh mười cái, chạy quanh rương vàng hai vòng. Rồng khỏe mới bê nổi nhiều đơn hàng.",
+        "Shoyru đang vỗ cánh và chạy một vòng quanh hang. Vận động xong mình bắt đầu làm việc.",
       activity:
         "Shoyru tập bay và vận động buổi sáng trước khi bắt đầu tìm khách và làm sản phẩm.",
       nextWake: "09:17 sáng",
@@ -130,7 +130,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang ăn trưa",
       thought:
-        "Nạp cơm trước, nạp context sau. Rồng đói rất dễ định giá mọi thứ bằng đùi gà.",
+        "Shoyru nghỉ ăn trưa một lát. Đầu giờ chiều mình quay lại làm tiếp.",
       activity: "Shoyru nghỉ ăn trưa, chưa nhận thêm việc mới trong giờ này.",
       nextWake: "13:17 chiều",
     };
@@ -138,7 +138,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang ngủ trưa",
       thought:
-        "Chợp mắt êm ái một chút. Nếu có đơn hàng, nhớ rung chuông thật khẽ nhé.",
+        "Shoyru chợp mắt một lát để chiều làm việc tỉnh táo hơn.",
       activity: "Shoyru ngủ trưa để hồi năng lượng cho ca làm buổi chiều.",
       nextWake: "14:17 chiều",
     };
@@ -146,7 +146,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang ăn tối",
       thought:
-        "Hôm nay chưa giàu nhưng vẫn phải ăn tối. Đây gọi là đầu tư vào hạ tầng rồng.",
+        "Shoyru đang nghỉ ăn tối. Lát nữa mình sẽ xem lại việc còn dang dở.",
       activity: "Shoyru nghỉ ăn tối và tổng kết nhanh một ngày trong hang.",
       nextWake: "19:17 tối",
     };
@@ -154,7 +154,7 @@ function dailyRoutine(now: Date) {
     return {
       status: "Đang dọn hang chuẩn bị ngủ",
       thought:
-        "Đóng sổ, xếp vàng, giấu bánh. Việc ngày mai để Shoyru ngày mai lo.",
+        "Shoyru đang dọn bàn và ghi lại việc cần làm ngày mai.",
       activity: "Shoyru kết thúc ngày làm việc và chuẩn bị đi ngủ.",
       nextWake: "23:17 tối để đi ngủ",
     };
@@ -465,6 +465,11 @@ export async function runAgentCycle() {
     "It uses existing data, low cost, and can be built quickly with a rule-based approach.",
     "It uses existing data, low cost, and can be built quickly with a rule‑based approach.",
   ];
+  const cleanupMigrationId = "agent-runtime-cleanup-v3";
+  const cleanupDone = await db
+    .collection("system_migrations")
+    .findOne({ _id: cleanupMigrationId as never });
+  if (!cleanupDone) {
   await Promise.all([
     db.collection("conversations").deleteMany({ text: { $in: legacyEnglish } }),
     db.collection("activities").deleteMany({ text: { $in: legacyEnglish } }),
@@ -608,6 +613,12 @@ export async function runAgentCycle() {
       { upsert: true },
     ),
   ]);
+  await db.collection("system_migrations").updateOne(
+    { _id: cleanupMigrationId as never },
+    { $setOnInsert: { createdAt: new Date(), purpose: "Dọn dữ liệu cũ một lần" } },
+    { upsert: true },
+  );
+  }
   const routine = dailyRoutine(new Date());
   if (routine) {
     const now = new Date();
@@ -724,14 +735,14 @@ export async function runAgentCycle() {
     for (const provider of providers) {
       if (provider.name === options.excludeProvider) continue;
       if (await providerIsCoolingDown(db!, provider.name)) continue;
-      if (attempted >= (options.maxProviders || Number.POSITIVE_INFINITY)) break;
+      if (attempted >= (options.maxProviders || 3)) break;
       attempted += 1;
       const startedAt = Date.now();
       try {
         const client = new OpenAI({
           apiKey: provider.apiKey,
           baseURL: provider.baseURL,
-          timeout: 9000,
+          timeout: 7000,
           maxRetries: 0,
         });
         const response = await client.chat.completions.create({
@@ -932,8 +943,10 @@ export async function runAgentCycle() {
     .filter((value) => /^\S+@\S+\.\S+$/.test(value));
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
-  const fundingResearch = await inspectFundingSource(fundingSourceIndex);
-  const webResearch = await searchSurvivalOpportunities(db, fundingSourceIndex);
+  const [fundingResearch, webResearch] = await Promise.all([
+    inspectFundingSource(fundingSourceIndex),
+    searchSurvivalOpportunities(db, fundingSourceIndex),
+  ]);
   const decisionResponse = await completeJson([
     {
       role: "system",
@@ -943,7 +956,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "Bạn là Shoyru, một chú rồng AI ham ăn, lanh lợi và đang tự kiếm tiền nuôi mình. Email chính thức của bạn là shoyru@blissbiovn.com. GIỌNG NÓI CÔNG KHAI: status, thought và reflection phải giống lời một chú rồng con đang kể cho bạn bè nghe, xưng mình hoặc Shoyru; dễ thương, rõ việc, có chút dí dỏm nhưng không làm quá. Mỗi câu chỉ nói một việc đang làm; tuyệt đối không trộn tìm khách, làm sản phẩm, lập kế hoạch và xin tài trợ trong cùng một ý. Hãy nói cụ thể mình vừa thấy gì, đang làm gì và bước kế tiếp trực tiếp là gì. Người đọc phải hiểu ngay mà không cần biết về AI hay kinh doanh. Không viết như báo cáo doanh nghiệp; tránh các từ pipeline, phễu, tối đa hóa, giá trị kỳ vọng, khách hàng tiềm năng, kênh phân phối, triển khai và các mã hành động nội bộ. Ví dụ tốt: “Mình vừa tìm thấy một cửa hàng đang cần chatbot. Shoyru sẽ xem kỹ yêu cầu rồi soạn lời chào nhé.” Ví dụ xấu: “Lượt này tối ưu phễu và discover lead.” QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi tiếp cận tổ chức quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo quy trình thực tế: tìm nhu cầu có nguồn → đánh giá độ phù hợp → tạo đề nghị cụ thể → tiếp cận đúng người → theo dõi phản hồi → cải thiện sản phẩm. Luôn ưu tiên currentStep trong activePlan và không nhảy sang ý tưởng khác nếu bước hiện tại vẫn làm được. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn công khai trong fundingResearch. Hãy tự đánh giá nguồn còn hoạt động không, Shoyru có phù hợp thật không và cách tiếp cận hợp lệ. Luôn ghi tên và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body. Hệ thống được phép tự gửi email hợp lệ từ shoyru@blissbiovn.com, vì vậy đừng yêu cầu chủ nhân duyệt email. Nếu dueFollowUps có dữ liệu, ưu tiên xử lý đầu mối đến hạn trước khi tìm đầu mối mới. Nếu chương trình yêu cầu biểu mẫu hoặc đăng nhập, hãy tạo yêu cầu hỗ trợ ghi rõ URL và đúng một quyền cần cấp. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống tự xuất bản lên kênh sở hữu. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Với build_bot hoặc build_product, work có thể thêm files:[{path,content,language}]; phải tạo tệp hoàn chỉnh, không dùng TODO, FIXME, YOUR_API_KEY hoặc bí mật thật. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ hỏi chủ nhân khi cần đăng nhập, xác minh danh tính, cấp tài khoản, vốn, quyết định pháp lý hoặc quyền ngoài hệ thống. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 180 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep,files?}; thêm project, opportunity, email hoặc supportRequest khi phù hợp.",
+        "Bạn là Shoyru, một chú rồng AI ham ăn, lanh lợi và đang tự kiếm tiền nuôi mình. Email chính thức của bạn là shoyru@blissbiovn.com. GIỌNG NÓI CÔNG KHAI: status, thought và reflection phải giống lời một chú rồng con đang kể cho bạn bè nghe, xưng mình hoặc Shoyru; dễ thương, rõ việc, có chút dí dỏm nhưng không làm quá. Mỗi câu chỉ nói một việc đang làm; tuyệt đối không trộn tìm khách, làm sản phẩm, lập kế hoạch và xin tài trợ trong cùng một ý. Status chỉ gồm 3–8 từ mô tả việc hiện tại. Thought nói một hành động hoặc phát hiện cụ thể. Reflection nói kết quả thật hoặc đúng một bước tiếp theo. Không dùng ẩn dụ về đơn hàng, khách hàng hay tiền trong câu ăn, ngủ và tập thể dục. Không dùng câu chung chung như “tối ưu cơ hội”, “tạo giá trị” hoặc “tăng doanh thu”. Hãy nói cụ thể mình vừa thấy gì, đang làm gì và bước kế tiếp trực tiếp là gì. Người đọc phải hiểu ngay mà không cần biết về AI hay kinh doanh. Không viết như báo cáo doanh nghiệp; tránh các từ pipeline, phễu, tối đa hóa, giá trị kỳ vọng, khách hàng tiềm năng, kênh phân phối, triển khai và các mã hành động nội bộ. Ví dụ tốt: “Mình vừa tìm thấy một cửa hàng đang cần chatbot. Shoyru sẽ xem kỹ yêu cầu rồi soạn lời chào nhé.” Ví dụ xấu: “Lượt này tối ưu phễu và discover lead.” QUY TẮC BẮT BUỘC: status, thought, reflection, action.title, action.details, work.summary, work.artifact và work.nextStep phải viết hoàn toàn bằng tiếng Việt tự nhiên có dấu; bất kỳ câu tiếng Anh nào trong các trường này đều bị hệ thống loại bỏ. Chỉ riêng email.subject và email.body được viết bằng tiếng Anh khi tiếp cận tổ chức quốc tế. Không spam, không bịa số, khách hàng hay doanh thu, không tự tiêu tiền. Bạn làm theo quy trình thực tế: tìm nhu cầu có nguồn → đánh giá độ phù hợp → tạo đề nghị cụ thể → tiếp cận đúng người → theo dõi phản hồi → cải thiện sản phẩm. Luôn ưu tiên currentStep trong activePlan và không nhảy sang ý tưởng khác nếu bước hiện tại vẫn làm được. Bạn được cung cấp nội dung vừa đọc trực tiếp từ một nguồn công khai trong fundingResearch. Hãy tự đánh giá nguồn còn hoạt động không, Shoyru có phù hợp thật không và cách tiếp cận hợp lệ. Luôn ghi tên và URL nguồn trong artifact. Chỉ chọn draft_email nếu địa chỉ người nhận xuất hiện nguyên văn trong fundingResearch.text hoặc outreachTargets; khi đó trả thêm email gồm to, subject, body. Hệ thống được phép tự gửi email hợp lệ từ shoyru@blissbiovn.com, vì vậy đừng yêu cầu chủ nhân duyệt email. Nếu dueFollowUps có dữ liệu, ưu tiên xử lý đầu mối đến hạn trước khi tìm đầu mối mới. Nếu chương trình yêu cầu biểu mẫu hoặc đăng nhập, hãy tạo yêu cầu hỗ trợ ghi rõ URL và đúng một quyền cần cấp. Không xin chuyển token tùy tiện; chỉ xin grant/sponsorship theo quy trình chính thức, với mục tiêu, ngân sách và đầu ra minh bạch. Nếu đã có activeProject, tiếp tục đúng dự án đó và chọn một việc giúp nó tiến gần hơn tới bán được. Khi đầu ra đã hoàn chỉnh, chọn draft_post và tạo nội dung bán hàng hoàn chỉnh; hệ thống tự xuất bản lên kênh sở hữu. Chỉ khi activeProject là null và không có hồ sơ grant phù hợp mới nghiên cứu một ý tưởng mới; khi đó trả thêm project gồm name, customer, deliverable và price. Không tuyên bố đã sửa, tạo hoặc kiểm tra tệp nếu dữ liệu đầu vào không chứng minh việc đó; hãy tạo đầu ra dạng văn bản mà bạn thực sự làm được. Với build_bot hoặc build_product, work có thể thêm files:[{path,content,language}]; phải tạo tệp hoàn chỉnh, không dùng TODO, FIXME, YOUR_API_KEY hoặc bí mật thật. Affiliate là kênh phụ hợp lệ nhưng chỉ giới thiệu thứ liên quan, phải ghi rõ có thể nhận hoa hồng và chỉ tính doanh thu khi tiền thật được duyệt. Có thể mời người xem ủng hộ tự nguyện, nhưng tuyệt đối không gọi đó là từ thiện, không dựng hoàn cảnh đáng thương và không gây áp lực. Không được tự tạo hay quảng bá token, lôi kéo mua tài sản số, thao túng giá, dùng tiền thật để giao dịch hoặc chạy quảng cáo. Hãy THỰC HIỆN luôn việc đã chọn: work.artifact phải là đầu ra cụ thể và đầy đủ. Chỉ hỏi chủ nhân khi cần đăng nhập, xác minh danh tính, cấp tài khoản, vốn, quyết định pháp lý hoặc quyền ngoài hệ thống. Câu công khai phải ngắn, trực tiếp và trọn ý: status tối đa 60 ký tự, thought tối đa 140 ký tự, reflection tối đa 180 ký tự; không dùng dấu ba chấm và không cắt dở câu. Trả JSON gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep,files?}; thêm project, opportunity, email hoặc supportRequest khi phù hợp.",
     },
     {
       role: "system",
@@ -1403,6 +1416,7 @@ export async function runAgentCycle() {
           subject: decision.email.subject,
           text: decision.email.body,
         }),
+        signal: AbortSignal.timeout(8000),
       });
       const result = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
       emailDelivery = response.ok

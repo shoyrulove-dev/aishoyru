@@ -26,8 +26,8 @@ const publicSentence = (value: unknown, max = 190) => {
       /Tập trung vào tìm kiếm một cơ hội tài trợ mở, có khả năng mang lại nguồn thu đủ 500k\/đ tháng thông qua việc nâng cấp sản phẩm và marketing\.?/gi,
       "Shoyru đang tìm chương trình tài trợ hợp với món mình làm. Gặp đúng nơi, mình sẽ nâng cấp sản phẩm và cố kiếm đủ tiền ăn tháng này.",
     )
-    .replace(/discover(?:y)?[_ ]lead/gi, "tìm người đang cần giúp đỡ")
-    .replace(/qualify[_ ]lead/gi, "xem người đó có thật sự phù hợp")
+    .replace(/discover(?:y)?[_ ]lead/gi, "tìm một nhu cầu có nguồn rõ ràng")
+    .replace(/qualify[_ ]lead/gi, "kiểm tra nhu cầu có phù hợp")
     .replace(/plan[_ ]business/gi, "lên kế hoạch kiếm tiền")
     .replace(/micro[_ ]job/gi, "việc nhỏ có trả công")
     .replace(/grant/gi, "tài trợ")
