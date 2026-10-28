@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
       .toArray(),
     db.collection("engagement_events").aggregate([
       { $match: { type: "page_view", createdAt: { $gte: since24h } } },
-      { $group: { _id: { source: { $ifNull: ["$utmSource", ""] }, referrer: { $ifNull: ["$referrer", ""] } }, views: { $sum: 1 }, sessions: { $addToSet: "$sessionId" } } },
+      { $group: { _id: { source: { $ifNull: ["$utmSource", ""] }, campaign: { $ifNull: ["$utmCampaign", ""] }, referrer: { $ifNull: ["$referrer", ""] } }, views: { $sum: 1 }, sessions: { $addToSet: "$sessionId" } } },
       { $sort: { views: -1 } },
       { $limit: 12 },
     ]).toArray(),
@@ -274,11 +274,13 @@ export async function GET(request: NextRequest) {
     Number(crmStages.find((item) => item._id === status)?.total || 0);
   const trafficSources = trafficSourceRows.map((item) => {
     const source = String(item._id?.source || "").trim();
+    const campaign = String(item._id?.campaign || "").trim();
     const referrer = String(item._id?.referrer || "").trim();
     let label = source || "Trực tiếp";
     if (!source && referrer) {
       try { label = new URL(referrer).hostname.replace(/^www\./, ""); } catch { label = "Liên kết ngoài"; }
     }
+    if (source && campaign && campaign !== "shoyru") label = `${source} · ${campaign}`;
     return { label, views: Number(item.views || 0), visitors: item.sessions?.length || 0 };
   });
   return NextResponse.json({

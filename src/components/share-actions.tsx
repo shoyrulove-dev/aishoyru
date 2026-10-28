@@ -15,7 +15,8 @@ function visitorId() {
 export function ShareActions({ title, url }: { title: string; url: string }) {
   const [copied, setCopied] = useState(false);
   const absolute = url.startsWith("http") ? url : `https://shoyruai.blissbiovn.com${url}`;
-  const tracked = `${absolute}${absolute.includes("?") ? "&" : "?"}utm_source=share&utm_medium=organic&utm_campaign=shoyru`;
+  const tracked = (source: string) =>
+    `${absolute}${absolute.includes("?") ? "&" : "?"}utm_source=${source}&utm_medium=organic&utm_campaign=shoyru`;
 
   function track(channel: string) {
     fetch("/api/engagement", {
@@ -31,7 +32,7 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(tracked);
+    await navigator.clipboard.writeText(tracked("copy"));
     track("copy");
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
@@ -42,7 +43,7 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
     <div className="flex flex-wrap gap-2">
       <a
         className={button}
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tracked)}`}
+        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(tracked("facebook"))}`}
         target="_blank"
         rel="noreferrer"
         onClick={() => track("facebook")}
@@ -51,7 +52,7 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
       </a>
       <a
         className={button}
-        href={`https://zalo.me/share?url=${encodeURIComponent(tracked)}&title=${encodeURIComponent(title)}`}
+        href={`https://zalo.me/share?url=${encodeURIComponent(tracked("zalo"))}&title=${encodeURIComponent(title)}`}
         target="_blank"
         rel="noreferrer"
         onClick={() => track("zalo")}
