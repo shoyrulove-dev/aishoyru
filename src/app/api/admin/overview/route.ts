@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
     chats,
     aiHealth,
     braveUsage,
+    braveDailyUsage,
     activePlan,
     artifacts,
     evaluations,
@@ -213,6 +214,15 @@ export async function GET(request: NextRequest) {
       provider: "brave-search",
       month: new Date().toISOString().slice(0, 7),
     }),
+    db.collection("api_usage").findOne({
+      provider: "brave-search-daily",
+      day: new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date()),
+    }),
     db.collection("agent_plans").findOne(
       { status: "active" },
       { sort: { updatedAt: -1 } },
@@ -296,7 +306,7 @@ export async function GET(request: NextRequest) {
         name: "Tìm kiếm web",
         status: process.env.BRAVE_SEARCH_API_KEY ? "connected" : "missing",
         detail: process.env.BRAVE_SEARCH_API_KEY
-          ? `Brave Search · đã dùng ${Number(braveUsage?.used || 0)}/${Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000))} lượt tháng này`
+          ? `Brave Search · hôm nay ${Number(braveDailyUsage?.used || 0)}/${Math.min(50, Number(process.env.BRAVE_SEARCH_DAILY_LIMIT || 30))} · tháng này ${Number(braveUsage?.used || 0)}/${Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000))}`
           : "Thiếu BRAVE_SEARCH_API_KEY",
       },
       {

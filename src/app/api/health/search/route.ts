@@ -4,8 +4,24 @@ import { getDb } from "@/lib/mongodb";
 export async function GET() {
   const db = await getDb();
   const month = new Date().toISOString().slice(0, 7);
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const dailyLimit = Math.max(
+    1,
+    Math.min(50, Number(process.env.BRAVE_SEARCH_DAILY_LIMIT || 30)),
+  );
   let usage = db
     ? await db.collection("api_usage").findOne({ provider: "brave-search", month })
+    : null;
+  const dailyUsage = db
+    ? await db.collection("api_usage").findOne({
+        provider: "brave-search-daily",
+        day,
+      })
     : null;
   if (
     db &&
@@ -61,6 +77,9 @@ export async function GET() {
       month,
       used: Number(usage?.used || 0),
       limit: Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000)),
+      day,
+      dayUsed: Number(dailyUsage?.used || 0),
+      dayLimit: dailyLimit,
       lastStatus: String(usage?.lastStatus || (usage?.used ? "called" : "not-used")),
       lastError: usage?.lastError || "",
       lastSuccessAt: usage?.lastSuccessAt || null,

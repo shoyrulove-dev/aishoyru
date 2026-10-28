@@ -28,6 +28,7 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 - `AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `GROQ_API_KEY` cho giai đoạn thử nghiệm
 - `OXION_API_KEY` bật OxionAI ở tầng dự phòng; mặc định dùng `gpt-5.6-luna` qua endpoint OpenAI-compatible.
 - NVIDIA NIM dự phòng cho cả suy luận có cấu trúc và chat. Cloudflare Workers AI chỉ dự phòng chat vì model hiện tại không bảo đảm JSON hợp lệ.
+- Brave Search được chặn ở 30 lượt/ngày và 1.000 lượt/tháng để không vượt gói miễn phí.
 - Có thể đổi sang `AI_PROVIDER=openai` và thêm `OPENAI_API_KEY` mà không sửa code
 - `CRON_SECRET`: Vercel tự gửi dưới dạng Bearer khi chạy cron
 - `ADMIN_API_KEY`: khóa tự đặt để mở `/admin`
@@ -40,6 +41,8 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 ## Triển khai
 
 Import repository lên Vercel, thêm biến môi trường rồi deploy. GitHub Actions chạy mỗi giờ; lịch trong `vercel.json` là lượt dự phòng hằng ngày, phù hợp giới hạn Vercel Hobby.
+
+Watchdog độc lập nằm trong `cloudflare-watchdog/`. Sau khi có token `Workers Scripts: Edit`, chạy `npm run cloudflare:deploy`; Cron Trigger sẽ gọi heartbeat mỗi 10 phút và endpoint vẫn khóa tối đa một lượt làm việc mỗi giờ.
 
 ## Giới hạn an toàn
 

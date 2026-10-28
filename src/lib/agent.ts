@@ -372,7 +372,17 @@ async function searchSurvivalOpportunities(
     1,
     Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000)),
   );
+  const dailyLimit = Math.max(
+    1,
+    Math.min(50, Number(process.env.BRAVE_SEARCH_DAILY_LIMIT || 30)),
+  );
   const month = new Date().toISOString().slice(0, 7);
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const usage = await db.collection("api_usage").findOne({
     provider: "brave-search",
     month,
@@ -384,6 +394,50 @@ async function searchSurvivalOpportunities(
       results: [],
       error: `Đã dùng hết hạn mức ${monthlyLimit} lượt trong tháng`,
     };
+  const dailyUsage = await db.collection("api_usage").findOneAndUpdate(
+    {
+      provider: "brave-search-daily",
+      day,
+      used: { $lt: dailyLimit },
+    },
+    {
+      $inc: { used: 1 },
+      $set: { limit: dailyLimit, updatedAt: new Date() },
+    },
+    { returnDocument: "after" },
+  );
+  if (!dailyUsage) {
+    const existingDaily = await db.collection("api_usage").findOne({
+      provider: "brave-search-daily",
+      day,
+    });
+    if (existingDaily)
+      return {
+        query,
+        provider: "brave",
+        results: [],
+        error: `Đã dùng đủ ${dailyLimit} lượt tìm kiếm hôm nay`,
+      };
+    try {
+      await db.collection("api_usage").insertOne({
+        provider: "brave-search-daily",
+        day,
+        used: 1,
+        limit: dailyLimit,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000)
+        return {
+          query,
+          provider: "brave",
+          results: [],
+          error: "Lượt tìm kiếm hôm nay vừa được một tiến trình khác sử dụng",
+        };
+      throw error;
+    }
+  }
   await db.collection("api_usage").updateOne(
     { provider: "brave-search", month },
     {
@@ -473,6 +527,13 @@ export async function runAgentCycle() {
   await db
     .collection("rate_limits")
     .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await db.collection("api_usage").createIndex(
+    { provider: 1, day: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { provider: "brave-search-daily" },
+    },
+  );
   const legacyEnglish = [
     "I think a simple recipe recommendation bot could be fun and useful for people who don't know what to cook.",
     "It uses existing data, low cost, and can be built quickly with a rule-based approach.",
@@ -1640,15 +1701,50 @@ export async function runAgentCycle() {
     ["discover_lead", "qualify_lead"].includes(decision.action.type)
       ? undefined
       : publicNarratives[decision.action.type];
+  const opportunityTitle = decision.opportunity?.title
+    ? friendlyPublic(decision.opportunity.title, 82).replace(/[.!?]+$/, "")
+    : "";
+  const researchTitle = webResearch.results[0]?.title
+    ? friendlyPublic(webResearch.results[0].title, 82).replace(/[.!?]+$/, "")
+    : "";
+  const concreteNarrative = (() => {
+    if (["discover_lead", "qualify_lead"].includes(decision.action.type) && opportunityTitle)
+      return {
+        status: decision.action.type === "discover_lead" ? "Đang xem một nhu cầu mới" : "Đang kiểm tra một công việc",
+        thought: `Shoyru đang đọc yêu cầu “${opportunityTitle}”.`,
+        reflection: opportunityAssessment?.qualified
+          ? "Yêu cầu có nguồn kiểm tra được. Mình sẽ xác định đúng việc có thể nhận trước khi liên hệ."
+          : "Nguồn này chưa đủ rõ để liên hệ. Shoyru không nhận việc khi chưa hiểu yêu cầu.",
+      };
+    if (decision.action.type === "research" && researchTitle)
+      return {
+        status: "Đang đọc một nguồn mới",
+        thought: `Shoyru đang xem “${researchTitle}”.`,
+        reflection: "Mình sẽ chỉ giữ nguồn có nhu cầu rõ, đường dẫn thật và cách liên hệ hợp lệ.",
+      };
+    if (decision.action.type === "draft_email" && opportunityTitle)
+      return emailDelivery?.sent
+        ? {
+            status: "Đã gửi một lời chào",
+            thought: `Shoyru đã gửi lời giới thiệu về “${opportunityTitle}”.`,
+            reflection: "Email đã được nhà cung cấp xác nhận gửi. Mình sẽ chờ phản hồi và không gửi lặp.",
+          }
+        : {
+            status: "Đang soạn lời giới thiệu",
+            thought: `Shoyru đang viết lời chào cho “${opportunityTitle}”.`,
+            reflection: "Mình chưa gửi vì chưa có địa chỉ công khai phù hợp.",
+          };
+    return narrative;
+  })();
   const publicStatusRaw = needsApproval
     ? "Đang chuyển sang một việc khác"
-    : narrative?.status || decision.status;
+    : concreteNarrative?.status || decision.status;
   const publicThoughtRaw = needsApproval
     ? "Việc này chưa thuận lợi. Shoyru đổi sang một hướng khác trước, không ngồi chờ."
-    : narrative?.thought || decision.thought;
+    : concreteNarrative?.thought || decision.thought;
   const publicReflectionRaw = needsApproval
     ? "Đổi hướng sớm giúp Shoyru dành thời gian cho việc có thể tiến hành ngay."
-    : narrative?.reflection || decision.reflection;
+    : concreteNarrative?.reflection || decision.reflection;
   const publicStatus = friendlyPublic(publicStatusRaw, 60);
   const publicThought = friendlyPublic(publicThoughtRaw, 140);
   const publicReflection = friendlyPublic(publicReflectionRaw, 180);
