@@ -37,6 +37,13 @@ const friendlyJournalText = (value: unknown) =>
     .replace(/\.\.\.|…/g, ",")
     .replace(/\s+/g, " ")
     .trim();
+const journalKey = (value: unknown) =>
+  friendlyJournalText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("vi-VN")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 export async function GET(request: NextRequest) {
   const date = request.nextUrl.searchParams.get("date") || "";
@@ -58,10 +65,18 @@ export async function GET(request: NextRequest) {
     .project({ _id: 1, speaker: 1, text: 1, createdAt: 1 })
     .toArray();
 
+  const seen = new Set<string>();
+  const uniqueRows = rows.filter((row) => {
+    const key = journalKey(row.text);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   return NextResponse.json(
     {
       date,
-      messages: rows.map((row) => ({
+      messages: uniqueRows.map((row) => ({
         id: String(row._id),
         speaker: row.speaker === "he-thong" ? "he-thong" : "shoyru",
         at: new Date(row.createdAt as Date).toLocaleTimeString("vi-VN", {

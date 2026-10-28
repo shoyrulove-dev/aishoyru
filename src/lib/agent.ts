@@ -1708,6 +1708,47 @@ export async function runAgentCycle() {
       },
     ],
   });
+  const journalKey = (value: unknown) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("vi-VN")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const recentJournal = await db
+    .collection("conversations")
+    .find({
+      public: true,
+      source: "agent",
+      createdAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+    })
+    .project({ text: 1 })
+    .limit(100)
+    .toArray();
+  const recentJournalKeys = new Set(
+    recentJournal.map((entry) => journalKey(entry.text)).filter(Boolean),
+  );
+  const conversationEntries = [
+    {
+      speaker: "shoyru",
+      text: publicThought,
+      public: true,
+      createdAt: new Date(now.getTime() - 1000),
+      source: "agent",
+    },
+    {
+      speaker: "shoyru",
+      text: publicReflection,
+      public: true,
+      createdAt: now,
+      source: "agent",
+    },
+  ].filter((entry) => {
+    const key = journalKey(entry.text);
+    if (!key || recentJournalKeys.has(key)) return false;
+    recentJournalKeys.add(key);
+    return true;
+  });
   const writes: Promise<unknown>[] = [
     db.collection("agent_state").updateOne(
       { key: "main" },
@@ -1730,22 +1771,9 @@ export async function runAgentCycle() {
       createdAt: now,
       source: "agent",
     }),
-    db.collection("conversations").insertMany([
-      {
-        speaker: "shoyru",
-        text: publicThought,
-        public: true,
-        createdAt: new Date(now.getTime() - 1000),
-        source: "agent",
-      },
-      {
-        speaker: "shoyru",
-        text: publicReflection,
-        public: true,
-        createdAt: now,
-        source: "agent",
-      },
-    ]),
+    conversationEntries.length
+      ? db.collection("conversations").insertMany(conversationEntries)
+      : Promise.resolve(),
     db.collection("agent_runs").insertOne({
       runId: taskId,
       decision,

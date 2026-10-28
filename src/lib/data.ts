@@ -197,14 +197,22 @@ export async function getPublicState(): Promise<PublicState> {
       text: publicSentence(x.text, 180),
     amount: x.amount ? Number(x.amount) : undefined,
   }));
+  const journalKey = (value: unknown) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("vi-VN")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
   const seenConversationText = new Set<string>();
   const conversationsOut = conversations
     .reverse()
     .filter((x) => {
       const text = String(x.text || "").trim();
-      if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || seenConversationText.has(text))
+      const key = journalKey(legacy[text] || text);
+      if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || !key || seenConversationText.has(key))
         return false;
-      seenConversationText.add(text);
+      seenConversationText.add(key);
       return true;
     })
     .map((x) => ({
