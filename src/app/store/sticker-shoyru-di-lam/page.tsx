@@ -18,15 +18,13 @@ export const metadata: Metadata = {
 };
 import { connection } from "next/server";
 import { StoreFront } from "@/components/store-front";
-import { productPrepared, productReady, products } from "@/lib/store";
+import { findProduct, productPrepared, productReady } from "@/lib/store";
 
 export const instant = false;
 
 export default async function StickerProductPage() {
   await connection();
-  const product = products.find(
-    (item) => item.slug === "sticker-shoyru-di-lam",
-  )!;
+  const product = findProduct("sticker-shoyru-di-lam")!;
   const ready = productReady(product.slug);
   return (
     <main className="min-h-screen bg-[#f6f0e5] text-[#1b1c1e]">

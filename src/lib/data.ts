@@ -15,6 +15,10 @@ const isLegacyAgentEntry = (item: Record<string, unknown>) =>
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
+      /Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu\.?/gi,
+      "Shoyru đang hoàn thiện nội dung giới thiệu Bộ khởi tạo AI sinh tồn.",
+    )
+    .replace(
       /Lập kế hoạch chi tiết \(plan_business\) để chuẩn bị hồ sơ và tài liệu cần thiết cho Gitcoin Grants\.?/gi,
       "Mình đang kiểm tra Gitcoin có vòng tài trợ nào đang mở và Shoyru có đúng điều kiện không. Chưa xác minh xong nên mình chưa chuẩn bị hồ sơ.",
     )
@@ -220,7 +224,7 @@ export async function getPublicState(): Promise<PublicState> {
     ? "Việc này chưa thuận lợi. Shoyru chuyển sang một hướng khác trước."
     : vietnameseText.test(rawThought)
     ? publicSentence(rawThought, 145)
-    : "Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu.";
+    : "Shoyru đang hoàn thiện nội dung giới thiệu Bộ khởi tạo AI sinh tồn.";
   const projectResult =
     activeProject?.result && typeof activeProject.result === "object"
       ? (activeProject.result as Record<string, unknown>)

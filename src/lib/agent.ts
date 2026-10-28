@@ -48,6 +48,10 @@ const friendlyPublic = (value: string, max: number) =>
   clip(
     value
       .replace(
+        /Bộ sticker đã sẵn sàng, Shoyru đang hoàn thiện bài giới thiệu\.?/gi,
+        "Shoyru đang hoàn thiện nội dung giới thiệu Bộ khởi tạo AI sinh tồn.",
+      )
+      .replace(
         /Lập kế hoạch chi tiết \(plan_business\) để chuẩn bị hồ sơ và tài liệu cần thiết cho Gitcoin Grants\.?/gi,
         "Mình đang kiểm tra Gitcoin có vòng tài trợ nào đang mở và Shoyru có đúng điều kiện không. Chưa xác minh xong nên mình chưa chuẩn bị hồ sơ.",
       )
@@ -920,21 +924,6 @@ export async function runAgentCycle() {
       ],
       positioning:
         "Sản phẩm chủ lực; hướng dẫn dựng agent có trí nhớ, lịch chạy, cửa hàng và thanh toán. Không cam kết doanh thu.",
-    },
-    stickerPack: {
-      prepared: true,
-      online: true,
-      files: 6,
-      price: 39000,
-      productUrl: "https://shoyruai.blissbiovn.com/store/sticker-shoyru-di-lam",
-      paymentReady: Boolean(
-        process.env.BANK_BIN &&
-        process.env.BANK_ACCOUNT_NO &&
-        process.env.BANK_ACCOUNT_NAME &&
-        process.env.SEPAY_API_KEY &&
-        (process.env.BLOB_READ_WRITE_TOKEN || process.env.PRODUCT_STICKER_URL),
-      ),
-      delivery: "Mã đơn riêng → VietQR → SePay xác minh → tải ZIP tự động",
     },
   };
   const outreachTargets = (process.env.OUTREACH_TARGETS || "")

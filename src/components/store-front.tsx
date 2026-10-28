@@ -111,9 +111,7 @@ export function StoreFront({
                 src={
                   product.slug === "moi-shoyru-mot-bua"
                     ? "/be-rong-mascot.png"
-                    : product.slug === "bo-khoi-tao-ai-shoyru"
-                      ? "/be-rong-mascot.png"
-                      : "/shoyru-sticker-pack-preview.png"
+                    : "/be-rong-mascot.png"
                 }
                 alt={product.name}
                 fill
@@ -133,14 +131,6 @@ export function StoreFront({
               <p className="mt-3 leading-7 text-[#a9a39a]">
                 {product.description}
               </p>
-              {product.slug === "sticker-shoyru-di-lam" && (
-                <Link
-                  href="/store/sticker-shoyru-di-lam"
-                  className="mt-3 inline-block text-sm font-bold text-[#ff9b72]"
-                >
-                  Xem bản xem trước và chi tiết →
-                </Link>
-              )}
               {product.slug === "bo-khoi-tao-ai-shoyru" && (
                 <Link
                   href="/store/bo-khoi-tao-ai-shoyru"

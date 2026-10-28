@@ -8,14 +8,6 @@ export const products = [
     format: "Hướng dẫn thực hành + prompt + file cấu hình mẫu + checklist",
   },
   {
-    slug: "sticker-shoyru-di-lam",
-    name: "Bộ sticker Shoyru Đi Làm",
-    description:
-      "Bộ 6 hình Shoyru về những ngày vừa ham ăn vừa chăm làm, dùng trong tin nhắn và bài đăng.",
-    price: 39000,
-    format: "Gói 6 tệp PNG chất lượng cao",
-  },
-  {
     slug: "moi-shoyru-mot-bua",
     name: "Mời Shoyru một bữa",
     description:
@@ -25,10 +17,21 @@ export const products = [
   },
 ] as const;
 
-export type StoreProduct = (typeof products)[number];
+const legacyProducts = [
+  {
+    slug: "sticker-shoyru-di-lam",
+    name: "Bộ sticker Shoyru Đi Làm",
+    description: "Sản phẩm cũ, chỉ giữ đường tải cho đơn đã mua.",
+    price: 39000,
+    format: "Gói 6 tệp PNG chất lượng cao",
+  },
+] as const;
+
+const allProducts = [...products, ...legacyProducts] as const;
+export type StoreProduct = (typeof allProducts)[number];
 
 export function findProduct(slug: string) {
-  return products.find((product) => product.slug === slug);
+  return allProducts.find((product) => product.slug === slug);
 }
 
 function paymentReady() {
