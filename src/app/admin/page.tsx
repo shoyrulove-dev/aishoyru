@@ -72,6 +72,8 @@ type Overview = {
   activePlan?: Record<string, unknown> | null;
   activeStrategy?: Record<string, unknown> | null;
   activeCampaign?: Record<string, unknown> | null;
+  trafficSources: Array<{ label: string; views: number; visitors: number }>;
+  topPages: Array<{ path: string; views: number; visitors: number }>;
   artifacts: Array<Record<string, unknown>>;
   evaluations: Array<Record<string, unknown>>;
   aiHealth: Array<{
@@ -942,6 +944,20 @@ function Visitors({
         />
       </div>
       <div className="mt-7 grid gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
+          <h2 className="font-black">Nguồn mang khách tới</h2>
+          <div className="mt-4 space-y-3">
+            {!data.trafficSources.length && <p className="text-sm text-[#8b949e]">Chưa có dữ liệu nguồn trong 24 giờ.</p>}
+            {data.trafficSources.map((item) => <div key={item.label} className="flex items-center justify-between gap-4 text-sm"><span className="truncate text-[#46515c]">{item.label}</span><b>{item.visitors} khách · {item.views} lượt</b></div>)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
+          <h2 className="font-black">Trang được xem nhiều</h2>
+          <div className="mt-4 space-y-3">
+            {!data.topPages.length && <p className="text-sm text-[#8b949e]">Chưa có lượt xem trang trong 24 giờ.</p>}
+            {data.topPages.map((item) => <div key={item.path} className="flex items-center justify-between gap-4 text-sm"><span className="truncate text-[#46515c]">{item.path}</span><b>{item.visitors} khách · {item.views} lượt</b></div>)}
+          </div>
+        </div>
         {!latest.length && <Empty text="Chưa có khách nào nhắn Shoyru." />}
         {latest.map((item) => (
           <ChatCard key={String(item.sessionId)} item={item} reply={reply} />

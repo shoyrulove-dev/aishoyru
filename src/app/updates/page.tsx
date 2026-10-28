@@ -86,15 +86,19 @@ async function UpdatesContent() {
                   )}
                 </time>
               </div>
-              <h2 className="mt-3 text-2xl font-black">{String(post.title)}</h2>
+              <h2 className="mt-3 text-2xl font-black">
+                <Link href={`/updates/${String(post.slug)}`} className="hover:text-[#ffbd3e]">
+                  {String(post.title)}
+                </Link>
+              </h2>
               <p className="mt-4 whitespace-pre-wrap leading-7 text-[#c7c2ba]">
                 {String(post.content)}
               </p>
               <Link
-                href="/store"
+                href={`/updates/${String(post.slug)}`}
                 className="mt-6 inline-flex rounded-xl bg-[#ff6b35] px-5 py-3 text-sm font-extrabold"
               >
-                Xem sản phẩm của Shoyru →
+                Đọc và chia sẻ bài này →
               </Link>
             </article>
           ))}

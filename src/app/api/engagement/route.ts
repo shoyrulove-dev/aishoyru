@@ -16,8 +16,14 @@ const Event = z.object({
     "payment_verified",
     "download_started",
     "affiliate_click",
+    "share_click",
+    "free_download",
   ]),
   path: z.string().startsWith("/").max(180),
+  referrer: z.string().url().max(500).optional(),
+  utmSource: z.string().max(80).optional(),
+  utmMedium: z.string().max(80).optional(),
+  utmCampaign: z.string().max(120).optional(),
 });
 
 export async function POST(request: NextRequest) {

@@ -20,6 +20,7 @@ import {
   recordLeadEvent,
   updateCampaignCounters,
 } from "./growth-engine";
+import { notifyIndexNow } from "./indexnow";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -1532,7 +1533,7 @@ export async function runAgentCycle() {
       request_support: "Đã ghi một yêu cầu hỗ trợ riêng trong admin.",
     };
     if (decision.action.type === "draft_post" && postSlug)
-      workResult.summary = `Đã xuất bản bài tại https://shoyruai.blissbiovn.com/updates#${postSlug}.`;
+      workResult.summary = `Đã xuất bản bài tại https://shoyruai.blissbiovn.com/updates/${postSlug}.`;
     else if (decision.action.type === "draft_email")
       workResult.summary = emailDelivery?.sent
         ? `Đã gửi email đến ${decision.email?.to}; mã Resend ${emailDelivery.providerId || "đã ghi nhận"}.`
@@ -1919,7 +1920,7 @@ export async function runAgentCycle() {
               ? "validated-artifact"
               : "stored-artifact",
         value: postSlug
-          ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+          ? `https://shoyruai.blissbiovn.com/updates/${postSlug}`
           : emailDelivery?.providerId || githubDelivery?.url || artifactRecord?.artifactId || taskId,
       },
       provider: decisionResponse.provider,
@@ -1943,7 +1944,7 @@ export async function runAgentCycle() {
         sourceUrl: decision.opportunity?.sourceUrl || fundingResearch.url,
         artifactId: artifactRecord?.artifactId,
         publishedUrl: postSlug
-          ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+          ? `https://shoyruai.blissbiovn.com/updates/${postSlug}`
           : undefined,
         emailProviderId: emailDelivery?.providerId,
         pullRequestUrl: githubDelivery?.url,
@@ -2029,7 +2030,7 @@ export async function runAgentCycle() {
                 ? "validated-artifact"
                 : "stored-artifact",
           value: postSlug
-            ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+            ? `https://shoyruai.blissbiovn.com/updates/${postSlug}`
             : emailDelivery?.providerId || githubDelivery?.url || artifactRecord?.artifactId || taskId,
         },
         status:
@@ -2065,7 +2066,7 @@ export async function runAgentCycle() {
                 taskId,
                 sourceUrl: decision.opportunity?.sourceUrl || undefined,
                 publishedUrl: postSlug
-                  ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+                  ? `https://shoyruai.blissbiovn.com/updates/${postSlug}`
                   : undefined,
                 emailProviderId: emailDelivery?.providerId,
                 pullRequestUrl: githubDelivery?.url,
@@ -2209,6 +2210,8 @@ export async function runAgentCycle() {
     }
   }
   await Promise.all(writes);
+  if (postSlug)
+    await notifyIndexNow([`/updates/${postSlug}`, "/updates", "/sitemap.xml"]);
   if (decision.opportunity) {
     await recordLeadEvent(db, {
       sourceUrl: decision.opportunity.sourceUrl,
@@ -2256,7 +2259,7 @@ export async function runAgentCycle() {
       sourceUrl: decision.opportunity?.sourceUrl,
       artifactId: artifactRecord?.artifactId,
       publishedUrl: postSlug
-        ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+        ? `https://shoyruai.blissbiovn.com/updates/${postSlug}`
         : undefined,
       emailProviderId: emailDelivery?.providerId,
       pullRequestUrl: githubDelivery?.url,

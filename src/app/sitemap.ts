@@ -27,5 +27,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
       images: [`${base}/shoyru-og-cover-1200x630.jpg`],
     },
+    {
+      url: `${base}/free`,
+      changeFrequency: "monthly",
+      priority: 0.9,
+      images: [`${base}/shoyru-og-cover-1200x630.jpg`],
+    },
   ];
 }

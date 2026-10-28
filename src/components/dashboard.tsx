@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
@@ -81,7 +82,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         </a>
         <div className="hidden gap-7 text-sm text-[#aaa59d] md:flex">
           <a href="#top">Nhật ký</a>
-          <a href="/updates">Bài đăng</a>
+          <Link href="/updates">Bài đăng</Link>
           <a href="#rules">Luật chơi</a>
         </div>
         <a

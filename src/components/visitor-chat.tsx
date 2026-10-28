@@ -27,6 +27,7 @@ export function VisitorChat() {
   ]);
 
   useEffect(() => {
+    const query = new URLSearchParams(location.search);
     const track = (type: "page_view" | "presence") => fetch("/api/engagement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,6 +35,14 @@ export function VisitorChat() {
         sessionId: sessionId(),
         type,
         path: location.pathname,
+        ...(type === "page_view"
+          ? {
+              referrer: document.referrer || undefined,
+              utmSource: query.get("utm_source") || undefined,
+              utmMedium: query.get("utm_medium") || undefined,
+              utmCampaign: query.get("utm_campaign") || undefined,
+            }
+          : {}),
       }),
     }).catch(() => {});
     track("page_view");

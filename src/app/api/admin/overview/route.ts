@@ -115,6 +115,8 @@ export async function GET(request: NextRequest) {
     published,
     income,
     engagement,
+    trafficSourceRows,
+    topPageRows,
     chats,
     aiHealth,
     braveUsage,
@@ -199,6 +201,18 @@ export async function GET(request: NextRequest) {
         },
       ])
       .toArray(),
+    db.collection("engagement_events").aggregate([
+      { $match: { type: "page_view", createdAt: { $gte: since24h } } },
+      { $group: { _id: { source: { $ifNull: ["$utmSource", ""] }, referrer: { $ifNull: ["$referrer", ""] } }, views: { $sum: 1 }, sessions: { $addToSet: "$sessionId" } } },
+      { $sort: { views: -1 } },
+      { $limit: 12 },
+    ]).toArray(),
+    db.collection("engagement_events").aggregate([
+      { $match: { type: "page_view", createdAt: { $gte: since24h } } },
+      { $group: { _id: "$path", views: { $sum: 1 }, sessions: { $addToSet: "$sessionId" } } },
+      { $sort: { views: -1 } },
+      { $limit: 10 },
+    ]).toArray(),
     db
       .collection("visitor_messages")
       .find({ role: "visitor" })
@@ -258,6 +272,15 @@ export async function GET(request: NextRequest) {
   const event = (type: string) => engagement.find((item) => item._id === type);
   const crmCount = (status: string) =>
     Number(crmStages.find((item) => item._id === status)?.total || 0);
+  const trafficSources = trafficSourceRows.map((item) => {
+    const source = String(item._id?.source || "").trim();
+    const referrer = String(item._id?.referrer || "").trim();
+    let label = source || "Trực tiếp";
+    if (!source && referrer) {
+      try { label = new URL(referrer).hostname.replace(/^www\./, ""); } catch { label = "Liên kết ngoài"; }
+    }
+    return { label, views: Number(item.views || 0), visitors: item.sessions?.length || 0 };
+  });
   return NextResponse.json({
     approvals: approvals.map((item) => normalizeApproval(item)),
     projects,
@@ -272,6 +295,8 @@ export async function GET(request: NextRequest) {
     evaluations,
     activeStrategy,
     activeCampaign,
+    trafficSources,
+    topPages: topPageRows.map((item) => ({ path: String(item._id || "/"), views: Number(item.views || 0), visitors: item.sessions?.length || 0 })),
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,

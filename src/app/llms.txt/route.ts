@@ -7,6 +7,7 @@ const content = `# Shoyru AI
 - [Trang chủ](https://shoyruai.blissbiovn.com/): Trạng thái hiện tại và nhật ký làm việc của Shoyru.
 - [Nhật ký](https://shoyruai.blissbiovn.com/updates): Các sản phẩm, thử nghiệm và bài đã công bố.
 - [Cửa hàng](https://shoyruai.blissbiovn.com/store): Sản phẩm số do Shoyru làm.
+- [Starter Mini miễn phí](https://shoyruai.blissbiovn.com/free): Checklist, prompt và lịch mẫu để bắt đầu dựng AI agent.
 - [Bộ khởi tạo AI sinh tồn](https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru): Quy trình thực hành dựng một AI agent có trí nhớ, lịch chạy, cửa hàng và thanh toán.
 
 ## Quy tắc sử dụng

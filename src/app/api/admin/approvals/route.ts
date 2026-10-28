@@ -1,6 +1,7 @@
 import { NextRequest,NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { notifyIndexNow } from "@/lib/indexnow";
 const allowed=(r:NextRequest)=>!!process.env.ADMIN_API_KEY&&r.headers.get("authorization")===`Bearer ${process.env.ADMIN_API_KEY}`;
 export async function GET(r:NextRequest){if(!allowed(r))return NextResponse.json({error:"Unauthorized"},{status:401});const db=await getDb();return NextResponse.json(db?await db.collection("approvals").find({status:"pending"}).sort({createdAt:-1}).toArray():[])}
 export async function PATCH(r:NextRequest){
@@ -25,8 +26,9 @@ export async function PATCH(r:NextRequest){
  if(status==="approved"&&approval.type==="publish"){
   const slug=`${new Date().toISOString().slice(0,10)}-${approval._id.toString()}`;
   await db.collection("published_posts").insertOne({slug,title:approval.title,content:approval.details,channel:"website",sourceApprovalId:approval._id,publishedAt:new Date(),createdAt:new Date()});
-  await db.collection("approvals").updateOne({_id:approval._id},{$set:{status:"approved",reviewedAt:new Date(),publishedUrl:`/updates#${slug}`}});
-  return NextResponse.json({ok:true,sent:false,published:true,url:`/updates#${slug}`});
+  await db.collection("approvals").updateOne({_id:approval._id},{$set:{status:"approved",reviewedAt:new Date(),publishedUrl:`/updates/${slug}`}});
+  await notifyIndexNow([`/updates/${slug}`,"/updates","/sitemap.xml"]);
+  return NextResponse.json({ok:true,sent:false,published:true,url:`/updates/${slug}`});
  }
  await db.collection("approvals").updateOne({_id:approval._id},{$set:{status,reviewedAt:new Date()}});
  return NextResponse.json({ok:true,sent:false});
