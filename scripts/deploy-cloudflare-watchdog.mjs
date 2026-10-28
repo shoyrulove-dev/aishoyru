@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
-for (const filename of [".env.local", ".env.production.local", ".env.ai.local"]) {
+for (const filename of [
+  ".env.cloudflare.local",
+  ".env.ai.local",
+  ".env.local",
+  ".env.production.local",
+]) {
   if (!fs.existsSync(filename)) continue;
   for (const raw of fs.readFileSync(filename, "utf8").split(/\r?\n/)) {
     const index = raw.indexOf("=");
