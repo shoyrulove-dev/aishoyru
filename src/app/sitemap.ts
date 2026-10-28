@@ -11,10 +11,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     { url: `${base}/updates`, changeFrequency: "daily", priority: 0.8 },
-    {
-      url: `${base}/store/sticker-shoyru-di-lam`,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
   ];
 }
