@@ -3,8 +3,9 @@ name: Shoyru hourly work cycle
 
 on:
   schedule:
-    # Lượt chính. Hai watchdog độc lập thử lại sau 10 và 20 phút nếu GitHub bỏ lịch.
-    - cron: "17 * * * *"
+    # GitHub có thể bỏ một số schedule. Sáu nhịp thăm dò tạo nhiều cơ hội đánh thức;
+    # endpoint vẫn khóa theo giờ nên không tạo nhiều lượt AI trùng nhau.
+    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
   push:
     branches: [main]

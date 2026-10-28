@@ -3,7 +3,7 @@ import { runClaimedAgentCycle } from "@/lib/agent-cycle";
 import { getDb } from "@/lib/mongodb";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const githubKeys = createRemoteJWKSet(
   new URL("https://token.actions.githubusercontent.com/.well-known/jwks"),

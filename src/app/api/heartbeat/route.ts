@@ -1,8 +1,8 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { runClaimedAgentCycle, vietnamCycleSlot } from "@/lib/agent-cycle";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const preferredRegion = "sin1";
 
 function vietnamSlot(now: Date) {
@@ -18,16 +18,6 @@ function vietnamSlot(now: Date) {
   };
 }
 
-async function wake(slot: string) {
-  const db = await getDb();
-  if (!db) return;
-  try {
-    await runClaimedAgentCycle(db, "public-heartbeat");
-  } catch (error) {
-    console.error(`Heartbeat ${slot} failed`, error);
-  }
-}
-
 export async function GET() {
   const db = await getDb();
   if (!db)
@@ -38,10 +28,36 @@ export async function GET() {
   const lastRunKey = state?.lastRunAt
     ? vietnamCycleSlot(new Date(state.lastRunAt as Date))
     : "";
-  const shouldWake = slot.minute >= 17 && lastRunKey !== slot.key;
-  if (shouldWake) after(() => wake(slot.key));
-  return NextResponse.json(
-    { ok: true, awake: lastRunKey === slot.key, wakeRequested: shouldWake },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  const lastRunAt = state?.lastRunAt ? new Date(state.lastRunAt as Date).getTime() : 0;
+  const delayed = !lastRunAt || Date.now() - lastRunAt > 75 * 60 * 1000;
+  const shouldWake = delayed || (slot.minute >= 17 && lastRunKey !== slot.key);
+  if (!shouldWake)
+    return NextResponse.json(
+      { ok: true, awake: lastRunKey === slot.key, wakeRequested: false },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  try {
+    const result = await runClaimedAgentCycle(db, "public-heartbeat");
+    return NextResponse.json(
+      {
+        ok: true,
+        awake: true,
+        wakeRequested: true,
+        skipped: Boolean(result.skipped),
+        slot: result.slot,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    console.error(`Heartbeat ${slot.key} failed`, error);
+    return NextResponse.json(
+      {
+        ok: false,
+        awake: false,
+        wakeRequested: true,
+        error: error instanceof Error ? error.message.slice(0, 240) : "Không thể đánh thức Shoyru",
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

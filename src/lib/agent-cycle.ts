@@ -31,7 +31,7 @@ export async function runClaimedAgentCycle(
       source,
       status: "running",
       claimedAt: now,
-      expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+      expiresAt: new Date(now.getTime() + 12 * 60 * 1000),
     });
   } catch (error) {
     if (!options.force && (error as { code?: number }).code === 11000) {
@@ -48,7 +48,7 @@ export async function runClaimedAgentCycle(
             source,
             status: "running",
             claimedAt: now,
-            expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+            expiresAt: new Date(now.getTime() + 12 * 60 * 1000),
           },
           $unset: { failedAt: "", error: "" },
         },
