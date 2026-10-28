@@ -638,6 +638,26 @@ function LiveFeed({
       setLoadingDay(false);
     }
   }
+  const showingDay = dayMessages !== null;
+  useEffect(() => {
+    if (!showingDay || !selectedDate || selectedDate !== today) return;
+    const refreshDay = async () => {
+      try {
+        const response = await fetch(`/api/journal?date=${encodeURIComponent(selectedDate)}`, {
+          cache: "no-store",
+        });
+        const result = await response.json();
+        const loaded = Array.isArray(result.messages) ? result.messages : [];
+        setDayMessages(loaded);
+        setIndex(loaded.length);
+      } catch {
+        // Keep the last complete journal on transient network failures.
+      }
+    };
+    void refreshDay();
+    const timer = window.setInterval(refreshDay, 30_000);
+    return () => window.clearInterval(timer);
+  }, [showingDay, selectedDate, today]);
   const shown = ordered.slice(0, index);
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#0b1014] p-4 sm:p-5">

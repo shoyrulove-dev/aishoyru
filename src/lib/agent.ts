@@ -765,6 +765,7 @@ export async function runAgentCycle() {
     recentPublished,
     funnel24h,
     ownerInstructions,
+    recentLessons,
   ] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
@@ -819,6 +820,12 @@ export async function runAgentCycle() {
       .find({ status: "active" })
       .sort({ createdAt: -1 })
       .limit(10)
+      .toArray(),
+    db
+      .collection("agent_lessons")
+      .find({})
+      .sort({ updatedAt: -1 })
+      .limit(12)
       .toArray(),
   ]);
   const [activePlan, dueFollowUps] = await Promise.all([
@@ -891,6 +898,11 @@ export async function runAgentCycle() {
           "QUY TẮC SINH TỒN ƯU TIÊN CAO NHẤT: Mỗi lượt hãy nhìn tiền đã xác minh, sản phẩm online, phễu 24 giờ, webResearch, cơ hội, bài đã đăng và khả năng hiện có; chọn đúng một việc có tỷ lệ giá trị kỳ vọng / thời gian cao nhất để đạt 500.000đ/tháng. Ưu tiên bán Bộ khởi tạo AI sinh tồn Shoyru và tìm người Việt có nhu cầu bot, API hoặc tự động hóa; grant và giao dịch chỉ là hướng phụ khi có chương trình thật và đủ điều kiện. Không bị khóa vào một sản phẩm: được phép bán sản phẩm số, nhận mini job viết bot/tích hợp API, tạo công cụ kéo khách, affiliate minh bạch, xin grant chính thức, xây kênh SEO hoặc nghiên cứu quant. Nếu phễu có dữ liệu, ưu tiên cải thiện bước rơi lớn nhất. Việc an toàn trong tài sản sở hữu của Shoyru phải tự triển khai, không xin duyệt: draft_post được tự đăng lên /updates; draft_email có người nhận hợp lệ được tự gửi với giới hạn chống spam; build_bot được tạo thiết kế và mã nguồn trong artifact; plan_business phải có khách hàng, đề nghị, kênh tiếp cận, chi phí, doanh thu mục tiêu, rủi ro, chỉ số và điều kiện dừng. BẮT BUỘC TRUNG THỰC: chỉ dùng “đã gửi”, “đã đăng”, “đã nộp”, “đã triển khai” khi dữ liệu đầu vào hoặc kết quả công cụ có URL, mã nhà cung cấp hay bằng chứng tương ứng. Nếu mới viết nội dung thì gọi là bản nháp đã lưu. Không lặp lại nội dung trong recentPublished và không gửi lại cùng người nhận trong 30 ngày. Tuyệt đối không tự tạo giảm giá, khuyến mãi hay chính sách chưa có trong storeFacts. Nếu trong 24 giờ đã có bài về cùng sản phẩm, hãy tiếp tục bằng discover_lead hoặc qualify_lead: kết quả phải có URL thật từ fundingResearch hoặc webResearch, đối tượng cụ thể, lý do phù hợp và bước tiếp theo; không được gọi việc chung chung là đã tìm lead. Với Gitcoin, chỉ nói đang chuẩn bị hồ sơ sau khi tìm thấy URL của một vòng đang nhận đơn và xác minh dự án đáp ứng điều kiện. Shoyru có thể tự nghiên cứu, soạn mô tả và ngân sách nhưng không được tự nhận đã tạo hồ sơ, đăng nhập GitHub, kết nối ví, ký giao dịch, nộp đơn hay hoàn tất KYC; các bước đó phải tạo yêu cầu hỗ trợ cụ thể cho chủ nhân. Với signal, quant, crypto hoặc Polymarket, chỉ được nghiên cứu dữ liệu công khai và paper_trade; không được đặt lệnh, mở ví, ký giao dịch, nhận tiền hay tuyên bố có lợi nhuận. paper_trade phải ghi giả thuyết, giá vào giả lập, phí, điều kiện thoát và kết quả có dấu thời gian. Chỉ xin vốn sau ít nhất 30 ngày paper trade và backtest ngoài mẫu; yêu cầu vốn phải có mức lỗ tối đa và điều kiện dừng. Phát hành token luôn cần chủ nhân duyệt kế hoạch, pháp lý, phân bổ và nội dung công bố; không được hứa lợi nhuận hay kéo người mua. Chỉ chọn request_support khi bị chặn thật bởi API key, tài khoản nền tảng, OTP, CAPTCHA, xác minh danh tính, vốn hoặc quyết định pháp lý. Khi đó supportRequest bắt buộc có title, reason, needed, impact, where và doneWhen; needed phải nói đúng một thứ cần cung cấp với tên biến, tên tài khoản hoặc số tiền cụ thể; where chỉ chính xác nơi nhập; doneWhen nói Shoyru sẽ tự làm gì ngay sau khi nhận. Không tạo yêu cầu mới nếu cùng nhu cầu đang chờ hoặc đã được cung cấp. Không xin hỗ trợ cho việc Shoyru có thể tự nghiên cứu, viết, đăng website, gửi email hợp lệ, phân tích hoặc xây dựng. action.type hợp lệ gồm research, discover_lead, qualify_lead, build_product, validate, improve, draft_post, draft_email, plan_business, build_bot, paper_trade, request_support hoặc wait. Khi trả opportunity, sourceUrl phải là URL thật trong dữ liệu đầu vào. Không được wait nếu không có pendingApprovals hoặc trở ngại rõ ràng. Trả đúng một JSON object gồm status, thought, reflection, action:{type,title,details}, work:{summary,artifact,nextStep}; có thể thêm project, opportunity, email hoặc supportRequest khi phù hợp. Tất cả trường công khai phải bằng tiếng Việt có dấu; chỉ nội dung email quốc tế được dùng tiếng Anh.",
     },
     {
+      role: "system",
+      content:
+        "TRÍ NHỚ KINH NGHIỆM: lessons là những kết quả đã được hệ thống kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
+    },
+    {
       role: "user",
       content: JSON.stringify({
         state,
@@ -943,6 +955,12 @@ export async function runAgentCycle() {
         ownerInstructions: ownerInstructions.map((item) => ({
           text: clip(String(item.text || ""), 1000),
           createdAt: item.createdAt,
+        })),
+        lessons: recentLessons.map((item) => ({
+          lesson: item.lesson,
+          outcome: item.outcome,
+          confidence: item.confidence,
+          sourceUrl: item.sourceUrl,
         })),
         funnel24h: Object.fromEntries(
           funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
@@ -1373,6 +1391,38 @@ export async function runAgentCycle() {
   const publicStatus = friendlyPublic(publicStatusRaw, 60);
   const publicThought = friendlyPublic(publicThoughtRaw, 140);
   const publicReflection = friendlyPublic(publicReflectionRaw, 180);
+  const hasVerifiableEvidence = Boolean(
+    postSlug ||
+      emailDelivery?.providerId ||
+      artifactRecord?.artifactId ||
+      decision.opportunity?.sourceUrl ||
+      fundingResearch.url,
+  );
+  const qualityReasons = [
+    workResult ? "Có đầu ra công việc" : "Chưa có đầu ra công việc",
+    hasVerifiableEvidence ? "Có nguồn hoặc bằng chứng" : "Thiếu bằng chứng",
+    artifactRecord
+      ? artifactRecord.validation.valid
+        ? "Artifact đã qua kiểm tra"
+        : "Artifact cần sửa"
+      : "Không cần artifact trong lượt này",
+    opportunityAssessment
+      ? opportunityAssessment.qualified
+        ? "Cơ hội đủ điểm phù hợp"
+        : "Cơ hội chưa đủ điểm"
+      : "Lượt này không tạo cơ hội",
+  ];
+  const qualityScore = Math.max(
+    0,
+    Math.min(
+      100,
+      (workResult ? 25 : 0) +
+        (hasVerifiableEvidence ? 25 : 0) +
+        (!needsApproval ? 15 : 0) +
+        (artifactRecord ? (artifactRecord.validation.valid ? 20 : 0) : 15) +
+        (opportunityAssessment ? (opportunityAssessment.qualified ? 15 : 0) : 10),
+    ),
+  );
   await db.collection("published_posts").deleteMany({
     automatic: true,
     $or: [
@@ -1455,7 +1505,66 @@ export async function runAgentCycle() {
       createdAt: now,
       source: "agent",
     }),
+    db.collection("agent_evaluations").insertOne({
+      runId: taskId,
+      score: qualityScore,
+      reasons: qualityReasons,
+      actionType: decision.action.type,
+      evidence: {
+        sourceUrl: decision.opportunity?.sourceUrl || fundingResearch.url,
+        artifactId: artifactRecord?.artifactId,
+        publishedUrl: postSlug
+          ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
+          : undefined,
+        emailProviderId: emailDelivery?.providerId,
+      },
+      createdAt: now,
+    }),
   ];
+  if (opportunityAssessment && !opportunityAssessment.qualified && decision.opportunity)
+    writes.push(
+      db.collection("agent_lessons").updateOne(
+        { type: "low_fit_source", sourceUrl: decision.opportunity.sourceUrl },
+        {
+          $set: {
+            lesson: "Không tiếp tục nguồn này nếu chưa xuất hiện nhu cầu thuê rõ ràng.",
+            outcome: `Điểm phù hợp ${opportunityAssessment.score}/100`,
+            confidence: "high",
+            updatedAt: now,
+          },
+          $setOnInsert: { createdAt: now },
+        },
+        { upsert: true },
+      ),
+    );
+  if (artifactRecord && !artifactRecord.validation.valid)
+    writes.push(
+      db.collection("agent_lessons").insertOne({
+        type: "artifact_error",
+        lesson: "Phải sửa hết lỗi kiểm tra trước khi dùng hoặc bán artifact.",
+        outcome: artifactRecord.validation.errors.slice(0, 3),
+        confidence: "high",
+        artifactId: artifactRecord.artifactId,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+  if (emailDelivery?.sent && decision.email)
+    writes.push(
+      db.collection("agent_lessons").updateOne(
+        { type: "contacted_recipient", recipient: decision.email.to.toLowerCase() },
+        {
+          $set: {
+            lesson: "Đã gửi thư; chờ đến lịch follow-up, không gửi lặp sớm.",
+            outcome: "Resend đã xác nhận nhận thư",
+            confidence: "high",
+            updatedAt: now,
+          },
+          $setOnInsert: { createdAt: now },
+        },
+        { upsert: true },
+      ),
+    );
   if (artifactRecord && workResult)
     writes.push(
       db.collection("work_artifacts").insertOne({

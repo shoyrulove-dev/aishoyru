@@ -120,6 +120,8 @@ export async function GET(request: NextRequest) {
     braveUsage,
     activePlan,
     artifacts,
+    evaluations,
+    cycleClaims,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -218,6 +220,18 @@ export async function GET(request: NextRequest) {
       .limit(20)
       .project({ files: 0 })
       .toArray(),
+    db
+      .collection("agent_evaluations")
+      .find({ createdAt: { $gte: since24h } })
+      .sort({ createdAt: -1 })
+      .limit(24)
+      .toArray(),
+    db
+      .collection("agent_cycle_claims")
+      .find({ claimedAt: { $gte: since24h }, _id: { $not: /-force-/ } })
+      .sort({ claimedAt: -1 })
+      .limit(30)
+      .toArray(),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   return NextResponse.json({
@@ -231,6 +245,7 @@ export async function GET(request: NextRequest) {
     aiHealth,
     activePlan,
     artifacts,
+    evaluations,
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,
@@ -245,6 +260,14 @@ export async function GET(request: NextRequest) {
       qrCreated24h: Number(event("qr_created")?.total || 0),
       payments24h: Number(event("payment_verified")?.total || 0),
       downloads24h: Number(event("download_started")?.total || 0),
+      brainScore: evaluations.length
+        ? Math.round(
+            evaluations.reduce((sum, item) => sum + Number(item.score || 0), 0) /
+              evaluations.length,
+          )
+        : 0,
+      cycles24h: cycleClaims.filter((item) => item.status === "completed").length,
+      failedCycles24h: cycleClaims.filter((item) => item.status === "failed").length,
     },
     channels: [
       {

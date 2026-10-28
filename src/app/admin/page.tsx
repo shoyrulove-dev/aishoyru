@@ -64,6 +64,7 @@ type Overview = {
   chats: Array<Record<string, unknown>>;
   activePlan?: Record<string, unknown> | null;
   artifacts: Array<Record<string, unknown>>;
+  evaluations: Array<Record<string, unknown>>;
   aiHealth: Array<{
     provider: string;
     model?: string;
@@ -89,6 +90,9 @@ type Overview = {
     qrCreated24h: number;
     payments24h: number;
     downloads24h: number;
+    brainScore: number;
+    cycles24h: number;
+    failedCycles24h: number;
   };
   channels: Array<{ id: string; name: string; status: string; detail: string }>;
 };
@@ -452,6 +456,22 @@ function OverviewPanel({
           value={String(data.metrics.pending)}
           color="purple"
         />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white p-4">
+          <p className="text-xs font-bold text-[#7b858f]">Điểm công việc 24 giờ</p>
+          <p className="mt-2 text-2xl font-black text-[#25864b]">{data.metrics.brainScore}/100</p>
+        </div>
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white p-4">
+          <p className="text-xs font-bold text-[#7b858f]">Lượt tự chạy thành công</p>
+          <p className="mt-2 text-2xl font-black">{data.metrics.cycles24h}</p>
+        </div>
+        <div className="rounded-2xl border border-[#dfe4e8] bg-white p-4">
+          <p className="text-xs font-bold text-[#7b858f]">Lượt lỗi cần chú ý</p>
+          <p className={`mt-2 text-2xl font-black ${data.metrics.failedCycles24h ? "text-[#d95628]" : "text-[#25864b]"}`}>
+            {data.metrics.failedCycles24h}
+          </p>
+        </div>
       </div>
       <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
         <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">PHỄU 24 GIỜ</p>
