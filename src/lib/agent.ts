@@ -1709,7 +1709,7 @@ export async function runAgentCycle() {
     ],
   });
   const journalKey = (value: unknown) =>
-    String(value || "")
+    friendlyPublic(String(value || ""), 180)
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLocaleLowerCase("vi-VN")

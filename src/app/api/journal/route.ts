@@ -6,6 +6,10 @@ export const preferredRegion = "sin1";
 const friendlyJournalText = (value: unknown) =>
   String(value || "")
     .replace(
+      /(?:Đang )?tạo bản nháp email[^.!?]*[.!?]?/gi,
+      "Shoyru đang soạn một email ngắn gọn cho người có nhu cầu phù hợp.",
+    )
+    .replace(
       /Lập kế hoạch chi tiết \(plan_business\) để chuẩn bị hồ sơ và tài liệu cần thiết cho Gitcoin Grants\.?/gi,
       "Mình đang kiểm tra Gitcoin có vòng tài trợ nào đang mở và Shoyru có đúng điều kiện không. Chưa xác minh xong nên mình chưa chuẩn bị hồ sơ.",
     )

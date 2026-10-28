@@ -209,7 +209,7 @@ export async function getPublicState(): Promise<PublicState> {
     .reverse()
     .filter((x) => {
       const text = String(x.text || "").trim();
-      const key = journalKey(legacy[text] || text);
+      const key = journalKey(publicSentence(legacy[text] || text));
       if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || !key || seenConversationText.has(key))
         return false;
       seenConversationText.add(key);
