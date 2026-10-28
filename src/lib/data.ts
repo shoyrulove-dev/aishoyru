@@ -15,6 +15,10 @@ const isLegacyAgentEntry = (item: Record<string, unknown>) =>
 const publicSentence = (value: unknown, max = 190) => {
   const clean = String(value || "")
     .replace(
+      /(?:Đang )?tạo bản nháp email[^.!?]*[.!?]?/gi,
+      "Shoyru đang soạn một email ngắn gọn cho người có nhu cầu phù hợp.",
+    )
+    .replace(
       /Đang tạo bản nháp email đề nghị bán (.+?) cho người có thể cần món này đã được qualify\.?/gi,
       "Shoyru đang soạn email giới thiệu $1 cho một người có nhu cầu phù hợp.",
     )

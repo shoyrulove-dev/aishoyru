@@ -48,6 +48,10 @@ const friendlyPublic = (value: string, max: number) =>
   clip(
     value
       .replace(
+        /(?:Đang )?tạo bản nháp email[^.!?]*[.!?]?/gi,
+        "Shoyru đang soạn một email ngắn gọn cho người có nhu cầu phù hợp.",
+      )
+      .replace(
         /Đang tạo bản nháp email đề nghị bán (.+?) cho người có thể cần món này đã được qualify\.?/gi,
         "Shoyru đang soạn email giới thiệu $1 cho một người có nhu cầu phù hợp.",
       )
@@ -1555,15 +1559,95 @@ export async function runAgentCycle() {
     decision.reflection = "Không có nhu cầu rõ hoặc cách liên hệ phù hợp thì chưa thể gọi là khách hàng.";
   }
   const needsApproval = decision.action.type === "request_support" || Boolean(githubError);
+  const publicNarratives: Record<string, { status: string; thought: string; reflection: string }> = {
+    research: {
+      status: "Đang đọc một nguồn mới",
+      thought: "Shoyru đang đọc thông tin công khai để tìm một nhu cầu thật.",
+      reflection: "Mình chỉ giữ lại nguồn có yêu cầu rõ và đường dẫn kiểm tra được.",
+    },
+    discover_lead: {
+      status: "Đang tìm người cần hỗ trợ",
+      thought: "Shoyru vừa tìm thấy một nhu cầu có nguồn rõ ràng và đang kiểm tra kỹ.",
+      reflection: "Nếu yêu cầu phù hợp, mình sẽ chuẩn bị một lời chào cụ thể.",
+    },
+    qualify_lead: {
+      status: "Đang kiểm tra một nhu cầu",
+      thought: "Shoyru đang xem yêu cầu này có phù hợp với khả năng của mình không.",
+      reflection: "Mình chỉ liên hệ khi hiểu rõ việc cần làm và có cách liên lạc hợp lệ.",
+    },
+    build_product: {
+      status: "Đang làm một sản phẩm nhỏ",
+      thought: "Shoyru đang biến một nhu cầu rõ ràng thành sản phẩm có thể dùng được.",
+      reflection: "Làm xong mình sẽ kiểm tra tệp trước khi đưa cho người khác xem.",
+    },
+    build_bot: {
+      status: "Đang làm một công cụ nhỏ",
+      thought: "Shoyru đang viết một công cụ giải quyết đúng việc đã chọn.",
+      reflection: "Mình sẽ kiểm tra đầu ra trước khi gọi là hoàn thành.",
+    },
+    improve: {
+      status: "Đang sửa sản phẩm",
+      thought: "Shoyru đang sửa phần chưa rõ hoặc chưa dùng tốt trong sản phẩm.",
+      reflection: "Phiên bản mới phải dễ hiểu và hữu ích hơn phiên bản trước.",
+    },
+    validate: {
+      status: "Đang kiểm tra sản phẩm",
+      thought: "Shoyru đang kiểm tra tệp và nội dung trước khi đưa sản phẩm ra ngoài.",
+      reflection: "Chỉ đầu ra vượt qua kiểm tra mới được giữ lại.",
+    },
+    draft_email: emailDelivery?.sent
+      ? {
+          status: "Đã gửi một lời chào",
+          thought: "Shoyru đã gửi email đến một người có nhu cầu phù hợp.",
+          reflection: "Mình sẽ chờ phản hồi rồi mới gửi thêm, tránh làm phiền.",
+        }
+      : {
+          status: "Đang soạn lời giới thiệu",
+          thought: "Shoyru đang soạn một email ngắn gọn cho người có nhu cầu phù hợp.",
+          reflection: "Mình chỉ gửi khi có địa chỉ công khai và nội dung liên quan trực tiếp.",
+        },
+    draft_post: {
+      status: "Đang giới thiệu sản phẩm",
+      thought: "Shoyru đang viết một bài ngắn để người xem hiểu sản phẩm dùng làm gì.",
+      reflection: "Bài viết sẽ nói đúng tính năng, giá và đường dẫn mua.",
+    },
+    plan_business: {
+      status: "Đang tính cách kiếm tiền",
+      thought: "Shoyru đang tính rõ người mua, món bán, chi phí và cách tiếp cận.",
+      reflection: "Kế hoạch phải có con số kiểm tra được và điều kiện dừng rõ ràng.",
+    },
+    create_pr: githubDelivery
+      ? {
+          status: "Đã gửi sản phẩm để kiểm tra",
+          thought: "Shoyru đã mở một Pull Request riêng để chủ nhân xem trước.",
+          reflection: "Bản đang chạy chưa bị thay đổi cho đến khi Pull Request được duyệt.",
+        }
+      : {
+          status: "Đang chuẩn bị sản phẩm",
+          thought: "Shoyru đang kiểm tra bộ tệp trước khi gửi lên GitHub.",
+          reflection: "Mình chưa thay đổi bản đang chạy.",
+        },
+    paper_trade: {
+      status: "Đang thử chiến lược giả lập",
+      thought: "Shoyru đang kiểm tra một giả thuyết bằng dữ liệu, không dùng tiền thật.",
+      reflection: "Kết quả phải tính cả phí và điều kiện dừng.",
+    },
+  };
+  const narrative =
+    opportunityAssessment &&
+    !opportunityAssessment.qualified &&
+    ["discover_lead", "qualify_lead"].includes(decision.action.type)
+      ? undefined
+      : publicNarratives[decision.action.type];
   const publicStatusRaw = needsApproval
     ? "Đang chuyển sang một việc khác"
-    : decision.status;
+    : narrative?.status || decision.status;
   const publicThoughtRaw = needsApproval
     ? "Việc này chưa thuận lợi. Shoyru đổi sang một hướng khác trước, không ngồi chờ."
-    : decision.thought;
+    : narrative?.thought || decision.thought;
   const publicReflectionRaw = needsApproval
     ? "Đổi hướng sớm giúp Shoyru dành thời gian cho việc có thể tiến hành ngay."
-    : decision.reflection;
+    : narrative?.reflection || decision.reflection;
   const publicStatus = friendlyPublic(publicStatusRaw, 60);
   const publicThought = friendlyPublic(publicThoughtRaw, 140);
   const publicReflection = friendlyPublic(publicReflectionRaw, 180);
