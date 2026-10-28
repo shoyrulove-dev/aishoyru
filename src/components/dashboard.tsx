@@ -67,7 +67,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
   return (
     <main className="noise min-h-screen overflow-hidden">
       <div className="border-b border-white/8 bg-[#0a0d10]/90 px-5 py-2 text-center text-[10px] tracking-[.16em] text-[#b8b2a8] uppercase">
-        Thí nghiệm công khai · Không bịa doanh thu · Dữ liệu thật khi kết nối
+        AI sinh tồn công khai · Không bịa doanh thu · Chỉ ghi nhận dữ liệu đã xác minh
       </div>
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
         <a
@@ -88,7 +88,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
           href="/store"
           className="rounded-full bg-[#f5ead2] px-4 py-2 text-sm font-extrabold text-[#14181b]"
         >
-          Ghé quầy của Bé
+          Ghé quầy Shoyru
         </a>
       </nav>
       <section
@@ -175,7 +175,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="panel overflow-hidden rounded-[2rem]">
           <div className="grid gap-0 lg:grid-cols-[.72fr_1.28fr]">
             <div className="border-b border-white/8 bg-[#18130f] p-6 lg:border-b-0 lg:border-r sm:p-8">
-              <Eyebrow>SẢN PHẨM SHOYRU ĐANG THEO ĐUỔI</Eyebrow>
+              <Eyebrow>SẢN PHẨM ĐANG MỞ BÁN</Eyebrow>
               <h2 className="text-3xl font-black">{data.project.name}</h2>
               <p className="mt-4 text-sm leading-6 text-[#aaa39a]">
                 Dành cho: {data.project.customer}
@@ -188,7 +188,9 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
                   {projectStatus(data.project.status)}
                 </span>
                 <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-[#aaa39a]">
-                  {data.project.stepCount} lượt đã làm
+                  {/khởi tạo AI sinh tồn Shoyru/i.test(data.project.name)
+                    ? "12 bước thực hành"
+                    : `${data.project.stepCount} bước đã làm`}
                 </span>
               </div>
             </div>
@@ -393,8 +395,8 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
               <b className="text-[#ede5d8]">{data.nextWake}</b>
             </p>
             <div className="mt-5 rounded-xl border border-white/8 bg-black/15 p-4 text-sm text-[#aaa39a]">
-              Shoyru tự nghiên cứu, phân tích và chuẩn bị sản phẩm. Việc đăng
-              công khai, gửi tin hoặc tiêu tiền cần được duyệt.
+              Shoyru tự nghiên cứu, làm sản phẩm và tìm cơ hội phù hợp. Chỉ
+              đăng trên kênh của mình; tài khoản mới và chi tiền cần chủ nhân hỗ trợ.
             </div>
           </div>
           <div id="experiment" className="panel rounded-3xl p-6">

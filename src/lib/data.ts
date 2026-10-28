@@ -249,9 +249,10 @@ export async function getPublicState(): Promise<PublicState> {
     name: String(activeProject?.name || demoState.project.name),
     status: String(activeProject?.status || "active"),
     customer: String(activeProject?.customer || demoState.project.customer),
-    deliverable: String(
-      activeProject?.deliverable || demoState.project.deliverable,
-    ),
+    deliverable:
+      /khởi tạo AI sinh tồn Shoyru/i.test(String(activeProject?.name || demoState.project.name))
+        ? "Bộ thực hành 12 bước, file mẫu, checklist E2E và quà tặng 6 sticker PNG"
+        : String(activeProject?.deliverable || demoState.project.deliverable),
     price: Number(activeProject?.price || demoState.project.price),
     stepCount: Number(activeProject?.stepCount || 0),
     lastAction: projectPrivate

@@ -3,9 +3,9 @@ export const products = [
     slug: "bo-khoi-tao-ai-shoyru",
     name: "Bộ khởi tạo AI sinh tồn Shoyru",
     description:
-      "Quy trình từng bước để dựng một nhân vật AI có trí nhớ, lịch làm việc, nhật ký công khai, cửa hàng số và thanh toán tự động.",
+      "Quy trình từng bước để dựng một nhân vật AI có trí nhớ, lịch làm việc, nhật ký công khai, cửa hàng số và thanh toán tự động. Tặng kèm bộ 6 sticker Shoyru PNG.",
     price: 79000,
-    format: "Hướng dẫn thực hành + prompt + file cấu hình mẫu + checklist",
+    format: "Bộ thực hành 12 bước + file mẫu + quà tặng 6 sticker PNG",
   },
   {
     slug: "moi-shoyru-mot-bua",
@@ -21,7 +21,7 @@ const legacyProducts = [
   {
     slug: "sticker-shoyru-di-lam",
     name: "Bộ sticker Shoyru Đi Làm",
-    description: "Sản phẩm cũ, chỉ giữ đường tải cho đơn đã mua.",
+    description: "Quà tặng kèm Bộ khởi tạo AI sinh tồn; không bán riêng.",
     price: 39000,
     format: "Gói 6 tệp PNG chất lượng cao",
   },

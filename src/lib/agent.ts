@@ -616,7 +616,7 @@ export async function runAgentCycle() {
           customer:
             "Người Việt muốn tự dựng một AI agent có lịch làm việc, trí nhớ, cửa hàng và thanh toán thật",
           deliverable:
-            "Bộ ZIP gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E",
+            "Bộ ZIP gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV, checklist E2E và quà tặng 6 sticker PNG",
           price: 79000,
           updatedAt: migrationTime,
           source: "store",
@@ -930,9 +930,10 @@ export async function runAgentCycle() {
         "GitHub Actions",
         "mẫu biến môi trường",
         "checklist kiểm thử đầu cuối",
+        "quà tặng 6 sticker Shoyru PNG",
       ],
       positioning:
-        "Sản phẩm chủ lực; hướng dẫn dựng agent có trí nhớ, lịch chạy, cửa hàng và thanh toán. Không cam kết doanh thu.",
+        "Sản phẩm chủ lực; hướng dẫn dựng agent có trí nhớ, lịch chạy, cửa hàng và thanh toán. Tặng kèm 6 sticker PNG, không bán sticker riêng. Không cam kết doanh thu.",
     },
   };
   const outreachTargets = (process.env.OUTREACH_TARGETS || "")
@@ -1278,7 +1279,7 @@ export async function runAgentCycle() {
       decision.work = {
         summary: "Đã hoàn thiện bài giới thiệu bộ khởi tạo AI sinh tồn.",
         artifact:
-          "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, tệp ZIP được mở tải tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
+          "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV, checklist E2E và quà tặng 6 sticker PNG. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, tệp ZIP được mở tải tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
         nextStep:
           "Theo dõi lượt mua và nghiên cứu kênh tiếp cận khách hàng phù hợp.",
       };
@@ -2001,7 +2002,7 @@ export async function runAgentCycle() {
       : decision.action.title;
     if (inventedOffer)
       postContent =
-        "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV và checklist E2E. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, khách hàng tải tệp ZIP tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru";
+        "Bộ khởi tạo AI sinh tồn Shoyru gồm hướng dẫn 12 bước, prompt hệ thống, schema MongoDB, GitHub Actions, mẫu ENV, checklist E2E và quà tặng 6 sticker PNG. Giá 79.000đ; sau khi SePay xác nhận đúng giao dịch, khách hàng tải tệp ZIP tự động. Xem tại: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru";
     writes.push(
       db.collection("published_posts").insertOne({
         slug,

@@ -7,14 +7,14 @@ import { productPrepared, productReady, products } from "@/lib/store";
 export const metadata: Metadata = {
   title: "Bộ khởi tạo AI sinh tồn Shoyru — hướng dẫn từng bước",
   description:
-    "Bộ thực hành 12 bước để dựng AI agent có trí nhớ, lịch chạy, fallback, dashboard, cửa hàng số và thanh toán tự động.",
+    "Bộ thực hành 12 bước để dựng AI agent có trí nhớ, lịch chạy, fallback, dashboard, cửa hàng số và thanh toán tự động. Tặng 6 sticker Shoyru PNG.",
   alternates: {
     canonical: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
   },
   openGraph: {
     title: "Tự dựng một AI agent biết làm việc từng giờ",
     description:
-      "Hướng dẫn thực hành, prompt, schema MongoDB, GitHub Actions và checklist E2E.",
+      "Hướng dẫn thực hành, file mẫu, checklist E2E và quà tặng 6 sticker Shoyru PNG.",
     url: "https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
     type: "website",
     images: ["/be-rong-mascot.png"],
@@ -119,6 +119,9 @@ export default function AgentKitPage() {
             <span className="rounded-full border border-white/10 px-4 py-2">
               Checklist kiểm thử thật
             </span>
+            <span className="rounded-full border border-[#ffbd3e]/30 bg-[#ffbd3e]/8 px-4 py-2 text-[#ffd477]">
+              Tặng bộ 6 sticker PNG
+            </span>
           </div>
         </div>
         <div className="panel rounded-[2rem] p-7">
@@ -166,7 +169,7 @@ export default function AgentKitPage() {
           {[
             ["Có cần biết lập trình không?", "Bạn nên biết cách chạy dự án Node.js và sửa biến môi trường. Bộ này tập trung vào kiến trúc và quy trình thực hành."],
             ["Có cam kết kiếm được tiền không?", "Không. Bộ này giúp dựng hệ thống làm việc và đo kết quả; doanh thu phụ thuộc sản phẩm, khách hàng và cách bạn vận hành."],
-            ["Tôi nhận được gì sau thanh toán?", "Một tệp ZIP gồm hướng dẫn 12 bước, prompt, schema MongoDB, workflow GitHub Actions, mẫu ENV và checklist E2E."],
+            ["Tôi nhận được gì sau thanh toán?", "Một tệp ZIP gồm hướng dẫn 12 bước, prompt, schema MongoDB, workflow GitHub Actions, mẫu ENV, checklist E2E và thư mục quà tặng 6 sticker Shoyru PNG."],
             ["Tệp có chứa API key của Shoyru không?", "Không. Mọi khóa, dữ liệu ngân hàng và thông tin riêng đều đã được loại bỏ."],
           ].map(([question, answer]) => (
             <article key={question} className="panel rounded-2xl p-6">
@@ -178,11 +181,12 @@ export default function AgentKitPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-5 py-12">
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             "Sách hướng dẫn thực hành 12 bước",
             "Prompt hệ thống và schema MongoDB",
             "GitHub Actions, mẫu ENV và checklist E2E",
+            "Quà tặng 6 sticker Shoyru PNG",
           ].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 p-5">
               <CheckCircle2 className="text-[#65d68b]" />
@@ -202,7 +206,7 @@ export default function AgentKitPage() {
             LẤY BỘ KHỞI TẠO
           </p>
           <h2 className="mt-3 text-4xl font-black">
-            79.000đ · tải ZIP sau khi SePay xác nhận
+            79.000đ · gồm bộ Starter và 6 sticker PNG
           </h2>
         </div>
         <StoreFront

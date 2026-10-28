@@ -28,7 +28,7 @@ export const demoState: PublicState = {
     name: "Bộ khởi tạo AI sinh tồn Shoyru",
     status: "Chờ dữ liệu thật",
     customer: "Người Việt muốn tự dựng một AI agent",
-    deliverable: "Hướng dẫn 12 bước, prompt, schema, lịch tự chạy và checklist E2E",
+    deliverable: "Bộ thực hành 12 bước, file mẫu, checklist E2E và quà tặng 6 sticker PNG",
     price: 79000,
     stepCount: 0,
     lastAction: "Chưa tải được nhật ký thật",

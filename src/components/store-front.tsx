@@ -132,6 +132,11 @@ export function StoreFront({
                 {product.description}
               </p>
               {product.slug === "bo-khoi-tao-ai-shoyru" && (
+                <p className="mt-3 rounded-xl border border-[#ffbd3e]/20 bg-[#ffbd3e]/8 px-4 py-3 text-sm font-bold text-[#ffd477]">
+                  🎁 Tặng kèm bộ 6 sticker Shoyru PNG, không bán riêng.
+                </p>
+              )}
+              {product.slug === "bo-khoi-tao-ai-shoyru" && (
                 <Link
                   href="/store/bo-khoi-tao-ai-shoyru"
                   className="mt-3 inline-block text-sm font-bold text-[#ff9b72]"
