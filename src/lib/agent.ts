@@ -15,6 +15,11 @@ import {
   type ArtifactFile,
 } from "./autonomy";
 import { createArtifactPullRequest } from "./github-automation";
+import {
+  ensureActiveCampaign,
+  recordLeadEvent,
+  updateCampaignCounters,
+} from "./growth-engine";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -863,7 +868,7 @@ export async function runAgentCycle() {
   const funnelSnapshot = Object.fromEntries(
     funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
   );
-  const [activePlan, dueFollowUps, dailyStrategy] = await Promise.all([
+  const [activePlan, dueFollowUps, dailyStrategy, activeCampaign] = await Promise.all([
     ensureSurvivalPlan(db, activeProject),
     db
       .collection("opportunities")
@@ -886,6 +891,7 @@ export async function runAgentCycle() {
           )
         : 0,
     }),
+    ensureActiveCampaign(db, activeProject),
   ]);
   const storeFacts = {
     agentStarterKit: {
@@ -947,7 +953,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng; chỉ rời trọng tâm khi đã đạt chỉ số, chạm điều kiện dừng hoặc có việc khẩn cấp hơn với bằng chứng rõ. create_pr là hành động hợp lệ khi đã tạo xong bộ tệp hữu ích: phải trả files hoàn chỉnh; hệ thống chỉ mở Pull Request để chủ nhân kiểm tra, không được nói đã merge hay triển khai. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
+        "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng. activeCampaign là chiến dịch 3–5 ngày bắt buộc bám theo: không đổi sản phẩm hoặc mục tiêu chỉ vì một lượt chưa có kết quả; chỉ đổi khi đạt điều kiện thành công, chạm điều kiện dừng sau minimumDays hoặc có bằng chứng hướng hiện tại không hợp lệ. Mỗi lượt phải đẩy chiến dịch tiến thêm đúng một mốc đo được. create_pr là hành động hợp lệ khi đã tạo xong bộ tệp hữu ích: phải trả files hoàn chỉnh; hệ thống chỉ mở Pull Request để chủ nhân kiểm tra, không được nói đã merge hay triển khai. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
     },
     {
       role: "user",
@@ -992,6 +998,16 @@ export async function runAgentCycle() {
           reason: dailyStrategy.reason,
           successMetric: dailyStrategy.successMetric,
           stopCondition: dailyStrategy.stopCondition,
+        },
+        activeCampaign: {
+          name: activeCampaign.name,
+          objective: activeCampaign.objective,
+          startsAt: activeCampaign.startsAt,
+          endsAt: activeCampaign.endsAt,
+          minimumDays: activeCampaign.minimumDays,
+          successCondition: activeCampaign.successCondition,
+          stopCondition: activeCampaign.stopCondition,
+          counters: activeCampaign.counters,
         },
         dueFollowUps: dueFollowUps.map((item) => ({
           title: item.title,
@@ -1213,7 +1229,10 @@ export async function runAgentCycle() {
         provider: critiqueResponse.provider,
         model: critiqueResponse.model,
       };
-      if (!critique.approved && ["draft_email", "paper_trade"].includes(decision.action.type)) {
+      if (
+        !critique.approved &&
+        ["draft_email", "draft_post", "create_pr", "paper_trade"].includes(decision.action.type)
+      ) {
         decision.status = "Đang kiểm tra kỹ trước khi hành động";
         decision.thought = "Một bộ não khác vừa phát hiện điểm chưa chắc chắn, mình kiểm tra lại cho an toàn nhé.";
         decision.reflection = friendlyPublic(critique.recommendation, 180);
@@ -1939,6 +1958,40 @@ export async function runAgentCycle() {
     }
   }
   await Promise.all(writes);
+  if (decision.opportunity) {
+    await recordLeadEvent(db, {
+      sourceUrl: decision.opportunity.sourceUrl,
+      title: decision.opportunity.title,
+      channel: decision.opportunity.channel,
+      contactEmail: decision.opportunity.contactEmail,
+      fitScore: opportunityAssessment?.score,
+      status: opportunityAssessment?.qualified ? "qualified" : "rejected",
+      campaignId: activeCampaign._id,
+      evidence: { sourceUrl: decision.opportunity.sourceUrl },
+      note: decision.opportunity.fit,
+    });
+  }
+  if (emailDelivery?.sent && decision.email) {
+    const matchedLead = decision.opportunity || recentOpportunities.find(
+      (item) => String(item.contactEmail || "").toLowerCase() === decision.email?.to.toLowerCase(),
+    );
+    const matchedLeadRecord = matchedLead as Record<string, unknown> | undefined;
+    const sourceUrl = String(matchedLead?.sourceUrl || "");
+    if (sourceUrl) {
+      await recordLeadEvent(db, {
+        sourceUrl,
+        title: String(matchedLead?.title || decision.email.subject),
+        channel: String(matchedLead?.channel || "email"),
+        contactEmail: decision.email.to,
+        fitScore: Number(matchedLeadRecord?.fitScore || opportunityAssessment?.score || 0),
+        status: "contacted",
+        campaignId: activeCampaign._id,
+        evidence: { sourceUrl, providerId: emailDelivery.providerId },
+        note: "Resend đã xác nhận gửi thư.",
+      });
+    }
+  }
+  await updateCampaignCounters(db, activeCampaign._id);
   await advanceSurvivalPlan(
     db,
     activePlan,

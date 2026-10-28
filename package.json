@@ -10,6 +10,7 @@
     "check": "tsc --noEmit && eslint",
     "ai:test": "node scripts/test-ai-providers.mjs",
     "ai:bench": "node scripts/test-ai-providers.mjs --requests=10 --concurrency=2",
+    "e2e:production": "node scripts/test-production-e2e.mjs",
     "product:upload": "node scripts/upload-products.mjs"
   },
   "dependencies": {

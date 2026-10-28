@@ -123,6 +123,8 @@ export async function GET(request: NextRequest) {
     evaluations,
     cycleClaims,
     activeStrategy,
+    activeCampaign,
+    crmStages,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -235,8 +237,17 @@ export async function GET(request: NextRequest) {
       .limit(30)
       .toArray(),
     db.collection("agent_strategies").findOne({}, { sort: { createdAt: -1 } }),
+    db.collection("growth_campaigns").findOne(
+      { status: "active" },
+      { sort: { createdAt: -1 } },
+    ),
+    db.collection("lead_crm").aggregate([
+      { $group: { _id: "$status", total: { $sum: 1 } } },
+    ]).toArray(),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
+  const crmCount = (status: string) =>
+    Number(crmStages.find((item) => item._id === status)?.total || 0);
   return NextResponse.json({
     approvals: approvals.map((item) => normalizeApproval(item)),
     projects,
@@ -250,6 +261,7 @@ export async function GET(request: NextRequest) {
     artifacts,
     evaluations,
     activeStrategy,
+    activeCampaign,
     metrics: {
       revenue: Number(income[0]?.total || 0),
       pending: approvals.length,
@@ -272,6 +284,11 @@ export async function GET(request: NextRequest) {
         : 0,
       cycles24h: cycleClaims.filter((item) => item.status === "completed").length,
       failedCycles24h: cycleClaims.filter((item) => item.status === "failed").length,
+      sourcedLeads: crmStages.reduce((sum, item) => sum + Number(item.total || 0), 0),
+      qualifiedLeads: crmCount("qualified") + crmCount("contacted") + crmCount("replied") + crmCount("converted"),
+      contactedLeads: crmCount("contacted") + crmCount("replied") + crmCount("converted"),
+      repliedLeads: crmCount("replied") + crmCount("converted"),
+      convertedLeads: crmCount("converted"),
     },
     channels: [
       {

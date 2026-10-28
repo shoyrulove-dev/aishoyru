@@ -71,6 +71,7 @@ type Overview = {
   chats: Array<Record<string, unknown>>;
   activePlan?: Record<string, unknown> | null;
   activeStrategy?: Record<string, unknown> | null;
+  activeCampaign?: Record<string, unknown> | null;
   artifacts: Array<Record<string, unknown>>;
   evaluations: Array<Record<string, unknown>>;
   aiHealth: Array<{
@@ -101,6 +102,11 @@ type Overview = {
     brainScore: number;
     cycles24h: number;
     failedCycles24h: number;
+    sourcedLeads: number;
+    qualifiedLeads: number;
+    contactedLeads: number;
+    repliedLeads: number;
+    convertedLeads: number;
   };
   channels: Array<{ id: string; name: string; status: string; detail: string }>;
 };
@@ -496,6 +502,38 @@ function OverviewPanel({
           <div className="rounded-xl bg-[#fff4e9] p-4 text-sm text-[#8d5928]">
             <b>Dừng khi:</b> {String(data.activeStrategy?.stopCondition || "Không còn đủ bằng chứng để tiếp tục")}
           </div>
+        </div>
+      </section>
+      <section className="mt-6 rounded-2xl border border-[#ffd6c6] bg-[#fff9f6] p-6">
+        <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">CHIẾN DỊCH 3–5 NGÀY</p>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black">
+              {String(data.activeCampaign?.name || "Đang tạo chiến dịch bán hàng đầu tiên")}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#66717c]">
+              {String(data.activeCampaign?.objective || "Tạo một cuộc trao đổi thật với người có nhu cầu phù hợp")}
+            </p>
+          </div>
+          {Boolean(data.activeCampaign?.endsAt) && (
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#8c5c48]">
+              Kết thúc {new Date(String(data.activeCampaign?.endsAt)).toLocaleDateString("vi-VN")}
+            </span>
+          )}
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-5">
+          {[
+            ["Có nguồn", data.metrics.sourcedLeads],
+            ["Đủ phù hợp", data.metrics.qualifiedLeads],
+            ["Đã liên hệ", data.metrics.contactedLeads],
+            ["Có phản hồi", data.metrics.repliedLeads],
+            ["Đã mua", data.metrics.convertedLeads],
+          ].map(([label, value]) => (
+            <div key={String(label)} className="rounded-xl border border-[#f2ded5] bg-white p-4">
+              <p className="text-2xl font-black text-[#17202a]">{String(value)}</p>
+              <p className="mt-1 text-xs text-[#7b858f]">{String(label)}</p>
+            </div>
+          ))}
         </div>
       </section>
       <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
