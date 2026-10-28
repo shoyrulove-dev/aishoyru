@@ -9,8 +9,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/hourly-agent.yml"
 
 concurrency:
   group: shoyru-agent-cycle
