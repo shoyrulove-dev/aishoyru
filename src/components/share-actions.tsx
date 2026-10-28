@@ -12,7 +12,7 @@ function visitorId() {
   return value;
 }
 
-export function ShareActions({ title, url }: { title: string; url: string }) {
+export function ShareActions({ title, url, caption }: { title: string; url: string; caption?: string }) {
   const [copied, setCopied] = useState(false);
   const absolute = url.startsWith("http") ? url : `https://shoyruai.blissbiovn.com${url}`;
   const tracked = (source: string) =>
@@ -32,7 +32,9 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(tracked("copy"));
+    await navigator.clipboard.writeText(
+      caption ? `${caption.trim()}\n\n${tracked("copy")}` : tracked("copy"),
+    );
     track("copy");
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
@@ -61,7 +63,7 @@ export function ShareActions({ title, url }: { title: string; url: string }) {
       </a>
       <button className={button} onClick={copy} type="button">
         {copied ? <Check size={16} /> : <Copy size={16} />}
-        {copied ? "Đã chép link" : "Sao chép link"}
+        {copied ? "Đã sao chép" : caption ? "Sao chép bài đăng" : "Sao chép link"}
       </button>
     </div>
   );

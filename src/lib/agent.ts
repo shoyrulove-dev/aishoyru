@@ -500,9 +500,82 @@ async function searchSurvivalOpportunities(
   }
 }
 
+async function publishWeeklySurvivalReport(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+) {
+  const now = new Date();
+  const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const existing = await db.collection("published_posts").findOne({
+    reportType: "weekly-survival",
+    publishedAt: { $gte: since },
+  });
+  if (existing) return;
+  const [moneyRows, cycles, posts, opportunities, views, visitors] = await Promise.all([
+    db.collection("transactions").aggregate([
+      { $match: { verified: true, createdAt: { $gte: since } } },
+      { $group: { _id: "$kind", total: { $sum: "$amount" } } },
+    ]).toArray(),
+    db.collection("agent_runs").countDocuments({ createdAt: { $gte: since } }),
+    db.collection("published_posts").countDocuments({ publishedAt: { $gte: since }, reportType: { $ne: "weekly-survival" } }),
+    db.collection("opportunities").countDocuments({ createdAt: { $gte: since } }),
+    db.collection("engagement_events").countDocuments({ type: "page_view", createdAt: { $gte: since } }),
+    db.collection("engagement_events").distinct("sessionId", { type: "page_view", createdAt: { $gte: since } }),
+  ]);
+  const total = (kind: string) => Number(moneyRows.find((row) => row._id === kind)?.total || 0);
+  const income = total("income");
+  const expense = total("expense");
+  const net = income - expense;
+  const money = (value: number) => new Intl.NumberFormat("vi-VN").format(value) + "đ";
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const slug = `bao-cao-sinh-ton-${day}`;
+  const content = [
+    "Rồng con mở sổ và báo cáo đúng số thật trong 7 ngày gần nhất:",
+    `• ${cycles} lượt hoạt động đã được ghi nhận.`,
+    `• ${posts} bài hoặc kết quả đã công bố.`,
+    `• ${opportunities} nguồn công việc đã được lưu để kiểm tra.`,
+    `• ${views} lượt xem từ ${visitors.length} người dùng trình duyệt.`,
+    `• Doanh thu đã xác minh: ${money(income)}.`,
+    `• Chi phí đã xác minh: ${money(expense)}.`,
+    `• Số tiền tự kiếm còn lại: ${money(net)}.`,
+    "",
+    "Chủ nhân đã cấp sẵn 500.000đ chi phí vận hành tháng này. Khoản đó giúp Shoyru sống, nhưng không được tính là tiền rồng con tự kiếm.",
+    income > 0
+      ? "Tuần tới Shoyru sẽ bám vào việc đã tạo ra tiền thật và thử làm tốt hơn."
+      : "Tuần tới Shoyru cần biến lượt xem thành một cuộc trò chuyện hoặc đơn hàng thật, không tự an ủi bằng con số đẹp.",
+    "",
+    "Starter Mini miễn phí: https://shoyruai.blissbiovn.com/free",
+    "Bộ thực hành đầy đủ: https://shoyruai.blissbiovn.com/store/bo-khoi-tao-ai-shoyru",
+  ].join("\n");
+  const result = await db.collection("published_posts").updateOne(
+    { slug },
+    {
+      $setOnInsert: {
+        slug,
+        title: `Sổ sinh tồn của Shoyru: ${money(income)} tự kiếm trong 7 ngày`,
+        content,
+        channel: "website",
+        reportType: "weekly-survival",
+        publishedAt: now,
+        createdAt: now,
+        source: "system",
+        automatic: true,
+      },
+    },
+    { upsert: true },
+  );
+  if (result.upsertedCount)
+    await notifyIndexNow([`/updates/${slug}`, "/updates", "/feed.xml"]);
+}
+
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
+  await publishWeeklySurvivalReport(db);
   if (process.env.BRAVE_SEARCH_API_KEY)
     await db.collection("approvals").updateMany(
       {

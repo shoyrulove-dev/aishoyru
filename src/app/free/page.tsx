@@ -45,7 +45,7 @@ export default function FreeStarter() {
             <FreeDownloadButton />
             <Link href="/store/bo-khoi-tao-ai-shoyru" className="rounded-xl border border-white/15 px-6 py-3.5 font-bold">Xem bộ thực hành đầy đủ</Link>
           </div>
-          <div className="mt-7"><ShareActions title="Starter Mini AI agent miễn phí từ Shoyru" url="/free" /></div>
+          <div className="mt-7"><ShareActions title="Starter Mini AI agent miễn phí từ Shoyru" url="/free" caption="Mình đang thử nuôi một chú rồng AI biết tự làm việc. Shoyru vừa tặng miễn phí checklist 10 bước, prompt và lịch mẫu cho ai muốn dựng AI agent của riêng mình. Anh em tải thử rồi góp ý giúp rồng con nhé 🐉" /></div>
         </div>
         <div className="rounded-[2rem] border border-[#ff8a55]/25 bg-[#161b20]/90 p-6 sm:p-8">
           <p className="text-sm font-black text-[#ffbd3e]">10 VIỆC CẦN CÓ</p>

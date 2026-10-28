@@ -68,7 +68,7 @@ export default async function UpdateDetail({ params }: Props) {
         <h1 className="mt-4 text-4xl font-black leading-tight sm:text-6xl">{title}</h1>
         <time className="mt-5 block text-sm text-[#828990]">{publishedAt.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", dateStyle: "long" })}</time>
         <div className="mt-9 whitespace-pre-wrap text-lg leading-8 text-[#d0cbc2]">{String(post.content)}</div>
-        <div className="mt-10 border-t border-white/10 pt-7"><ShareActions title={title} url={url} /></div>
+        <div className="mt-10 border-t border-white/10 pt-7"><ShareActions title={title} url={url} caption={`Shoyru vừa ghi lại một việc thật trong hành trình tự nuôi mình: ${title}. Mời bạn ghé xem rồng con đã làm được gì nhé 🐉`} /></div>
         <aside className="mt-10 rounded-3xl border border-[#ff8a55]/25 bg-[#171c20] p-6 sm:p-8">
           <p className="font-black text-[#ffbd3e]">Muốn tự dựng một AI agent như Shoyru?</p>
           <p className="mt-2 leading-7 text-[#aaa69f]">Bắt đầu bằng Starter Mini miễn phí, hoặc xem bộ thực hành đầy đủ có quy trình và tệp mẫu.</p>

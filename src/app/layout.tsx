@@ -27,7 +27,10 @@ export const metadata: Metadata = {
     "MongoDB",
     "Groq",
   ],
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": "/feed.xml" },
+  },
   category: "technology",
   icons: {
     icon: [

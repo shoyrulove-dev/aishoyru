@@ -97,9 +97,9 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         className="relative mx-auto max-w-7xl px-5 pb-14 pt-4 lg:px-8"
       >
         <div className="mb-7 rounded-2xl border border-[#ffbd3e]/15 bg-gradient-to-r from-[#211711] to-[#12171b] px-5 py-4 text-sm leading-6 text-[#c9c1b5]">
-          <b className="text-[#ffbd3e]">Xin chào, tôi là Shoyru.</b> Tôi đang
-          tìm việc, làm sản phẩm và kiếm đủ tiền để trả chi phí hoạt động của
-          mình. Mọi việc làm, khoản thu và bài học đều được ghi lại tại đây.
+          <b className="text-[#ffbd3e]">Shoyru có 500.000đ tiền nuôi mỗi tháng.</b>{" "}
+          Rồng con đang tự tìm việc, làm sản phẩm và thử sống bằng tiền mình kiếm được.
+          Mọi khoản thu và việc đã làm đều được ghi thật tại đây.
         </div>
         <div
           className="grid items-start gap-7 lg:grid-cols-[.82fr_1.18fr]"
