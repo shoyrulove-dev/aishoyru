@@ -14,6 +14,7 @@ import {
   validateArtifactFiles,
   type ArtifactFile,
 } from "./autonomy";
+import { createArtifactPullRequest } from "./github-automation";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -239,6 +240,7 @@ const actionTypes = [
   "draft_email",
   "plan_business",
   "build_bot",
+  "create_pr",
   "paper_trade",
   "request_support",
   "wait",
@@ -945,7 +947,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng; chỉ rời trọng tâm khi đã đạt chỉ số, chạm điều kiện dừng hoặc có việc khẩn cấp hơn với bằng chứng rõ. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
+        "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng; chỉ rời trọng tâm khi đã đạt chỉ số, chạm điều kiện dừng hoặc có việc khẩn cấp hơn với bằng chứng rõ. create_pr là hành động hợp lệ khi đã tạo xong bộ tệp hữu ích: phải trả files hoàn chỉnh; hệ thống chỉ mở Pull Request để chủ nhân kiểm tra, không được nói đã merge hay triển khai. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
     },
     {
       role: "user",
@@ -1171,7 +1173,7 @@ export async function runAgentCycle() {
     | null = null;
   const needsSecondOpinion =
     Boolean(decision.opportunity) ||
-    ["draft_email", "build_product", "build_bot", "plan_business", "paper_trade"].includes(
+    ["draft_email", "build_product", "build_bot", "create_pr", "plan_business", "paper_trade"].includes(
       decision.action.type,
     );
   if (needsSecondOpinion && providers.length > 1) {
@@ -1448,6 +1450,7 @@ export async function runAgentCycle() {
   const artifactActions = new Set([
     "build_product",
     "build_bot",
+    "create_pr",
     "plan_business",
     "improve",
     "validate",
@@ -1480,6 +1483,38 @@ export async function runAgentCycle() {
     if (!checked.valid)
       workResult.nextStep = `Sửa artifact trước khi sử dụng: ${checked.errors.slice(0, 2).join("; ")}.`;
   }
+  let githubDelivery:
+    | { branch: string; number: number; url: string }
+    | null = null;
+  let githubError = "";
+  if (
+    decision.action.type === "create_pr" &&
+    workResult &&
+    artifactRecord?.validation.valid
+  ) {
+    try {
+      githubDelivery = await createArtifactPullRequest({
+        taskId,
+        title: decision.action.title,
+        description: workResult.summary,
+        files: artifactRecord.files,
+      });
+      workResult.summary = `Đã mở Pull Request #${githubDelivery.number} để chủ nhân kiểm tra.`;
+      workResult.nextStep = "Chờ chủ nhân xem và merge Pull Request nếu đầu ra đạt yêu cầu.";
+      decision.status = "Đã gửi một sản phẩm lên GitHub để kiểm tra";
+      decision.thought = "Mình vừa đặt bộ tệp vào một Pull Request riêng, chưa đụng vào bản đang chạy đâu nhé.";
+    } catch (error) {
+      githubError = error instanceof Error ? error.message : "GitHub từ chối yêu cầu";
+      decision.supportRequest = {
+        title: "Kiểm tra quyền GitHub Automation",
+        reason: githubError,
+        needed: "GITHUB_AUTOMATION_TOKEN có quyền Contents và Pull requests: Read and write",
+        impact: "Shoyru có thể tạo branch và mở Pull Request để chủ nhân duyệt.",
+        where: "Vercel → Project aishoyru → Settings → Environment Variables",
+        doneWhen: "Shoyru sẽ thử lại việc mở Pull Request ở lượt tiếp theo.",
+      };
+    }
+  }
   const opportunityAssessment = decision.opportunity
     ? scoreOpportunity(decision.opportunity)
     : null;
@@ -1492,7 +1527,7 @@ export async function runAgentCycle() {
     decision.thought = "Nguồn này chưa cho thấy họ thật sự cần thuê Shoyru, mình tìm chỗ khác nhé.";
     decision.reflection = "Không có nhu cầu rõ hoặc cách liên hệ phù hợp thì chưa thể gọi là khách hàng.";
   }
-  const needsApproval = decision.action.type === "request_support";
+  const needsApproval = decision.action.type === "request_support" || Boolean(githubError);
   const publicStatusRaw = needsApproval
     ? "Đang chuyển sang một việc khác"
     : decision.status;
@@ -1508,6 +1543,7 @@ export async function runAgentCycle() {
   const hasVerifiableEvidence = Boolean(
     postSlug ||
       emailDelivery?.providerId ||
+      githubDelivery?.url ||
       artifactRecord?.artifactId ||
       decision.opportunity?.sourceUrl ||
       fundingResearch.url,
@@ -1607,12 +1643,14 @@ export async function runAgentCycle() {
           ? "published-url"
           : emailDelivery?.sent
             ? "email-provider-id"
+            : githubDelivery
+              ? "github-pull-request"
             : artifactRecord
               ? "validated-artifact"
               : "stored-artifact",
         value: postSlug
           ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
-          : emailDelivery?.providerId || artifactRecord?.artifactId || taskId,
+          : emailDelivery?.providerId || githubDelivery?.url || artifactRecord?.artifactId || taskId,
       },
       provider: decisionResponse.provider,
       model: decisionResponse.model,
@@ -1638,6 +1676,7 @@ export async function runAgentCycle() {
           ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
           : undefined,
         emailProviderId: emailDelivery?.providerId,
+        pullRequestUrl: githubDelivery?.url,
       },
       createdAt: now,
     }),
@@ -1714,12 +1753,14 @@ export async function runAgentCycle() {
             ? "published-url"
             : emailDelivery?.sent
               ? "email-provider-id"
+              : githubDelivery
+                ? "github-pull-request"
               : artifactRecord
                 ? "validated-artifact"
                 : "stored-artifact",
           value: postSlug
             ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
-            : emailDelivery?.providerId || artifactRecord?.artifactId || taskId,
+            : emailDelivery?.providerId || githubDelivery?.url || artifactRecord?.artifactId || taskId,
         },
         status:
           artifactRecord && !artifactRecord.validation.valid
@@ -1757,6 +1798,7 @@ export async function runAgentCycle() {
                   ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
                   : undefined,
                 emailProviderId: emailDelivery?.providerId,
+                pullRequestUrl: githubDelivery?.url,
                 artifactId: artifactRecord?.artifactId,
               },
               status:
@@ -1913,7 +1955,8 @@ export async function runAgentCycle() {
         ? `https://shoyruai.blissbiovn.com/updates#${postSlug}`
         : undefined,
       emailProviderId: emailDelivery?.providerId,
+      pullRequestUrl: githubDelivery?.url,
     },
   );
-  return { ok: true, decision, workResult, needsApproval };
+  return { ok: true, decision, workResult, needsApproval, githubDelivery };
 }

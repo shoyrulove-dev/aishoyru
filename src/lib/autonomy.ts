@@ -47,6 +47,7 @@ const actionStep: Record<string, PlanStep["key"]> = {
   validate: "offer",
   plan_business: "offer",
   build_bot: "offer",
+  create_pr: "offer",
   draft_post: "outreach",
   draft_email: "outreach",
 };
