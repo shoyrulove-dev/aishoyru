@@ -2,13 +2,21 @@ import type { Db } from "mongodb";
 
 const FAILURE_LIMIT = 3;
 const COOLDOWN_MS = 20 * 60 * 1000;
+const PROBE_AFTER_MS = 5 * 60 * 1000;
 
 export async function providerIsCoolingDown(db: Db, provider: string) {
   const health = await db.collection("ai_provider_health").findOne(
     { provider },
-    { projection: { cooldownUntil: 1 } },
+    { projection: { cooldownUntil: 1, updatedAt: 1 } },
   );
-  return health?.cooldownUntil instanceof Date && health.cooldownUntil > new Date();
+  const now = new Date();
+  const updatedAt = health?.updatedAt instanceof Date ? health.updatedAt : null;
+  return Boolean(
+    health?.cooldownUntil instanceof Date &&
+      health.cooldownUntil > now &&
+      updatedAt &&
+      now.getTime() - updatedAt.getTime() < PROBE_AFTER_MS,
+  );
 }
 
 export async function recordProviderSuccess(
