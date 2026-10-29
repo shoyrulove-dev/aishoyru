@@ -779,6 +779,68 @@ export async function runAgentCycle() {
     { upsert: true },
   );
   }
+  const leadEvidenceMigrationId = "strict-lead-evidence-v1";
+  const leadEvidenceMigrated = await db
+    .collection("system_migrations")
+    .findOne({ _id: leadEvidenceMigrationId as never });
+  if (!leadEvidenceMigrated) {
+    const now = new Date();
+    const nonCustomerSource = /(gitcoin\.co|ethereum\.foundation\/applicants|producthunt\.com\/?$|tinhte\.vn\/?$|voz\.vn\/?$)/i;
+    await Promise.all([
+      db.collection("opportunities").updateMany(
+        { sourceUrl: nonCustomerSource, status: { $in: ["qualified", "contactable", "discovered"] } },
+        {
+          $set: {
+            status: "low_fit",
+            fitScore: 0,
+            opportunityKind: "unknown",
+            scoreReasons: ["Nguồn cũ là trang cộng đồng hoặc tài trợ, không chứng minh nhu cầu thuê trực tiếp."],
+            updatedAt: now,
+          },
+        },
+      ),
+      db.collection("lead_crm").updateMany(
+        { sourceUrl: nonCustomerSource, status: { $in: ["sourced", "qualified"] } },
+        {
+          $set: {
+            status: "rejected",
+            note: "Đã loại khi áp dụng bộ kiểm chứng nhu cầu trực tiếp.",
+            updatedAt: now,
+          },
+        },
+      ),
+      db.collection("agent_plans").updateMany(
+        { status: "active" },
+        {
+          $set: {
+            status: "superseded",
+            supersededReason: "Khởi động lại bằng bộ kiểm chứng lead nghiêm ngặt.",
+            updatedAt: now,
+          },
+        },
+      ),
+      db.collection("projects").updateMany(
+        { "lastEvidence.sourceUrl": nonCustomerSource },
+        {
+          $set: {
+            lastAction: { type: "research", title: "Tìm nhu cầu có nguồn thật" },
+            result: {
+              summary: "Nguồn cũ chưa chứng minh có người cần thuê Shoyru.",
+              artifact: "Đã loại nguồn cộng đồng hoặc tài trợ khỏi danh sách khách trực tiếp.",
+              nextStep: "Tìm trang chi tiết có yêu cầu, ngày đăng và cách liên hệ rõ ràng.",
+            },
+            updatedAt: now,
+          },
+          $unset: { lastEvidence: "" },
+        },
+      ),
+      db.collection("system_migrations").insertOne({
+        _id: leadEvidenceMigrationId as never,
+        purpose: "Tách nguồn tài trợ khỏi lead khách hàng và khởi động lại kế hoạch tìm khách.",
+        createdAt: now,
+      }),
+    ]);
+  }
   const routine = dailyRoutine(new Date());
   if (routine) {
     const now = new Date();
