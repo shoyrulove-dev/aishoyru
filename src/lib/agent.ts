@@ -1936,14 +1936,29 @@ export async function runAgentCycle() {
       ? `${now.toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`
       : null;
   let workResult: z.infer<typeof WorkResult> | null = null;
-  if (decision.action.type !== "wait")
-    workResult = WorkResult.parse(
-      decision.work || {
-        summary: decision.action.title,
-        artifact: decision.action.details,
-        nextStep: "Kiểm tra lại kết quả trong lượt làm việc tiếp theo.",
-      },
-    );
+  if (decision.action.type !== "wait") {
+    const fallbackWork = {
+      summary:
+        decision.action.title.trim().length >= 3
+          ? decision.action.title
+          : "Đã hoàn thành một bước công việc.",
+      artifact:
+        decision.action.details.trim().length >= 3
+          ? decision.action.details
+          : "Kết quả đã được ghi lại để kiểm tra.",
+      nextStep: "Kiểm tra lại kết quả trong lượt làm việc tiếp theo.",
+    };
+    const candidate = decision.work || fallbackWork;
+    let parsedWork = WorkResult.safeParse(candidate);
+    if (!parsedWork.success) {
+      const withoutFiles =
+        candidate && typeof candidate === "object"
+          ? { ...candidate, files: undefined }
+          : fallbackWork;
+      parsedWork = WorkResult.safeParse(withoutFiles);
+    }
+    workResult = parsedWork.success ? parsedWork.data : fallbackWork;
+  }
   let emailDelivery: { sent: boolean; providerId?: string; reason?: string } | null = null;
   if (decision.action.type === "draft_email" && decision.email) {
     const normalizedRecipient = decision.email.to.toLowerCase();
