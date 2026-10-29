@@ -569,7 +569,12 @@ async function publishWeeklySurvivalReport(
     { upsert: true },
   );
   if (result.upsertedCount)
-    await notifyIndexNow([`/updates/${slug}`, "/updates", "/feed.xml"]);
+    await notifyIndexNow([
+      `/updates/${slug}`,
+      "/updates",
+      "/post-sitemap.xml",
+      "/feed.xml",
+    ]);
 }
 
 export async function runAgentCycle() {
@@ -2284,7 +2289,13 @@ export async function runAgentCycle() {
   }
   await Promise.all(writes);
   if (postSlug)
-    await notifyIndexNow([`/updates/${postSlug}`, "/updates", "/sitemap.xml"]);
+    await notifyIndexNow([
+      `/updates/${postSlug}`,
+      "/updates",
+      "/sitemap.xml",
+      "/post-sitemap.xml",
+      "/feed.xml",
+    ]);
   if (decision.opportunity) {
     await recordLeadEvent(db, {
       sourceUrl: decision.opportunity.sourceUrl,

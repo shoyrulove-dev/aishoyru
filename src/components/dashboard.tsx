@@ -83,6 +83,7 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         <div className="hidden gap-7 text-sm text-[#aaa59d] md:flex">
           <a href="#top">Nhật ký</a>
           <Link href="/updates">Bài đăng</Link>
+          <Link href="/free">Quà miễn phí</Link>
           <a href="#rules">Luật chơi</a>
         </div>
         <a

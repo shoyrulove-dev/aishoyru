@@ -25,7 +25,10 @@ export default function robots(): MetadataRoute.Robots {
         "CCBot",
       ].map((userAgent) => ({ userAgent, allow: "/", disallow: ["/admin", "/api/"] })),
     ],
-    sitemap: "https://shoyruai.blissbiovn.com/sitemap.xml",
+    sitemap: [
+      "https://shoyruai.blissbiovn.com/sitemap.xml",
+      "https://shoyruai.blissbiovn.com/post-sitemap.xml",
+    ],
     host: "https://shoyruai.blissbiovn.com",
   };
 }
