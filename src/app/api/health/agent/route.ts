@@ -26,6 +26,12 @@ export async function GET() {
     : null;
   const counts = Object.fromEntries(jobs.map((job) => [String(job._id), Number(job.total || 0)]));
   const lastError = String(latestFailure?.lastError || "");
+  const latestFailureAt = latestFailure?.updatedAt
+    ? new Date(latestFailure.updatedAt as Date)
+    : null;
+  const hasUnresolvedFailure = Boolean(
+    latestFailureAt && (!lastRunAt || latestFailureAt > lastRunAt),
+  );
   const failureType = !lastError
     ? null
     : /provider|groq|openrouter|nvidia|kilo|oxion|openai/i.test(lastError)
@@ -56,8 +62,8 @@ export async function GET() {
         completed: Number(counts.completed || 0),
         deadLetter: Number(counts["dead-letter"] || 0),
       },
-      latestFailure: latestFailure
-        ? { type: failureType, at: latestFailure.updatedAt || null }
+      latestFailure: latestFailure && hasUnresolvedFailure
+        ? { type: failureType, at: latestFailureAt }
         : null,
     },
     {
