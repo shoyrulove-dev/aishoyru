@@ -94,6 +94,16 @@ type Overview = {
     lastRunAt?: string | null;
     ageMinutes?: number | null;
     deadLetters: number;
+    completionRate24h?: number;
+    schedule24h?: Array<{
+      slot: string;
+      hour: string;
+      status: string;
+      attempts: number;
+      source?: string | null;
+      completedAt?: string | null;
+      provider?: string | null;
+    }>;
     jobs: Array<Record<string, unknown>>;
     backup?: { day?: string; createdAt?: string; counts?: Record<string, number> } | null;
     snapshot?: {
@@ -1156,6 +1166,39 @@ function AiHealth({
           label="Sao lưu gần nhất"
           value={operations.backup?.day || "Chưa có"}
         />
+      </div>
+      <div className="mb-5 rounded-2xl border border-[#dfe4e8] bg-white p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-black">Lịch tự chạy 24 giờ</h2>
+            <p className="mt-1 text-sm text-[#77818b]">
+              Mỗi ô là một giờ Việt Nam; xanh là đã hoàn thành, cam là đang chờ hoặc thử lại.
+            </p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${(operations.completionRate24h || 0) >= 95 ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff6dc] text-[#9a6a12]"}`}>
+            Hoàn thành {operations.completionRate24h || 0}%
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-6 gap-2 sm:grid-cols-8 xl:grid-cols-12">
+          {(operations.schedule24h || []).map((slot) => {
+            const completed = slot.status === "completed";
+            const missing = slot.status === "missing";
+            return (
+              <div
+                key={slot.slot}
+                title={`${slot.slot} · ${slot.status}${slot.provider ? ` · ${slot.provider}` : ""}`}
+                className={`rounded-xl border px-2 py-2 text-center text-xs font-bold ${completed ? "border-[#ccebd7] bg-[#eaf8ef] text-[#25864b]" : missing ? "border-[#edf0f2] bg-[#f4f6f8] text-[#8b949e]" : "border-[#f4ddb0] bg-[#fff6dc] text-[#9a6a12]"}`}
+              >
+                {slot.hour}
+              </div>
+            );
+          })}
+        </div>
+        {(operations.ageMinutes || 0) > 75 && (
+          <p className="mt-4 rounded-xl bg-[#fff0e9] px-3 py-2 text-sm font-bold text-[#d95628]">
+            Shoyru đã trễ hơn 75 phút. Hãy kiểm tra watchdog và hàng đợi công việc.
+          </p>
+        )}
       </div>
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <AiStat label="Lượt gọi AI hôm nay" value={String(usage.requests || 0)} />

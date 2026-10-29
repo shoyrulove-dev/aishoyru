@@ -64,7 +64,36 @@ export async function recoverStaleOperations(db: Db, now = new Date()) {
       },
     },
   );
-  return { recovered: staleJobs.modifiedCount, deadLettered: deadJobs.modifiedCount };
+  const deadLetters = await db
+    .collection("agent_jobs")
+    .find({ status: "dead-letter", slot: { $type: "string" } })
+    .project({ slot: 1 })
+    .limit(100)
+    .toArray();
+  const deadSlots = [...new Set(deadLetters.map((job) => String(job.slot || "")).filter(Boolean))];
+  const recoveredSlots = deadSlots.length
+    ? await db.collection("agent_jobs").distinct("slot", {
+        slot: { $in: deadSlots },
+        status: "completed",
+      })
+    : [];
+  const reconciled = recoveredSlots.length
+    ? await db.collection("agent_jobs").updateMany(
+        { status: "dead-letter", slot: { $in: recoveredSlots } },
+        {
+          $set: {
+            status: "superseded",
+            resolvedAt: now,
+            updatedAt: now,
+          },
+        },
+      )
+    : { modifiedCount: 0 };
+  return {
+    recovered: staleJobs.modifiedCount,
+    deadLettered: deadJobs.modifiedCount,
+    reconciled: reconciled.modifiedCount,
+  };
 }
 
 export async function claimCycleJob(db: Db, slot: string, source: CycleSource, force = false) {
@@ -259,13 +288,39 @@ export async function getOperationalHealth(db: Db) {
   const now = new Date();
   const [state, latestJobs, latestBackup, latestSnapshot, deadLetters] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
-    db.collection("agent_jobs").find({}).sort({ updatedAt: -1 }).limit(12).toArray(),
+    db.collection("agent_jobs").find({}).sort({ updatedAt: -1 }).limit(72).toArray(),
     db.collection("system_backups").findOne({}, { sort: { createdAt: -1 }, projection: { collections: 0 } }),
     db.collection("operational_snapshots").findOne({}, { sort: { createdAt: -1 } }),
     db.collection("agent_jobs").countDocuments({ status: "dead-letter" }),
   ]);
   const lastRunAt = state?.lastRunAt ? new Date(state.lastRunAt as Date) : null;
   const ageMinutes = lastRunAt ? Math.round((now.getTime() - lastRunAt.getTime()) / MINUTE) : null;
+  const slotKey = (value: Date) => {
+    const shifted = new Date(value.getTime() + 7 * 60 * MINUTE);
+    return [
+      shifted.getUTCFullYear(),
+      String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+      String(shifted.getUTCDate()).padStart(2, "0"),
+      String(shifted.getUTCHours()).padStart(2, "0"),
+    ].join("-");
+  };
+  const schedule24h = Array.from({ length: 24 }, (_, index) => {
+    const hour = new Date(now.getTime() - (23 - index) * 60 * MINUTE);
+    const slot = slotKey(hour);
+    const matching = latestJobs.filter((job) => String(job.slot || "") === slot);
+    const completed = matching.find((job) => job.status === "completed");
+    const active = completed || matching[0];
+    return {
+      slot,
+      hour: `${slot.slice(-2)}:00`,
+      status: active?.status || "missing",
+      attempts: Number(active?.attempts || 0),
+      source: active?.requestedBy || null,
+      completedAt: active?.completedAt || null,
+      provider: active?.result?.provider || null,
+    };
+  });
+  const completedSlots = schedule24h.filter((slot) => slot.status === "completed").length;
   return {
     status: ageMinutes === null ? "unknown" : ageMinutes > 90 ? "delayed" : "healthy",
     lastWakeAt: latestJobs[0]?.updatedAt || null,
@@ -273,6 +328,8 @@ export async function getOperationalHealth(db: Db) {
     lastRunAt,
     ageMinutes,
     deadLetters,
+    completionRate24h: Math.round((completedSlots / schedule24h.length) * 100),
+    schedule24h,
     jobs: latestJobs,
     backup: latestBackup || null,
     snapshot: latestSnapshot || null,
