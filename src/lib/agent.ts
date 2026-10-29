@@ -954,6 +954,41 @@ export async function runAgentCycle() {
       }),
     ]);
   }
+  const legacyProjectCleanupId = "strict-lead-evidence-project-v2";
+  const legacyProjectCleaned = await db
+    .collection("system_migrations")
+    .findOne({ _id: legacyProjectCleanupId as never });
+  if (!legacyProjectCleaned) {
+    const now = new Date();
+    await Promise.all([
+      db.collection("projects").updateMany(
+        {
+          $or: [
+            { "result.summary": /explorer\.gitcoin\.co/i },
+            { "result.artifact": /explorer\.gitcoin\.co/i },
+            { "result.nextStep": /outreach|soạn email/i },
+          ],
+        },
+        {
+          $set: {
+            lastAction: { type: "research", title: "Tìm nhu cầu có nguồn thật" },
+            result: {
+              summary: "Nguồn cũ chưa chứng minh có người cần thuê Shoyru.",
+              artifact: "Gitcoin đã được tách khỏi danh sách khách chatbot.",
+              nextStep: "Tìm trang chi tiết có yêu cầu, ngày đăng và cách liên hệ rõ ràng.",
+            },
+            updatedAt: now,
+          },
+          $unset: { lastEvidence: "" },
+        },
+      ),
+      db.collection("system_migrations").insertOne({
+        _id: legacyProjectCleanupId as never,
+        purpose: "Dọn tóm tắt Gitcoin cũ lưu trong result của dự án.",
+        createdAt: now,
+      }),
+    ]);
+  }
   const routine = dailyRoutine(new Date());
   if (routine) {
     const now = new Date();
