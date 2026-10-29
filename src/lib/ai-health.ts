@@ -39,6 +39,7 @@ export async function recordProviderSuccess(
         lastLatencyMs: latencyMs,
         updatedAt: now,
       },
+      $unset: { lastError: "" },
       $inc: { totalSuccess: 1 },
     },
     { upsert: true },
