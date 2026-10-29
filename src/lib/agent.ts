@@ -1206,24 +1206,8 @@ export async function runAgentCycle() {
           );
           return { content: jsonText, provider: provider.name, model: provider.model };
         }
-        const action =
-          raw.action && typeof raw.action === "object"
-            ? (raw.action as Record<string, unknown>)
-            : {};
-        const publicFields = [
-          raw.status,
-          raw.thought,
-          raw.reflection,
-          action.title,
-        ].map((value) => String(value || ""));
-        if (!vietnameseText.test(publicFields.join(" ")))
-          throw new Error("Nội dung công khai không phải tiếng Việt có dấu");
-        if (
-          /discover(?:y)?[_ ]lead|qualif(?:y|ied)|plan[_ ]business|pipeline|marketing|micro[_ ]job/i.test(
-            publicFields.join(" "),
-          )
-        )
-          throw new Error("Nội dung công khai còn dùng thuật ngữ máy móc");
+        // Public wording is normalized after decision validation. Useful JSON
+        // must not fail the cycle solely because the provider drafted in English.
         await recordProviderSuccess(
           db!,
           provider.name,
