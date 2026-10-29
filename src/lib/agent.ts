@@ -1162,13 +1162,36 @@ export async function runAgentCycle() {
           timeout: 7000,
           maxRetries: 0,
         });
-        const response = await client.chat.completions.create({
-          model: provider.model,
-          response_format: { type: "json_object" },
-          messages: compactMessages,
-        });
+        const request = (strictJson: boolean) =>
+          client.chat.completions.create({
+            model: provider.model,
+            ...(strictJson ? { response_format: { type: "json_object" as const } } : {}),
+            messages: strictJson
+              ? compactMessages
+              : [
+                  ...compactMessages,
+                  {
+                    role: "system" as const,
+                    content: "Chỉ trả về đúng một JSON object hợp lệ, không dùng markdown hay lời dẫn.",
+                  },
+                ],
+          });
+        let response;
+        try {
+          response = await request(true);
+        } catch (error) {
+          const status = Number((error as { status?: number })?.status || 0);
+          const message = error instanceof Error ? error.message : String(error);
+          if (status !== 400 && !/response_format|json_object|unsupported/i.test(message)) throw error;
+          response = await request(false);
+        }
         const content = response.choices[0].message.content || "{}";
-        const raw = JSON.parse(content) as Record<string, unknown>;
+        const objectStart = content.indexOf("{");
+        const objectEnd = content.lastIndexOf("}");
+        const jsonText = objectStart >= 0 && objectEnd > objectStart
+          ? content.slice(objectStart, objectEnd + 1)
+          : content;
+        const raw = JSON.parse(jsonText) as Record<string, unknown>;
         if (options.validatePublic === false) {
           await recordProviderSuccess(
             db!,
@@ -1181,7 +1204,7 @@ export async function runAgentCycle() {
               totalTokens: response.usage?.total_tokens,
             },
           );
-          return { content, provider: provider.name, model: provider.model };
+          return { content: jsonText, provider: provider.name, model: provider.model };
         }
         const action =
           raw.action && typeof raw.action === "object"
@@ -1212,7 +1235,7 @@ export async function runAgentCycle() {
             totalTokens: response.usage?.total_tokens,
           },
         );
-        return { content, provider: provider.name, model: provider.model };
+        return { content: jsonText, provider: provider.name, model: provider.model };
       } catch (error) {
         await recordProviderFailure(db!, provider.name, provider.model, error);
         errors.push(
