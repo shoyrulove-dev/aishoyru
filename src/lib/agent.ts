@@ -1372,7 +1372,9 @@ export async function runAgentCycle() {
       ? Promise.resolve(null)
       : getPolymarketResearch(db).catch(() => null),
   ]);
-  const decisionResponse = await completeJson([
+  let decisionResponse: { content: string; provider: string; model: string };
+  try {
+    decisionResponse = await completeJson([
     {
       role: "system",
       content:
@@ -1555,7 +1557,38 @@ export async function runAgentCycle() {
         ],
       }),
     },
-  ]);
+    ]);
+  } catch (error) {
+    const fallbackSource = webResearch.results[0] || {
+      title: fundingResearch.name,
+      url: fundingResearch.url,
+      description: fundingResearch.error
+        ? `Nguồn chưa đọc được: ${fundingResearch.error}`
+        : clip(fundingResearch.text, 800),
+    };
+    decisionResponse = {
+      provider: "local-fallback",
+      model: "deterministic-research",
+      content: JSON.stringify({
+        status: "Đang kiểm tra một nguồn mới",
+        thought: `Shoyru đang đọc ${clip(fallbackSource.title, 70)} và ghi lại điều có thể kiểm chứng.`,
+        reflection:
+          "Lượt này mình chỉ lưu nguồn thật; khi bộ não AI khỏe lại, Shoyru sẽ đánh giá kỹ hơn.",
+        action: {
+          type: "research",
+          title: `Kiểm tra ${clip(fallbackSource.title, 90)}`,
+          details: `Đọc và lưu nguồn công khai ${fallbackSource.url}.`,
+        },
+        work: {
+          summary: `Đã giữ lại nguồn ${clip(fallbackSource.title, 100)} để không bỏ mất lượt làm việc.`,
+          artifact: `Nguồn: ${fallbackSource.url}. ${clip(fallbackSource.description || "Chưa có mô tả.", 1000)}`,
+          nextStep:
+            "Đánh giá nhu cầu, cách liên hệ và khả năng tạo doanh thu khi nhà cung cấp AI hoạt động lại.",
+        },
+      }),
+    };
+    console.error("All AI providers failed; using deterministic fallback", error);
+  }
   const rawDecision = JSON.parse(decisionResponse.content) as Record<
     string,
     unknown
