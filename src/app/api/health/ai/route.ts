@@ -28,7 +28,7 @@ export async function GET() {
   const providers = configured.map((name) => {
     const row = rows.find((item) => item.provider === name || (name === "kilo" && item.provider === "kilo-fallback"));
     const error = String(row?.lastError || "");
-    const failureType = !error
+    const failureType = row?.status === "healthy" || !error
       ? null
       : /401|403|unauthor|forbidden|invalid.*key|authentication/i.test(error)
         ? "auth"
