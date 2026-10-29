@@ -11,6 +11,15 @@ const checks = [
   { path: "/api/health/search", json: (data) => data.configured && data.lastStatus === "success" },
   { path: "/api/health/github", json: (data) => data.configured && data.ok && data.canPush },
   { path: "/api/health/commerce", json: (data) => data.ok },
+  {
+    path: "/api/health/polymarket",
+    json: (data) =>
+      data.ok &&
+      data.mode === "research-only" &&
+      data.liveTradingEnabled === false &&
+      data.tradesScanned > 0 &&
+      data.marketsObserved > 0,
+  },
   { path: "/api/state", json: (data) => data.demo === false && data.lastRunAt },
 ];
 

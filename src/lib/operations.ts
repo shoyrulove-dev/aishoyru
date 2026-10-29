@@ -17,6 +17,14 @@ export async function ensureOperationalIndexes(db: Db) {
     ),
     db.collection("system_backups").createIndex({ createdAt: -1 }),
     db.collection("operational_snapshots").createIndex({ createdAt: -1 }),
+    db.collection("agent_jobs").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0 },
+    ),
+    db.collection("operational_snapshots").createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0 },
+    ),
   ]).catch(() => undefined);
 }
 
@@ -71,18 +79,27 @@ export async function claimCycleJob(db: Db, slot: string, source: CycleSource, f
         attempts: 0,
         createdAt: now,
         nextAttemptAt: now,
+        expiresAt: new Date(now.getTime() + 30 * DAY),
       },
       $set: { requestedBy: source, updatedAt: now },
     },
     { upsert: true },
   );
+  const filter = force
+    ? {
+        _id: id as never,
+        status: { $in: ["queued", "retry"] },
+        nextAttemptAt: { $lte: now },
+        attempts: { $lt: MAX_ATTEMPTS },
+      }
+    : {
+        type: "agent-cycle",
+        status: { $in: ["queued", "retry"] },
+        nextAttemptAt: { $lte: now },
+        attempts: { $lt: MAX_ATTEMPTS },
+      };
   const job = await db.collection("agent_jobs").findOneAndUpdate(
-    {
-      _id: id as never,
-      status: { $in: ["queued", "retry"] },
-      nextAttemptAt: { $lte: now },
-      attempts: { $lt: MAX_ATTEMPTS },
-    },
+    filter,
     {
       $set: {
         status: "running",
@@ -93,9 +110,9 @@ export async function claimCycleJob(db: Db, slot: string, source: CycleSource, f
       },
       $inc: { attempts: 1 },
     },
-    { returnDocument: "after" },
+    { returnDocument: "after", sort: { nextAttemptAt: 1, createdAt: 1 } },
   );
-  return { id, job };
+  return { id: job ? String(job._id) : id, job };
 }
 
 export async function completeCycleJob(db: Db, id: string, result?: Document) {
@@ -169,6 +186,7 @@ export async function recordOperationalSnapshot(db: Db) {
   const remainingFunds = Math.max(0, 500000 + verifiedIncome - verifiedExpense);
   const snapshot = {
     createdAt: now,
+    expiresAt: new Date(now.getTime() + 90 * DAY),
     lastRunAt: state?.lastRunAt || null,
     status: state?.status || "unknown",
     jobs: Object.fromEntries(jobs.map((row) => [String(row._id), Number(row.total || 0)])),

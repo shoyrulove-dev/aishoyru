@@ -3,7 +3,6 @@ import { getDb } from "@/lib/mongodb";
 import { runClaimedAgentCycle, vietnamCycleSlot } from "@/lib/agent-cycle";
 
 export const maxDuration = 300;
-export const preferredRegion = "sin1";
 
 function vietnamSlot(now: Date) {
   const shifted = new Date(now.getTime() + 7 * 60 * 60 * 1000);
