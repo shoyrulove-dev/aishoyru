@@ -75,7 +75,18 @@ export async function claimCycleJob(db: Db, slot: string, source: CycleSource, f
       { _id: id as never },
       { projection: { status: 1 } },
     );
-    if (current?.status === "dead-letter") id = `${slot}-recovery`;
+    if (current?.status === "dead-letter") {
+      id = `${slot}-recovery`;
+      const recovery = await db.collection("agent_jobs").findOne(
+        { _id: id as never },
+        { projection: { status: 1, attempts: 1 } },
+      );
+      if (
+        recovery?.status === "dead-letter" ||
+        (recovery?.status === "retry" && Number(recovery.attempts || 0) >= 2)
+      )
+        id = `${slot}-recovery-2`;
+    }
   }
   await db.collection("agent_jobs").updateOne(
     { _id: id as never },
