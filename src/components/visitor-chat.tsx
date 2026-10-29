@@ -28,6 +28,7 @@ export function VisitorChat() {
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
+    if (query.get("chat") === "1") queueMicrotask(() => setOpen(true));
     const track = (type: "page_view" | "presence") => fetch("/api/engagement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

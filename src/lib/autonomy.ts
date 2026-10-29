@@ -102,47 +102,86 @@ export async function advanceSurvivalPlan(
   );
 }
 
+export type OpportunityKind = "customer" | "freelance" | "grant" | "affiliate" | "unknown";
+
+export function classifyOpportunity(input: {
+  title?: string;
+  sourceUrl?: string;
+  sourceText?: string;
+}): OpportunityKind {
+  const text = `${input.title || ""} ${input.sourceText || ""} ${input.sourceUrl || ""}`.toLowerCase();
+  if (/(grant|grants|tài trợ|funding round|quadratic funding|gitcoin|ethereum foundation)/i.test(text))
+    return "grant";
+  if (/(affiliate|referral program|đối tác liên kết|hoa hồng)/i.test(text))
+    return "affiliate";
+  if (/(upwork|freelancer\.com|freelance|contractor|remote job|tuyển freelancer)/i.test(text))
+    return "freelance";
+  if (/(cần|tuyển|thuê|looking for|hiring|need help|request for proposal|rfp)/i.test(text))
+    return "customer";
+  return "unknown";
+}
+
 export function scoreOpportunity(opportunity: {
   title?: string;
   sourceUrl?: string;
   fit?: string;
   contactEmail?: string;
+  sourceTitle?: string;
+  sourceText?: string;
+  expectedKind?: OpportunityKind;
 }) {
   const reasons: string[] = [];
-  let score = 20;
+  let score = 0;
   const url = String(opportunity.sourceUrl || "");
-  const text = `${opportunity.title || ""} ${opportunity.fit || ""}`.toLowerCase();
+  const claimedText = `${opportunity.title || ""} ${opportunity.fit || ""}`.toLowerCase();
+  const sourceText = `${opportunity.sourceTitle || ""} ${opportunity.sourceText || ""}`.toLowerCase();
+  const kind = classifyOpportunity({
+    title: opportunity.sourceTitle || opportunity.title,
+    sourceUrl: url,
+    sourceText,
+  });
+  let specificUrl = false;
   try {
     const parsed = new URL(url);
-    if (parsed.pathname.length > 1) {
-      score += 15;
+    const path = parsed.pathname.replace(/\/+$/, "");
+    specificUrl = path.length > 1 && !/^\/(search|jobs?|grants?|explore|applicants)?$/i.test(path);
+    if (specificUrl) {
+      score += 20;
       reasons.push("Có trang nguồn cụ thể");
     } else {
-      score -= 10;
-      reasons.push("URL mới chỉ là trang chủ");
+      reasons.push("URL mới chỉ là trang chủ hoặc trang danh sách");
     }
   } catch {
-    score = 0;
     reasons.push("URL không hợp lệ");
   }
   if (opportunity.contactEmail) {
-    score += 25;
+    score += 15;
     reasons.push("Có email liên hệ công khai");
   }
-  if (/(cần|tuyển|thuê|looking for|hiring|help|freelance|contract)/i.test(text)) {
-    score += 25;
-    reasons.push("Có tín hiệu nhu cầu trực tiếp");
+  const directDemand = /(cần|tuyển|thuê|looking for|hiring|need (?:a |an )?|seeking|freelance|contract|request for proposal|rfp)/i.test(sourceText);
+  if (directDemand) {
+    score += 35;
+    reasons.push("Nguồn gốc có câu thể hiện nhu cầu trực tiếp");
+  } else {
+    reasons.push("Nguồn gốc chưa có câu thể hiện nhu cầu trực tiếp");
   }
-  if (/(bot|api|automation|tự động|ai agent|chatbot|website)/i.test(text)) {
-    score += 15;
+  const skillMatch = /(bot|api|automation|tự động|ai agent|chatbot|website|next\.js|typescript)/i.test(sourceText);
+  if (skillMatch) {
+    score += 20;
     reasons.push("Phù hợp năng lực của Shoyru");
+  } else if (/(bot|api|automation|tự động|ai agent|chatbot|website)/i.test(claimedText)) {
+    reasons.push("Mức phù hợp mới chỉ do AI tự mô tả, nguồn chưa xác nhận");
   }
-  if (/(grant|tài trợ|affiliate|airdrop|token)/i.test(text)) {
-    score -= 20;
-    reasons.push("Khả năng tạo doanh thu trực tiếp thấp");
+  const laneMatches = !opportunity.expectedKind || opportunity.expectedKind === kind;
+  if (laneMatches && kind !== "unknown") {
+    score += 10;
+    reasons.push(`Đúng luồng ${kind}`);
+  } else if (opportunity.expectedKind) {
+    reasons.push(`Sai luồng: đang tìm ${opportunity.expectedKind} nhưng nguồn là ${kind}`);
   }
   score = Math.max(0, Math.min(100, score));
-  return { score, reasons, qualified: score >= 55 };
+  const qualified = specificUrl && directDemand && skillMatch && laneMatches && score >= 70;
+  return { score, reasons, qualified, kind, directDemand, skillMatch, specificUrl, laneMatches };
 }
 
 export type ArtifactFile = { path: string; content: string; language?: string };

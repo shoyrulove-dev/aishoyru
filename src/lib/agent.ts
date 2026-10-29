@@ -10,6 +10,7 @@ import {
   advanceSurvivalPlan,
   ensureDailyStrategy,
   ensureSurvivalPlan,
+  type OpportunityKind,
   scoreOpportunity,
   validateArtifactFiles,
   type ArtifactFile,
@@ -353,22 +354,23 @@ async function inspectFundingSource(index: number) {
   }
 }
 
-const survivalQueries = [
-  '"cần làm chatbot" OR "cần làm bot" OR "thuê làm bot" Việt Nam',
-  '"tìm freelancer" (chatbot OR API OR "tự động hóa") Việt Nam',
-  'site:upwork.com/freelance-jobs/ (API OR automation OR chatbot)',
-  'site:freelancer.com/jobs (API OR automation OR chatbot)',
-  '"cần người làm" (website OR bot OR API) Việt Nam',
-  '"looking for" (API automation OR chatbot) freelance remote',
+const survivalQueries: Array<{ query: string; kind: OpportunityKind }> = [
+  { query: '"cần làm chatbot" OR "cần làm bot" OR "thuê làm bot" Việt Nam', kind: "customer" },
+  { query: '"tìm freelancer" (chatbot OR API OR "tự động hóa") Việt Nam', kind: "freelance" },
+  { query: 'site:upwork.com/freelance-jobs/ (API OR automation OR chatbot)', kind: "freelance" },
+  { query: 'site:freelancer.com/jobs (API OR automation OR chatbot)', kind: "freelance" },
+  { query: '"cần người làm" (website OR bot OR API) Việt Nam', kind: "customer" },
+  { query: '"looking for" (API automation OR chatbot) freelance remote', kind: "freelance" },
 ];
 
 async function searchSurvivalOpportunities(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   index: number,
 ) {
-  const query = survivalQueries[index % survivalQueries.length];
+  const lane = survivalQueries[index % survivalQueries.length];
+  const { query } = lane;
   if (!process.env.BRAVE_SEARCH_API_KEY)
-    return { query, provider: "brave", results: [], error: "Thiếu BRAVE_SEARCH_API_KEY" };
+    return { query, kind: lane.kind, provider: "brave", results: [], error: "Thiếu BRAVE_SEARCH_API_KEY" };
   const monthlyLimit = Math.max(
     1,
     Math.min(1000, Number(process.env.BRAVE_SEARCH_MONTHLY_LIMIT || 1000)),
@@ -473,6 +475,7 @@ async function searchSurvivalOpportunities(
     return {
       query,
       provider: "brave",
+      kind: lane.kind,
       results: (payload.web?.results || []).slice(0, 8).map((item) => ({
         title: clip(String(item.title || ""), 140),
         url: String(item.url || ""),
@@ -495,6 +498,7 @@ async function searchSurvivalOpportunities(
       query,
       provider: "brave",
       results: [],
+      kind: lane.kind,
       error: error instanceof Error ? error.message : "Không tìm kiếm được",
     };
   }
@@ -1082,9 +1086,11 @@ export async function runAgentCycle() {
     .filter((value) => /^\S+@\S+\.\S+$/.test(value));
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
+  const searchQueryIndex =
+    Number(state?.searchQueryIndex || 0) % survivalQueries.length;
   const [fundingResearch, webResearch] = await Promise.all([
     inspectFundingSource(fundingSourceIndex),
-    searchSurvivalOpportunities(db, fundingSourceIndex),
+    searchSurvivalOpportunities(db, searchQueryIndex),
   ]);
   const decisionResponse = await completeJson([
     {
@@ -1106,6 +1112,11 @@ export async function runAgentCycle() {
       role: "system",
       content:
         "TRÍ NHỚ VÀ CHIẾN LƯỢC: lessons là kết quả đã được kiểm chứng từ các lượt trước. Phải tránh lặp lại nguồn từng bị đánh giá thấp, sửa lỗi artifact đã gặp và ưu tiên cách làm từng có bằng chứng tốt. dailyStrategy là trọng tâm của hôm nay, có chỉ số thành công và điều kiện dừng. activeCampaign là chiến dịch 3–5 ngày bắt buộc bám theo: không đổi sản phẩm hoặc mục tiêu chỉ vì một lượt chưa có kết quả; chỉ đổi khi đạt điều kiện thành công, chạm điều kiện dừng sau minimumDays hoặc có bằng chứng hướng hiện tại không hợp lệ. Mỗi lượt phải đẩy chiến dịch tiến thêm đúng một mốc đo được. create_pr là hành động hợp lệ khi đã tạo xong bộ tệp hữu ích: phải trả files hoàn chỉnh; hệ thống chỉ mở Pull Request để chủ nhân kiểm tra, không được nói đã merge hay triển khai. Không được biến một bài học thành sự thật mới nếu dữ liệu hiện tại không còn phù hợp.",
+    },
+    {
+      role: "system",
+      content:
+        "TÁCH LUỒNG NGUỒN: webResearch là luồng tìm khách trực tiếp hoặc việc freelance và có trường kind cho biết loại đang tìm. fundingResearch chỉ là nguồn tham khảo cộng đồng/tài trợ, tuyệt đối không ghép tên nhu cầu từ webResearch với URL trong fundingResearch. Một opportunity phải dùng nguyên tiêu đề và URL của cùng một kết quả. Trang chủ, trang danh sách, trang tìm kiếm và đoạn mô tả không có câu thể hiện đang cần thuê đều chưa phải lead. Grant là luồng riêng, không được gọi là khách chatbot, mini-job hoặc freelance. Nếu chưa có trang chi tiết đủ bằng chứng, chọn research và ghi rõ nguồn nào bị loại cùng lý do.",
     },
     {
       role: "user",
@@ -1335,6 +1346,59 @@ export async function runAgentCycle() {
         };
       }
     }
+  }
+  const normalizedOpportunityUrl = (() => {
+    try {
+      const url = new URL(decision.opportunity?.sourceUrl || "");
+      url.hash = "";
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      return "";
+    }
+  })();
+  const matchedSearchResult = decision.opportunity
+    ? webResearch.results.find((item) => {
+        try {
+          const url = new URL(item.url);
+          url.hash = "";
+          return url.toString().replace(/\/$/, "") === normalizedOpportunityUrl;
+        } catch {
+          return false;
+        }
+      })
+    : undefined;
+  const matchedFundingSource =
+    decision.opportunity &&
+    normalizedOpportunityUrl === fundingResearch.url.replace(/\/$/, "");
+  const opportunityAssessment = decision.opportunity
+    ? scoreOpportunity({
+        ...decision.opportunity,
+        sourceTitle: matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
+        sourceText:
+          matchedSearchResult?.description || (matchedFundingSource ? fundingResearch.text.slice(0, 4000) : ""),
+        expectedKind: matchedSearchResult ? webResearch.kind : undefined,
+      })
+    : null;
+  if (
+    decision.opportunity &&
+    opportunityAssessment &&
+    !opportunityAssessment.qualified &&
+    ["discover_lead", "qualify_lead", "draft_email"].includes(decision.action.type)
+  ) {
+    decision.status = "Đang kiểm tra lại nguồn nhu cầu";
+    decision.thought = `Nguồn “${clip(decision.opportunity.title, 70)}” chưa có đủ bằng chứng để gọi là khách thật.`;
+    decision.reflection = "Mình sẽ tìm trang chi tiết có yêu cầu rõ ràng trước khi liên hệ nhé.";
+    decision.action = {
+      type: "research",
+      title: "Loại nguồn chưa đủ bằng chứng",
+      details: opportunityAssessment.reasons.join("; "),
+    };
+    decision.email = undefined;
+    decision.work = {
+      summary: "Chưa xác nhận đây là một nhu cầu có thể tiếp cận.",
+      artifact: `Nguồn: ${decision.opportunity.sourceUrl}. ${opportunityAssessment.reasons.join("; ")}.`,
+      nextStep: `Tiếp tục tìm trong luồng ${matchedSearchResult ? webResearch.kind : opportunityAssessment.kind} và chỉ giữ trang chi tiết có nhu cầu thật.`,
+    };
   }
   let critique:
     | (z.infer<typeof Critique> & { provider: string; model: string })
@@ -1687,9 +1751,6 @@ export async function runAgentCycle() {
       };
     }
   }
-  const opportunityAssessment = decision.opportunity
-    ? scoreOpportunity(decision.opportunity)
-    : null;
   if (
     opportunityAssessment &&
     !opportunityAssessment.qualified &&
@@ -1968,6 +2029,7 @@ export async function runAgentCycle() {
           lastRunAt: now,
           nextWake: "Mỗi giờ, vào phút 17",
           fundingSourceIndex: (fundingSourceIndex + 1) % fundingSources.length,
+          searchQueryIndex: (searchQueryIndex + 1) % survivalQueries.length,
           updatedAt: now,
         },
       },
@@ -2189,6 +2251,18 @@ export async function runAgentCycle() {
             status: opportunityAssessment?.qualified ? "qualified" : "low_fit",
             fitScore: opportunityAssessment?.score || 0,
             scoreReasons: opportunityAssessment?.reasons || [],
+            opportunityKind: opportunityAssessment?.kind || "unknown",
+            evidenceChecks: opportunityAssessment
+              ? {
+                  specificUrl: opportunityAssessment.specificUrl,
+                  directDemand: opportunityAssessment.directDemand,
+                  skillMatch: opportunityAssessment.skillMatch,
+                  laneMatches: opportunityAssessment.laneMatches,
+                }
+              : {},
+            sourceTitle: matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
+            sourceExcerpt:
+              matchedSearchResult?.description || (matchedFundingSource ? clip(fundingResearch.text, 320) : ""),
             contactStatus: decision.opportunity.contactEmail ? "contactable" : "needs-contact",
             lastTouchAt: null,
             nextFollowUpAt: null,

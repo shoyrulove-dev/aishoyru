@@ -763,6 +763,20 @@ function Pipeline({ data, adminKey }: { data: Overview; adminKey: string }) {
     anchor.click();
     URL.revokeObjectURL(url);
   };
+  const opportunityKindLabel = (value: unknown) => ({
+    customer: "Khách trực tiếp",
+    freelance: "Việc freelance",
+    grant: "Chương trình tài trợ",
+    affiliate: "Tiếp thị liên kết",
+    unknown: "Chưa phân loại",
+  }[String(value)] || "Chưa phân loại");
+  const opportunityStatusLabel = (value: unknown) => ({
+    qualified: "Đủ bằng chứng",
+    low_fit: "Chưa đủ bằng chứng",
+    contacted: "Đã liên hệ",
+    replied: "Đã phản hồi",
+    converted: "Đã tạo doanh thu",
+  }[String(value)] || "Đang kiểm tra");
   return (
     <SectionTitle
       eyebrow="GROWTH PIPELINE"
@@ -805,13 +819,23 @@ function Pipeline({ data, adminKey }: { data: Overview; adminKey: string }) {
                   <span className="rounded-full bg-[#eef3f7] px-2.5 py-1 text-[#536170]">
                     Điểm phù hợp {Number(item.fitScore || 0)}/100
                   </span>
+                  <span className="rounded-full bg-[#eef3f7] px-2.5 py-1 text-[#536170]">
+                    {opportunityKindLabel(item.opportunityKind)}
+                  </span>
                   <span className={`rounded-full px-2.5 py-1 ${item.contactStatus === "contactable" ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff3e8] text-[#a86120]"}`}>
                     {item.contactStatus === "contactable" ? "Có đầu mối liên hệ" : "Cần tìm đầu mối"}
                   </span>
                   <span className="rounded-full bg-[#fff0e9] px-2.5 py-1 text-[#d95b2e]">
-                    {String(item.status || "discovered")}
+                    {opportunityStatusLabel(item.status)}
                   </span>
                 </div>
+                {Array.isArray(item.scoreReasons) && item.scoreReasons.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-xs leading-5 text-[#75808a]">
+                    {(item.scoreReasons as unknown[]).slice(0, 4).map((reason, index) => (
+                      <li key={index}>• {String(reason)}</li>
+                    ))}
+                  </ul>
+                )}
                 {Boolean(item.nextAction) && (
                   <p className="mt-3 rounded-xl bg-[#f6f7f8] p-3 text-xs leading-5 text-[#596570]">
                     <b>Bước tiếp:</b> {String(item.nextAction)}
