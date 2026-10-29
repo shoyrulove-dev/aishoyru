@@ -393,6 +393,7 @@ async function searchSurvivalOpportunities(
   if (Number(usage?.used || 0) >= monthlyLimit)
     return {
       query,
+      kind: lane.kind,
       provider: "brave",
       results: [],
       error: `Đã dùng hết hạn mức ${monthlyLimit} lượt trong tháng`,
@@ -417,6 +418,7 @@ async function searchSurvivalOpportunities(
     if (existingDaily)
       return {
         query,
+        kind: lane.kind,
         provider: "brave",
         results: [],
         error: `Đã dùng đủ ${dailyLimit} lượt tìm kiếm hôm nay`,
@@ -434,6 +436,7 @@ async function searchSurvivalOpportunities(
       if ((error as { code?: number }).code === 11000)
         return {
           query,
+          kind: lane.kind,
           provider: "brave",
           results: [],
           error: "Lượt tìm kiếm hôm nay vừa được một tiến trình khác sử dụng",
