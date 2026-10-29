@@ -69,7 +69,14 @@ export async function recoverStaleOperations(db: Db, now = new Date()) {
 
 export async function claimCycleJob(db: Db, slot: string, source: CycleSource, force = false) {
   const now = new Date();
-  const id = force ? `${slot}-force-${crypto.randomUUID()}` : slot;
+  let id = force ? `${slot}-force-${crypto.randomUUID()}` : slot;
+  if (!force) {
+    const current = await db.collection("agent_jobs").findOne(
+      { _id: id as never },
+      { projection: { status: 1 } },
+    );
+    if (current?.status === "dead-letter") id = `${slot}-recovery`;
+  }
   await db.collection("agent_jobs").updateOne(
     { _id: id as never },
     {
