@@ -1191,7 +1191,7 @@ export async function runAgentCycle() {
         const jsonText = objectStart >= 0 && objectEnd > objectStart
           ? content.slice(objectStart, objectEnd + 1)
           : content;
-        const raw = JSON.parse(jsonText) as Record<string, unknown>;
+        JSON.parse(jsonText);
         if (options.validatePublic === false) {
           await recordProviderSuccess(
             db!,
