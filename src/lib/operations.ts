@@ -3,6 +3,7 @@ import type { Db, Document } from "mongodb";
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 const MAX_ATTEMPTS = 3;
+const JOB_LEASE = 5 * MINUTE;
 
 export type CycleSource = "github-cron" | "public-heartbeat";
 
@@ -105,7 +106,7 @@ export async function claimCycleJob(db: Db, slot: string, source: CycleSource, f
         status: "running",
         worker: source,
         startedAt: now,
-        leaseUntil: new Date(now.getTime() + 12 * MINUTE),
+        leaseUntil: new Date(now.getTime() + JOB_LEASE),
         updatedAt: now,
       },
       $inc: { attempts: 1 },

@@ -12,6 +12,24 @@ import {
 } from "./operations";
 
 const HOUR = 60 * 60 * 1000;
+const CYCLE_DEADLINE_MS = 210_000;
+
+async function runWithDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Chu kỳ vượt quá ${Math.round(timeoutMs / 1000)} giây`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export function vietnamCycleSlot(now = new Date()) {
   const shifted = new Date(now.getTime() + 7 * HOUR);
@@ -58,7 +76,7 @@ export async function runClaimedAgentCycle(
   );
 
   try {
-    const result = await runAgentCycle();
+    const result = await runWithDeadline(runAgentCycle(), CYCLE_DEADLINE_MS);
     await Promise.all([
       db.collection("agent_cycle_claims").updateOne(
         { _id: claimId as never },

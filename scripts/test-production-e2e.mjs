@@ -11,6 +11,7 @@ const checks = [
   { path: "/api/health/search", json: (data) => data.configured && data.lastStatus === "success" },
   { path: "/api/health/github", json: (data) => data.configured && data.ok && data.canPush },
   { path: "/api/health/commerce", json: (data) => data.ok },
+  { path: "/api/health/agent", json: (data) => data.ok && data.ageMinutes <= 90 },
   {
     path: "/api/health/polymarket",
     json: (data) =>
