@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-10-28"
 
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["17 * * * *", "*/10 * * * *"]
 
 [vars]
 SHOYRU_HEARTBEAT_URL = "https://shoyruai.blissbiovn.com/api/heartbeat"

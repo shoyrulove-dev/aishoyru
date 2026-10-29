@@ -73,10 +73,21 @@ const publicSentence = (value: unknown, max = 190) => {
   const short = clean.slice(0, max).replace(/\s+\S*$/, "").replace(/[,:;.…\-]+$/, "");
   return short ? short + "." : "Shoyru đang tiếp tục công việc.";
 };
-const nextWakeLabel = (now: Date) => {
+const nextWakeLabel = (now: Date, lastRunAt?: Date | null) => {
   const shifted = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const lastRun = lastRunAt
+    ? new Date(lastRunAt.getTime() + 7 * 60 * 60 * 1000)
+    : null;
+  const alreadyRanThisHour = Boolean(
+    lastRun &&
+      lastRun.getUTCFullYear() === shifted.getUTCFullYear() &&
+      lastRun.getUTCMonth() === shifted.getUTCMonth() &&
+      lastRun.getUTCDate() === shifted.getUTCDate() &&
+      lastRun.getUTCHours() === shifted.getUTCHours(),
+  );
   shifted.setUTCSeconds(0, 0);
-  if (shifted.getUTCMinutes() >= 17) shifted.setUTCHours(shifted.getUTCHours() + 1);
+  if (alreadyRanThisHour || shifted.getUTCMinutes() >= 17)
+    shifted.setUTCHours(shifted.getUTCHours() + 1);
   shifted.setUTCMinutes(17);
   return `${String(shifted.getUTCHours()).padStart(2, "0")}:17`;
 };
@@ -300,7 +311,10 @@ export async function getPublicState(): Promise<PublicState> {
     operatingDays,
     status: statusVi,
     thought: thoughtVi,
-    nextWake: nextWakeLabel(now),
+    nextWake: nextWakeLabel(
+      now,
+      state?.lastRunAt ? new Date(state.lastRunAt as Date) : null,
+    ),
     streak: operatingDays,
     visitors: Number(state?.visitors || 0),
     activeViewers,
