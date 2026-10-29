@@ -1063,6 +1063,51 @@ export async function runAgentCycle() {
       model: process.env.NVIDIA_NIM_MODEL || "nvidia/nemotron-3.5-bolt-e4b",
     },
     {
+      name: "cloudflare",
+      apiKey:
+        process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_API_TOKEN
+          ? process.env.CLOUDFLARE_AI_API_TOKEN
+          : undefined,
+      baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
+      model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
+    },
+    {
+      name: "gemini",
+      apiKey: process.env.GEMINI_API_KEY,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    },
+    {
+      name: "cerebras",
+      apiKey: process.env.CEREBRAS_API_KEY,
+      baseURL: "https://api.cerebras.ai/v1",
+      model: process.env.CEREBRAS_MODEL || "llama-3.3-70b",
+    },
+    {
+      name: "mistral",
+      apiKey: process.env.MISTRAL_API_KEY,
+      baseURL: "https://api.mistral.ai/v1",
+      model: process.env.MISTRAL_MODEL || "mistral-small-latest",
+    },
+    {
+      name: "huggingface",
+      apiKey: process.env.HUGGINGFACE_API_KEY,
+      baseURL: "https://router.huggingface.co/v1",
+      model: process.env.HUGGINGFACE_MODEL || "openai/gpt-oss-120b:fastest",
+    },
+    {
+      name: "sambanova",
+      apiKey: process.env.SAMBANOVA_API_KEY,
+      baseURL: "https://api.sambanova.ai/v1",
+      model: process.env.SAMBANOVA_MODEL || "Meta-Llama-3.3-70B-Instruct",
+    },
+    {
+      name: "radox",
+      apiKey: process.env.RADOX_API_KEY,
+      baseURL: process.env.RADOX_BASE_URL || "https://radoxai.com/v1",
+      model: process.env.RADOX_MODEL || "gpt-4o-mini",
+    },
+    {
       name: "openrouter",
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: "https://openrouter.ai/api/v1",

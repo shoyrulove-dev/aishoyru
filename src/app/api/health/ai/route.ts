@@ -13,6 +13,13 @@ export async function GET() {
   const configured = [
     ["groq", process.env.GROQ_API_KEY],
     ["nvidia", process.env.NVIDIA_NIM_API_KEY],
+    ["cloudflare", process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_API_TOKEN],
+    ["gemini", process.env.GEMINI_API_KEY],
+    ["cerebras", process.env.CEREBRAS_API_KEY],
+    ["mistral", process.env.MISTRAL_API_KEY],
+    ["huggingface", process.env.HUGGINGFACE_API_KEY],
+    ["sambanova", process.env.SAMBANOVA_API_KEY],
+    ["radox", process.env.RADOX_API_KEY],
     ["openrouter", process.env.OPENROUTER_API_KEY],
     ["kilo", process.env.KILO_API_KEY],
     ["oxion", process.env.OXION_API_KEY],
@@ -27,7 +34,7 @@ export async function GET() {
       updatedAt: row?.updatedAt || null,
     };
   });
-  const available = providers.filter((provider) => provider.status !== "down").length;
+  const available = providers.filter((provider) => provider.status !== "down" && provider.status !== "cooldown").length;
   return NextResponse.json(
     { ok: configured.length > 0 && available > 0, configured: configured.length, available, providers },
     { status: configured.length > 0 && available > 0 ? 200 : 503, headers: { "Cache-Control": "no-store" } },
