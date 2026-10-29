@@ -1107,7 +1107,7 @@ export async function runAgentCycle() {
     for (const provider of providers) {
       if (provider.name === options.excludeProvider) continue;
       if (await providerIsCoolingDown(db!, provider.name)) continue;
-      if (attempted >= (options.maxProviders || 3)) break;
+      if (attempted >= (options.maxProviders || providers.length)) break;
       attempted += 1;
       const startedAt = Date.now();
       try {

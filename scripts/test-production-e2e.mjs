@@ -9,6 +9,7 @@ const checks = [
   { path: "/post-sitemap.xml", contains: "<urlset" },
   { path: "/b3f08a6c9d2e4175a8c6e1f94b7d203a.txt", contains: "b3f08a6c9d2e4175a8c6e1f94b7d203a" },
   { path: "/api/health/search", json: (data) => data.configured && data.lastStatus === "success" },
+  { path: "/api/health/ai", json: (data) => data.ok && data.configured > 0 && data.available > 0 },
   { path: "/api/health/github", json: (data) => data.configured && data.ok && data.canPush },
   { path: "/api/health/commerce", json: (data) => data.ok },
   { path: "/api/health/agent", json: (data) => data.ok && data.ageMinutes <= 90 },
