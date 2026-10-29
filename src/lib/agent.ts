@@ -25,6 +25,7 @@ import {
 } from "./growth-engine";
 import { notifyIndexNow } from "./indexnow";
 import { normalizeSupportRequest } from "./operations";
+import { compactPolymarketResearch, getPolymarketResearch } from "./polymarket";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -1312,9 +1313,12 @@ export async function runAgentCycle() {
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
   const searchQueryIndex =
     Number(state?.searchQueryIndex || 0) % survivalQueries.length;
-  const [fundingResearch, webResearch] = await Promise.all([
+  const [fundingResearch, webResearch, polymarketResearch] = await Promise.all([
     inspectFundingSource(fundingSourceIndex),
     searchSurvivalOpportunities(db, searchQueryIndex),
+    process.env.POLYMARKET_RESEARCH_ENABLED === "false"
+      ? Promise.resolve(null)
+      : getPolymarketResearch(db).catch(() => null),
   ]);
   const decisionResponse = await completeJson([
     {
@@ -1442,6 +1446,9 @@ export async function runAgentCycle() {
             "Doanh thu xác minh vượt 500.000đ mỗi tháng được ghi nhận là quỹ dự phòng của Shoyru.",
         },
         webResearch,
+        polymarketResearch: polymarketResearch
+          ? compactPolymarketResearch(polymarketResearch)
+          : null,
         autonomyPolicy: {
           canDoWithoutApproval: [
             "tìm kiếm và đọc dữ liệu công khai",
@@ -1476,6 +1483,11 @@ export async function runAgentCycle() {
         capitalRules: {
           liveTradingEnabled: false,
           tokenLaunchEnabled: false,
+          polymarketPolicy:
+            "Chỉ được dùng dữ liệu API công khai để nghiên cứu, cảnh báo hoạt động bất thường và paper trade. Không gọi ví nào là insider. Không đặt lệnh thật dù mô hình đề nghị BUY hoặc SELL.",
+          paperCapitalUsdc: Number(process.env.POLYMARKET_PAPER_CAPITAL_USDC || 50),
+          maxPaperPositionUsdc: Number(process.env.POLYMARKET_MAX_POSITION_USDC || 5),
+          maxPaperDailyLossUsdc: Number(process.env.POLYMARKET_MAX_DAILY_LOSS_USDC || 2),
           requirement:
             "Muốn xin vốn phải nộp kế hoạch gồm giả thuyết, nguồn dữ liệu, backtest ngoài mẫu, paper trade tối thiểu 30 ngày, phí, thanh khoản, drawdown tối đa, mức dừng lỗ, rủi ro pháp lý và số vốn nhỏ nhất cần thử.",
         },
