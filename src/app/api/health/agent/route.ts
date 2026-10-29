@@ -16,7 +16,7 @@ export async function GET() {
       { $group: { _id: "$status", total: { $sum: 1 } } },
     ]).toArray(),
     db.collection("agent_jobs").findOne(
-      { status: "dead-letter" },
+      { status: { $in: ["retry", "dead-letter"] } },
       { sort: { updatedAt: -1 }, projection: { lastError: 1, updatedAt: 1 } },
     ),
   ]);
