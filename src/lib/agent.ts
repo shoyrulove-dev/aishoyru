@@ -1581,11 +1581,27 @@ export async function runAgentCycle() {
     typeof value === "string" ? value : JSON.stringify(value ?? "");
   for (const key of ["status", "thought", "reflection"])
     rawDecision[key] = asText(rawDecision[key]);
+  if (String(rawDecision.status).trim().length < 3)
+    rawDecision.status = "Đang làm một việc nhỏ";
+  if (String(rawDecision.thought).trim().length < 3)
+    rawDecision.thought = "Shoyru đang kiểm tra dữ liệu trước khi quyết định.";
+  if (String(rawDecision.reflection).trim().length < 3)
+    rawDecision.reflection = "Mình sẽ chỉ giữ kết quả có thể kiểm chứng.";
+  if (!rawDecision.action || typeof rawDecision.action !== "object")
+    rawDecision.action = {
+      type: "research",
+      title: "Kiểm tra một nguồn công khai",
+      details: "Đọc dữ liệu và ghi lại kết quả có thể kiểm chứng.",
+    };
   if (rawDecision.action && typeof rawDecision.action === "object") {
     const action = rawDecision.action as Record<string, unknown>;
     action.type = asText(action.type);
     action.title = asText(action.title);
     action.details = asText(action.details);
+    if (!action.type) action.type = "research";
+    if (String(action.title).trim().length < 3) action.title = "Kiểm tra một nguồn công khai";
+    if (String(action.details).trim().length < 3)
+      action.details = "Đọc dữ liệu và ghi lại kết quả có thể kiểm chứng.";
   }
   if (rawDecision.work && typeof rawDecision.work === "object") {
     const work = rawDecision.work as Record<string, unknown>;
@@ -1601,7 +1617,31 @@ export async function runAgentCycle() {
     if (String(work.nextStep).trim().length < 3)
       work.nextStep = "Tiếp tục bước có giá trị cao nhất trong lượt sau.";
   }
-  const decision = Decision.parse(rawDecision);
+  let parsedDecision = Decision.safeParse(rawDecision);
+  if (!parsedDecision.success) {
+    for (const key of ["project", "email", "opportunity", "supportRequest"])
+      delete rawDecision[key];
+    const work = rawDecision.work as Record<string, unknown> | undefined;
+    if (work) delete work.files;
+    parsedDecision = Decision.safeParse(rawDecision);
+  }
+  const decision = parsedDecision.success
+    ? parsedDecision.data
+    : Decision.parse({
+        status: "Đang kiểm tra một nguồn mới",
+        thought: "Shoyru đang đọc dữ liệu công khai và chưa vội kết luận.",
+        reflection: "Mình sẽ ghi lại nguồn rõ ràng trước khi làm bước tiếp theo.",
+        action: {
+          type: "research",
+          title: "Kiểm tra dữ liệu công khai",
+          details: "Đối chiếu nguồn và lưu ghi chú có thể kiểm chứng.",
+        },
+        work: {
+          summary: "Đã nhận dữ liệu nhưng đầu ra AI chưa đủ cấu trúc.",
+          artifact: "Hệ thống giữ lại nguồn để kiểm tra ở lượt tiếp theo.",
+          nextStep: "Thử lại với nhà cung cấp AI khỏe ở lượt sau.",
+        },
+      });
   if (decision.opportunity) {
     const normalizeUrl = (value: string) => {
       try {
