@@ -36,7 +36,7 @@ export async function GET() {
           ? "database"
           : /brave|search/i.test(lastError)
             ? "web-search"
-            : /json|parse|schema|validation/i.test(lastError)
+            : /json|parse|schema|validation|too_small|invalid_type|expected|zod/i.test(lastError)
               ? "invalid-output"
               : "agent-runtime";
   const ok =
