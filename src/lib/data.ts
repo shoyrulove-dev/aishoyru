@@ -190,12 +190,19 @@ export async function getPublicState(): Promise<PublicState> {
         .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0),
     };
   });
-  const seenActivityText = new Set<string>();
+  const seenActivityText = new Map<string, number>();
   const activitiesOut = activities.filter((x) => {
     const text = String(x.text || "").trim();
-    if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || seenActivityText.has(text))
+    const createdAt = new Date(x.createdAt as Date).getTime();
+    const previousAt = seenActivityText.get(text);
+    if (
+      isLegacyAgentEntry(x) ||
+      privateOperations.test(text) ||
+      unverifiedClaims.test(text) ||
+      (previousAt !== undefined && Math.abs(createdAt - previousAt) < 10 * 60 * 1000)
+    )
       return false;
-    seenActivityText.add(text);
+    seenActivityText.set(text, createdAt);
     return true;
   }).map((x) => ({
     id: String(x._id),
@@ -215,15 +222,23 @@ export async function getPublicState(): Promise<PublicState> {
       .toLocaleLowerCase("vi-VN")
       .replace(/[^a-z0-9]+/g, " ")
       .trim();
-  const seenConversationText = new Set<string>();
+  const seenConversationText = new Map<string, number>();
   const conversationsOut = conversations
     .reverse()
     .filter((x) => {
       const text = String(x.text || "").trim();
       const key = journalKey(publicSentence(legacy[text] || text));
-      if (isLegacyAgentEntry(x) || privateOperations.test(text) || unverifiedClaims.test(text) || !key || seenConversationText.has(key))
+      const createdAt = new Date(x.createdAt as Date).getTime();
+      const previousAt = seenConversationText.get(key);
+      if (
+        isLegacyAgentEntry(x) ||
+        privateOperations.test(text) ||
+        unverifiedClaims.test(text) ||
+        !key ||
+        (previousAt !== undefined && createdAt - previousAt < 10 * 60 * 1000)
+      )
         return false;
-      seenConversationText.add(key);
+      seenConversationText.set(key, createdAt);
       return true;
     })
     .map((x) => ({

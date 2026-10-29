@@ -68,11 +68,14 @@ export async function GET(request: NextRequest) {
     .project({ _id: 1, speaker: 1, text: 1, createdAt: 1 })
     .toArray();
 
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const uniqueRows = rows.filter((row) => {
     const key = journalKey(row.text);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
+    const createdAt = new Date(row.createdAt as Date).getTime();
+    const previousAt = seen.get(key);
+    if (!key || (previousAt !== undefined && createdAt - previousAt < 10 * 60 * 1000))
+      return false;
+    seen.set(key, createdAt);
     return true;
   });
 
