@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Db } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { getOperationalHealth } from "@/lib/operations";
 
 const allowed = (request: NextRequest) =>
   Boolean(process.env.ADMIN_API_KEY) &&
@@ -128,6 +129,8 @@ export async function GET(request: NextRequest) {
     activeStrategy,
     activeCampaign,
     crmStages,
+    operations,
+    aiUsageToday,
   ] = await Promise.all([
     db
       .collection("approvals")
@@ -268,6 +271,28 @@ export async function GET(request: NextRequest) {
     db.collection("lead_crm").aggregate([
       { $group: { _id: "$status", total: { $sum: 1 } } },
     ]).toArray(),
+    getOperationalHealth(db),
+    db.collection("ai_usage_daily").aggregate([
+      {
+        $match: {
+          day: new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Ho_Chi_Minh",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(new Date()),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          requests: { $sum: "$requests" },
+          promptTokens: { $sum: "$promptTokens" },
+          completionTokens: { $sum: "$completionTokens" },
+          totalTokens: { $sum: "$totalTokens" },
+        },
+      },
+    ]).toArray(),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   const crmCount = (status: string) =>
@@ -292,6 +317,13 @@ export async function GET(request: NextRequest) {
     published,
     chats,
     aiHealth,
+    operations,
+    aiUsageToday: aiUsageToday[0] || {
+      requests: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    },
     activePlan,
     artifacts,
     evaluations,

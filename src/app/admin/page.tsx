@@ -87,6 +87,26 @@ type Overview = {
     cooldownUntil?: string;
     lastError?: string;
   }>;
+  operations: {
+    status: "healthy" | "delayed" | "unknown";
+    lastWakeAt?: string | null;
+    lastCompletedAt?: string | null;
+    lastRunAt?: string | null;
+    ageMinutes?: number | null;
+    deadLetters: number;
+    jobs: Array<Record<string, unknown>>;
+    backup?: { day?: string; createdAt?: string; counts?: Record<string, number> } | null;
+    snapshot?: {
+      survival?: { fundedBudget?: number; verifiedIncome?: number; verifiedExpense?: number; runwayDays?: number };
+      funnel?: Record<string, number>;
+    } | null;
+  };
+  aiUsageToday: {
+    requests: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
   metrics: {
     revenue: number;
     pending: number;
@@ -323,7 +343,15 @@ export default function Admin() {
           {tab === "pipeline" && <Pipeline data={data} adminKey={key} />}{" "}
           {tab === "channels" && <Channels channels={data.channels} />}
           {tab === "work-log" && <WorkLog runs={data.runs} />}
-          {tab === "ai-health" && <AiHealth providers={data.aiHealth} />}
+          {tab === "ai-health" && (
+            <AiHealth
+              providers={data.aiHealth}
+              operations={data.operations}
+              usage={data.aiUsageToday}
+              adminKey={key}
+              reload={load}
+            />
+          )}
           {tab === "visitors" && <Visitors data={data} reply={replyChat} />}
         </div>
       </div>
@@ -1090,7 +1118,19 @@ function Channels({ channels }: { channels: Overview["channels"] }) {
   );
 }
 
-function AiHealth({ providers }: { providers: Overview["aiHealth"] }) {
+function AiHealth({
+  providers,
+  operations,
+  usage,
+  adminKey,
+  reload,
+}: {
+  providers: Overview["aiHealth"];
+  operations: Overview["operations"];
+  usage: Overview["aiUsageToday"];
+  adminKey: string;
+  reload: () => Promise<void>;
+}) {
   const labels: Record<string, string> = {
     healthy: "Ổn định",
     degraded: "Có lỗi",
@@ -1102,6 +1142,68 @@ function AiHealth({ providers }: { providers: Overview["aiHealth"] }) {
       title="Sức khỏe bộ não Shoyru"
       text="Nguồn lỗi ba lần liên tiếp sẽ tạm nghỉ 20 phút trước khi thử lại."
     >
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AiStat
+          label="Bộ máy tự chạy"
+          value={operations.status === "healthy" ? "Ổn định" : operations.status === "delayed" ? "Đang trễ" : "Chưa rõ"}
+        />
+        <AiStat
+          label="Lần hoàn thành gần nhất"
+          value={operations.lastCompletedAt ? new Date(operations.lastCompletedAt).toLocaleString("vi-VN") : "Chưa có"}
+        />
+        <AiStat label="Việc lỗi cần xử lý" value={String(operations.deadLetters || 0)} />
+        <AiStat
+          label="Sao lưu gần nhất"
+          value={operations.backup?.day || "Chưa có"}
+        />
+      </div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <AiStat label="Lượt gọi AI hôm nay" value={String(usage.requests || 0)} />
+        <AiStat label="Token đầu vào" value={Number(usage.promptTokens || 0).toLocaleString("vi-VN")} />
+        <AiStat label="Tổng token" value={Number(usage.totalTokens || 0).toLocaleString("vi-VN")} />
+      </div>
+      <div className="mb-6 rounded-2xl border border-[#dfe4e8] bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-black">Hàng đợi công việc</h2>
+            <p className="mt-1 text-sm text-[#77818b]">
+              Lượt treo tự hết hạn sau 12 phút, thử lại tối đa 3 lần rồi mới báo quản trị.
+            </p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${operations.deadLetters ? "bg-[#fff0e9] text-[#d95628]" : "bg-[#eaf8ef] text-[#25864b]"}`}>
+            {operations.deadLetters ? `${operations.deadLetters} việc lỗi` : "Không có việc mắc kẹt"}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          {operations.jobs.slice(0, 6).map((job, index) => (
+            <div key={String(job._id || index)} className="rounded-xl bg-[#f4f6f8] p-3 text-xs">
+              <p className="font-bold">{String(job.slot || job._id || "Lượt tự chạy")}</p>
+              <p className="mt-1 text-[#77818b]">
+                {String(job.status || "unknown")} · thử {String(job.attempts || 0)}/3
+              </p>
+              {["dead-letter", "retry"].includes(String(job.status || "")) && (
+                <button
+                  className="mt-2 font-bold text-[#ef612f]"
+                  onClick={async () => {
+                    await fetch("/api/admin/jobs", {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${adminKey}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ id: String(job._id) }),
+                    });
+                    await reload();
+                  }}
+                >
+                  Thử lại ngay
+                </button>
+              )}
+            </div>
+          ))}
+          {!operations.jobs.length && <p className="text-sm text-[#77818b]">Chưa có công việc trong hàng đợi mới.</p>}
+        </div>
+      </div>
       {providers.length === 0 ? (
         <div className="rounded-2xl border border-[#dfe4e8] bg-white">
           <Empty text="Chưa có lượt gọi AI nào sau khi bật theo dõi." />

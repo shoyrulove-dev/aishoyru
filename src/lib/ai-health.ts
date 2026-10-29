@@ -16,6 +16,7 @@ export async function recordProviderSuccess(
   provider: string,
   model: string,
   latencyMs: number,
+  usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number },
 ) {
   const now = new Date();
   await db.collection("ai_provider_health").updateOne(
@@ -34,6 +35,28 @@ export async function recordProviderSuccess(
     },
     { upsert: true },
   );
+  if (usage) {
+    const day = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    await db.collection("ai_usage_daily").updateOne(
+      { day, provider, model },
+      {
+        $inc: {
+          requests: 1,
+          promptTokens: Number(usage.promptTokens || 0),
+          completionTokens: Number(usage.completionTokens || 0),
+          totalTokens: Number(usage.totalTokens || 0),
+        },
+        $set: { updatedAt: now },
+        $setOnInsert: { createdAt: now },
+      },
+      { upsert: true },
+    );
+  }
 }
 
 export async function recordProviderFailure(

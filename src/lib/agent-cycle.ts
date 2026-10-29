@@ -1,6 +1,15 @@
 import type { Db } from "mongodb";
 import { runAgentCycle } from "./agent";
 import { recordOperationalAlert } from "./growth-engine";
+import {
+  claimCycleJob,
+  completeCycleJob,
+  createDailyBackup,
+  ensureOperationalIndexes,
+  failCycleJob,
+  recordOperationalSnapshot,
+  recoverStaleOperations,
+} from "./operations";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -21,70 +30,69 @@ export async function runClaimedAgentCycle(
 ) {
   const now = new Date();
   const slot = vietnamCycleSlot(now);
-  const claimId = options.force
-    ? `${slot}-force-${crypto.randomUUID()}`
-    : slot;
-  try {
-    await db.collection("agent_cycle_claims").insertOne({
-      _id: claimId as never,
+  await ensureOperationalIndexes(db);
+  await recoverStaleOperations(db, now);
+  const claimed = await claimCycleJob(db, slot, source, Boolean(options.force));
+  if (!claimed.job)
+    return {
+      ok: true,
+      skipped: true,
+      reason: "Lượt giờ này đã được nhận hoặc đang chờ thử lại",
       slot,
-      source,
-      status: "running",
-      claimedAt: now,
-      expiresAt: new Date(now.getTime() + 12 * 60 * 1000),
-    });
-  } catch (error) {
-    if (!options.force && (error as { code?: number }).code === 11000) {
-      const retry = await db.collection("agent_cycle_claims").findOneAndUpdate(
-        {
-          _id: claimId as never,
-          $or: [
-            { status: "failed" },
-            { status: "running", expiresAt: { $lte: now } },
-          ],
-        },
-        {
-          $set: {
-            source,
-            status: "running",
-            claimedAt: now,
-            expiresAt: new Date(now.getTime() + 12 * 60 * 1000),
-          },
-          $unset: { failedAt: "", error: "" },
-        },
-        { returnDocument: "after" },
-      );
-      if (!retry)
-        return { ok: true, skipped: true, reason: "Lượt giờ này đã được nhận", slot };
-    } else {
-      throw error;
-    }
-  }
+    };
+  const claimId = claimed.id;
+
+  await db.collection("agent_cycle_claims").updateOne(
+    { _id: claimId as never },
+    {
+      $set: {
+        slot,
+        source,
+        status: "running",
+        claimedAt: now,
+        expiresAt: new Date(now.getTime() + 12 * 60 * 1000),
+      },
+      $unset: { failedAt: "", error: "" },
+    },
+    { upsert: true },
+  );
 
   try {
     const result = await runAgentCycle();
-    await db.collection("agent_cycle_claims").updateOne(
-      { _id: claimId as never },
-      { $set: { status: "completed", completedAt: new Date() } },
-    );
+    await Promise.all([
+      db.collection("agent_cycle_claims").updateOne(
+        { _id: claimId as never },
+        { $set: { status: "completed", completedAt: new Date() } },
+      ),
+      completeCycleJob(db, claimId, {
+        ok: true,
+        provider: result.provider,
+        model: result.model,
+      }),
+    ]);
+    await Promise.allSettled([
+      recordOperationalSnapshot(db),
+      createDailyBackup(db),
+    ]);
     return { ...result, slot, source };
   } catch (error) {
-    const message = error instanceof Error ? error.message.slice(0, 300) : "Unknown error";
+    const failure = await failCycleJob(db, claimId, error);
     await db.collection("agent_cycle_claims").updateOne(
       { _id: claimId as never },
       {
         $set: {
-          status: "failed",
+          status: failure.terminal ? "dead-letter" : "failed",
           failedAt: new Date(),
-          error: message,
+          error: failure.message,
         },
       },
     );
     await recordOperationalAlert(db, {
       key: "agent-cycle-repeated-failure",
       title: "Shoyru bị lỗi tự chạy nhiều lần",
-      reason: message,
-      needed: "Kiểm tra lỗi mới nhất trong GitHub Actions hoặc Sức khỏe AI",
+      reason: `${failure.message} (lần thử ${failure.attempts}/3)`,
+      needed:
+        "Mở Admin → Sức khỏe AI và cung cấp đúng khóa hoặc quyền được nêu trong lỗi gần nhất",
     });
     throw error;
   }

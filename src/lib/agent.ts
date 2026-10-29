@@ -24,6 +24,7 @@ import {
   updateCampaignCounters,
 } from "./growth-engine";
 import { notifyIndexNow } from "./indexnow";
+import { normalizeSupportRequest } from "./operations";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -1128,6 +1129,11 @@ export async function runAgentCycle() {
             provider.name,
             provider.model,
             Date.now() - startedAt,
+            {
+              promptTokens: response.usage?.prompt_tokens,
+              completionTokens: response.usage?.completion_tokens,
+              totalTokens: response.usage?.total_tokens,
+            },
           );
           return { content, provider: provider.name, model: provider.model };
         }
@@ -1154,6 +1160,11 @@ export async function runAgentCycle() {
           provider.name,
           provider.model,
           Date.now() - startedAt,
+          {
+            promptTokens: response.usage?.prompt_tokens,
+            completionTokens: response.usage?.completion_tokens,
+            totalTokens: response.usage?.total_tokens,
+          },
         );
         return { content, provider: provider.name, model: provider.model };
       } catch (error) {
@@ -2009,7 +2020,12 @@ export async function runAgentCycle() {
     decision.thought = "Nguồn này chưa cho thấy họ thật sự cần thuê Shoyru, mình tìm chỗ khác nhé.";
     decision.reflection = "Không có nhu cầu rõ hoặc cách liên hệ phù hợp thì chưa thể gọi là khách hàng.";
   }
-  const needsApproval = decision.action.type === "request_support" || Boolean(githubError);
+  const normalizedSupport = normalizeSupportRequest(
+    decision.supportRequest as unknown as Record<string, unknown> | undefined,
+  );
+  const needsApproval =
+    (decision.action.type === "request_support" && Boolean(normalizedSupport)) ||
+    Boolean(githubError);
   const publicNarratives: Record<string, { status: string; thought: string; reflection: string }> = {
     research: {
       status: "Đang đọc một nguồn mới",
@@ -2591,7 +2607,7 @@ export async function runAgentCycle() {
     );
   }
   if (needsApproval && workResult) {
-    const support = decision.supportRequest;
+    const support = normalizedSupport;
     const approval = {
         type: decision.action.type === "draft_email" ? "email" : "support",
         channel: decision.action.type === "draft_email" ? "email" : "human",
@@ -2686,5 +2702,13 @@ export async function runAgentCycle() {
       pullRequestUrl: githubDelivery?.url,
     },
   );
-  return { ok: true, decision, workResult, needsApproval, githubDelivery };
+  return {
+    ok: true,
+    decision,
+    workResult,
+    needsApproval,
+    githubDelivery,
+    provider: decisionResponse.provider,
+    model: decisionResponse.model,
+  };
 }
