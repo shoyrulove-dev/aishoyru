@@ -1,10 +1,9 @@
 import { after, NextResponse } from "next/server";
 import { getPublicState } from "@/lib/data";
 import { getDb } from "@/lib/mongodb";
-import { runAgentCycle } from "@/lib/agent";
+import { runClaimedAgentCycle } from "@/lib/agent-cycle";
 
-export const maxDuration = 60;
-export const preferredRegion = "sin1";
+export const maxDuration = 300;
 
 function vietnamSlot(now: Date) {
   const shifted = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -28,28 +27,9 @@ async function wakeShoyruOnce(slot: string) {
   const db = await getDb();
   if (!db) return;
   try {
-    const claim = await db.collection("agent_cycle_claims").updateOne(
-      { _id: slot as never },
-      { $setOnInsert: { claimedAt: new Date(), source: "visitor-watchdog" } },
-      { upsert: true },
-    );
-    if (!claim.upsertedCount) return;
-    await runAgentCycle();
-    await db.collection("agent_cycle_claims").updateOne(
-      { _id: slot as never },
-      { $set: { completedAt: new Date(), status: "completed" } },
-    );
+    await runClaimedAgentCycle(db, "public-heartbeat");
   } catch (error) {
-    await db.collection("agent_cycle_claims").updateOne(
-      { _id: slot as never },
-      {
-        $set: {
-          failedAt: new Date(),
-          status: "failed",
-          error: error instanceof Error ? error.message.slice(0, 300) : "Unknown error",
-        },
-      },
-    );
+    console.error(`Visitor watchdog ${slot} failed`, error);
   }
 }
 
