@@ -128,6 +128,7 @@ export function scoreOpportunity(opportunity: {
   contactEmail?: string;
   sourceTitle?: string;
   sourceText?: string;
+  sourceVerified?: boolean;
   expectedKind?: OpportunityKind;
 }) {
   const reasons: string[] = [];
@@ -141,6 +142,13 @@ export function scoreOpportunity(opportunity: {
     sourceText,
   });
   let specificUrl = false;
+  const sourceVerified = opportunity.sourceVerified !== false;
+  if (sourceVerified) {
+    score += 10;
+    reasons.push("Đã mở và đọc được trang nguồn");
+  } else {
+    reasons.push("Chưa mở được trang nguồn để xác minh");
+  }
   try {
     const parsed = new URL(url);
     const path = parsed.pathname.replace(/\/+$/, "");
@@ -180,8 +188,8 @@ export function scoreOpportunity(opportunity: {
     reasons.push(`Sai luồng: đang tìm ${opportunity.expectedKind} nhưng nguồn là ${kind}`);
   }
   score = Math.max(0, Math.min(100, score));
-  const qualified = specificUrl && directDemand && skillMatch && laneMatches && score >= 70;
-  return { score, reasons, qualified, kind, directDemand, skillMatch, specificUrl, laneMatches };
+  const qualified = sourceVerified && specificUrl && directDemand && skillMatch && laneMatches && score >= 80;
+  return { score, reasons, qualified, kind, directDemand, skillMatch, specificUrl, laneMatches, sourceVerified };
 }
 
 export type ArtifactFile = { path: string; content: string; language?: string };

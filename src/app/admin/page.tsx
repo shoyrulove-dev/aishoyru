@@ -822,6 +822,15 @@ function Pipeline({ data, adminKey }: { data: Overview; adminKey: string }) {
                   <span className="rounded-full bg-[#eef3f7] px-2.5 py-1 text-[#536170]">
                     {opportunityKindLabel(item.opportunityKind)}
                   </span>
+                  <span className={`rounded-full px-2.5 py-1 ${
+                    (item.sourceVerification as Record<string, unknown> | undefined)?.verified
+                      ? "bg-[#eaf8ef] text-[#25864b]"
+                      : "bg-[#fff3e8] text-[#a86120]"
+                  }`}>
+                    {(item.sourceVerification as Record<string, unknown> | undefined)?.verified
+                      ? "Đã đọc trang nguồn"
+                      : "Chưa đọc được nguồn"}
+                  </span>
                   <span className={`rounded-full px-2.5 py-1 ${item.contactStatus === "contactable" ? "bg-[#eaf8ef] text-[#25864b]" : "bg-[#fff3e8] text-[#a86120]"}`}>
                     {item.contactStatus === "contactable" ? "Có đầu mối liên hệ" : "Cần tìm đầu mối"}
                   </span>

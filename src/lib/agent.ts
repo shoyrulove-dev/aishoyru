@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { getDb } from "./mongodb";
 import {
   providerIsCoolingDown,
@@ -349,6 +351,117 @@ async function inspectFundingSource(index: number) {
       ...source,
       checkedAt: new Date().toISOString(),
       text: "",
+      error: error instanceof Error ? error.message : "Không đọc được nguồn",
+    };
+  }
+}
+
+function isPrivateAddress(address: string) {
+  const normalized = address.toLowerCase();
+  if (normalized.startsWith("::ffff:")) return isPrivateAddress(normalized.slice(7));
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized === "0.0.0.0" ||
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    /^127\./.test(normalized) ||
+    /^10\./.test(normalized) ||
+    /^192\.168\./.test(normalized) ||
+    /^169\.254\./.test(normalized) ||
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(normalized) ||
+    /^198\.(1[89])\./.test(normalized) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(normalized)
+  );
+}
+
+async function assertPublicResearchUrl(value: string) {
+  const url = new URL(value);
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("URL không dùng HTTP hoặc HTTPS");
+  if (url.username || url.password) throw new Error("URL chứa thông tin đăng nhập");
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === "localhost" || hostname.endsWith(".local")) throw new Error("URL nội bộ không được phép");
+  const addresses = isIP(hostname)
+    ? [{ address: hostname }]
+    : await lookup(hostname, { all: true });
+  if (!addresses.length || addresses.some((item) => isPrivateAddress(item.address)))
+    throw new Error("URL trỏ tới mạng nội bộ");
+  return url;
+}
+
+async function inspectOpportunitySource(value: string) {
+  try {
+    let current = await assertPublicResearchUrl(value);
+    for (let redirect = 0; redirect < 4; redirect += 1) {
+      const response = await fetch(current, {
+        redirect: "manual",
+        headers: {
+          Accept: "text/html,application/xhtml+xml",
+          "User-Agent": "Shoyru lead verification bot/1.0 (+https://shoyruai.blissbiovn.com)",
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get("location");
+        if (!location) throw new Error("Chuyển hướng không có đích đến");
+        current = await assertPublicResearchUrl(new URL(location, current).toString());
+        continue;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const contentType = response.headers.get("content-type") || "";
+      if (!/(text\/html|application\/xhtml\+xml|text\/plain)/i.test(contentType))
+        throw new Error("Nguồn không phải trang văn bản");
+      const html = (await response.text()).slice(0, 300000);
+      const title = clip(
+        html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+          ?.replace(/<[^>]+>/g, " ") || "",
+        180,
+      );
+      const publishedAt =
+        html.match(/<meta[^>]+(?:property|name)=["'](?:article:published_time|date|datePublished)["'][^>]+content=["']([^"']+)/i)?.[1] ||
+        html.match(/<time[^>]+datetime=["']([^"']+)/i)?.[1] ||
+        "";
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&#39;/gi, "'")
+        .replace(/&quot;/gi, '"')
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 12000);
+      const emails = [...new Set(
+        [...html.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+          .map((match) => match[0].toLowerCase())
+          .filter((email) => !/example\.(com|org)|sentry\.io|wixpress\.com/i.test(email)),
+      )].slice(0, 10);
+      return {
+        verified: text.length >= 80,
+        requestedUrl: value,
+        finalUrl: current.toString(),
+        title,
+        text,
+        emails,
+        publishedAt,
+        checkedAt: new Date().toISOString(),
+        error: "",
+      };
+    }
+    throw new Error("Nguồn chuyển hướng quá nhiều lần");
+  } catch (error) {
+    return {
+      verified: false,
+      requestedUrl: value,
+      finalUrl: "",
+      title: "",
+      text: "",
+      emails: [] as string[],
+      publishedAt: "",
+      checkedAt: new Date().toISOString(),
       error: error instanceof Error ? error.message : "Không đọc được nguồn",
     };
   }
@@ -1435,12 +1548,36 @@ export async function runAgentCycle() {
   const matchedFundingSource =
     decision.opportunity &&
     normalizedOpportunityUrl === fundingResearch.url.replace(/\/$/, "");
+  const verifiedOpportunitySource = decision.opportunity
+    ? matchedFundingSource
+      ? {
+          verified: !fundingResearch.error && fundingResearch.text.length >= 80,
+          requestedUrl: fundingResearch.url,
+          finalUrl: fundingResearch.url,
+          title: fundingResearch.name,
+          text: fundingResearch.text,
+          emails: [...fundingResearch.text.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+            .map((match) => match[0].toLowerCase()),
+          publishedAt: "",
+          checkedAt: fundingResearch.checkedAt,
+          error: fundingResearch.error,
+        }
+      : await inspectOpportunitySource(decision.opportunity.sourceUrl)
+    : null;
+  if (
+    decision.opportunity?.contactEmail &&
+    verifiedOpportunitySource &&
+    !verifiedOpportunitySource.emails.includes(decision.opportunity.contactEmail.toLowerCase())
+  )
+    decision.opportunity.contactEmail = undefined;
   const opportunityAssessment = decision.opportunity
     ? scoreOpportunity({
         ...decision.opportunity,
-        sourceTitle: matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
+        sourceTitle:
+          verifiedOpportunitySource?.title || matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
         sourceText:
-          matchedSearchResult?.description || (matchedFundingSource ? fundingResearch.text.slice(0, 4000) : ""),
+          verifiedOpportunitySource?.text || matchedSearchResult?.description || (matchedFundingSource ? fundingResearch.text.slice(0, 4000) : ""),
+        sourceVerified: verifiedOpportunitySource?.verified || false,
         expectedKind: matchedSearchResult ? webResearch.kind : undefined,
       })
     : null;
@@ -1491,6 +1628,17 @@ export async function runAgentCycle() {
                 ...webResearch.results.map((item) => item.url),
                 ...dueFollowUps.map((item) => item.sourceUrl),
               ],
+              verifiedOpportunitySource: verifiedOpportunitySource
+                ? {
+                    verified: verifiedOpportunitySource.verified,
+                    finalUrl: verifiedOpportunitySource.finalUrl,
+                    title: verifiedOpportunitySource.title,
+                    excerpt: clip(verifiedOpportunitySource.text, 1200),
+                    publishedAt: verifiedOpportunitySource.publishedAt,
+                    emails: verifiedOpportunitySource.emails,
+                    error: verifiedOpportunitySource.error,
+                  }
+                : null,
               storeFacts,
               activePlan: {
                 objective: activePlan.objective,
@@ -1580,6 +1728,7 @@ export async function runAgentCycle() {
     const allowedEmails = [
       ...outreachTargets.map((value) => value.toLowerCase()),
       ...foundEmails,
+      ...(verifiedOpportunitySource?.emails || []),
       ...dueFollowUps
         .map((item) => String(item.contactEmail || "").toLowerCase())
         .filter(Boolean),
@@ -2325,9 +2474,23 @@ export async function runAgentCycle() {
                   laneMatches: opportunityAssessment.laneMatches,
                 }
               : {},
-            sourceTitle: matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
+            sourceTitle:
+              verifiedOpportunitySource?.title || matchedSearchResult?.title || (matchedFundingSource ? fundingResearch.name : ""),
             sourceExcerpt:
-              matchedSearchResult?.description || (matchedFundingSource ? clip(fundingResearch.text, 320) : ""),
+              clip(
+                verifiedOpportunitySource?.text || matchedSearchResult?.description ||
+                  (matchedFundingSource ? fundingResearch.text : ""),
+                320,
+              ),
+            sourceVerification: verifiedOpportunitySource
+              ? {
+                  verified: verifiedOpportunitySource.verified,
+                  finalUrl: verifiedOpportunitySource.finalUrl,
+                  publishedAt: verifiedOpportunitySource.publishedAt,
+                  checkedAt: verifiedOpportunitySource.checkedAt,
+                  error: verifiedOpportunitySource.error,
+                }
+              : null,
             contactStatus: decision.opportunity.contactEmail ? "contactable" : "needs-contact",
             lastTouchAt: null,
             nextFollowUpAt: null,
