@@ -24,6 +24,16 @@ export async function GET() {
         walletsObserved: result.walletsObserved,
         marketsObserved: result.marketsObserved,
         signalsProduced: result.signals.length,
+        paperTrading: result.paperTrading
+          ? {
+              mode: result.paperTrading.mode,
+              paperDays: result.paperTrading.paperDays,
+              openPositions: result.paperTrading.openPositions,
+              closedTrades: result.paperTrading.closedTrades,
+              capitalEligible: result.paperTrading.capitalReadiness.eligible,
+              missingRequirements: result.paperTrading.capitalReadiness.missing,
+            }
+          : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );
