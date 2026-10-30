@@ -39,14 +39,8 @@ export function Dashboard({ initialState }: { initialState: PublicState }) {
         .then(setData)
         .catch(() => {});
     refresh();
-    const t = setInterval(refresh, 15000);
+    const t = setInterval(refresh, 60000);
     return () => clearInterval(t);
-  }, []);
-  useEffect(() => {
-    const heartbeat = () => void fetch("/api/heartbeat", { cache: "no-store" }).catch(() => {});
-    heartbeat();
-    const timer = setInterval(heartbeat, 60000);
-    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     const column = dragonColumnRef.current;

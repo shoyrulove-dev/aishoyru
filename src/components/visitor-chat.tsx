@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageCircle, Send, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ChatMessage = { role: "visitor" | "shoyru"; text: string };
 
@@ -16,6 +16,7 @@ function sessionId() {
 
 export function VisitorChat() {
   const [open, setOpen] = useState(false);
+  const openRef = useRef(false);
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,7 +29,7 @@ export function VisitorChat() {
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
-    if (query.get("chat") === "1") queueMicrotask(() => setOpen(true));
+    if (query.get("chat") === "1") queueMicrotask(() => { openRef.current = true; setOpen(true); });
     const track = (type: "page_view" | "presence") => fetch("/api/engagement", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,13 +49,15 @@ export function VisitorChat() {
     }).catch(() => {});
     track("page_view");
     track("presence");
-    const chatTimer = setInterval(() => {
+    const pollChat = () => {
+      if (!openRef.current) return;
       fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId())}`)
         .then((response) => response.json())
         .then((data) => data.messages?.length && setMessages(data.messages))
         .catch(() => {});
-    }, 10000);
-    const presenceTimer = setInterval(() => track("presence"), 30000);
+    };
+    const chatTimer = setInterval(pollChat, 30000);
+    const presenceTimer = setInterval(() => { if (openRef.current) track("presence"); }, 120000);
     return () => {
       clearInterval(chatTimer);
       clearInterval(presenceTimer);
@@ -64,6 +67,7 @@ export function VisitorChat() {
   function toggle() {
     const next = !open;
     setOpen(next);
+    openRef.current = next;
     if (next)
       fetch("/api/engagement", {
         method: "POST",
