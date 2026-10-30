@@ -478,6 +478,35 @@ const survivalQueries: Array<{ query: string; kind: OpportunityKind }> = [
   { query: '"looking for" (API automation OR chatbot) freelance remote', kind: "freelance" },
 ];
 
+async function selectSurvivalQueryIndex(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  rotationIndex: number,
+) {
+  const stats = await db
+    .collection("search_lane_stats")
+    .find({ query: { $in: survivalQueries.map((lane) => lane.query) } })
+    .toArray();
+  const byQuery = new Map(stats.map((item) => [String(item.query), item]));
+  const totalAttempts = stats.reduce(
+    (sum, item) => sum + Number(item.attempts || 0),
+    0,
+  );
+  const ranked = survivalQueries.map((lane, index) => {
+    const row = byQuery.get(lane.query);
+    const attempts = Number(row?.attempts || 0);
+    const qualified = Number(row?.qualified || 0);
+    const usefulResults = Number(row?.usefulResults || 0);
+    const reward = (qualified * 8 + usefulResults) / Math.max(1, attempts);
+    const exploration = Math.sqrt(
+      (2 * Math.log(Math.max(2, totalAttempts + 1))) / (attempts + 1),
+    );
+    return { index, attempts, score: reward + exploration };
+  });
+  if (rotationIndex % 4 === 0)
+    return ranked.sort((a, b) => a.attempts - b.attempts || b.score - a.score)[0].index;
+  return ranked.sort((a, b) => b.score - a.score || a.attempts - b.attempts)[0].index;
+}
+
 async function searchSurvivalOpportunities(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   index: number,
@@ -1363,8 +1392,8 @@ export async function runAgentCycle() {
     .filter((value) => /^\S+@\S+\.\S+$/.test(value));
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
-  const searchQueryIndex =
-    Number(state?.searchQueryIndex || 0) % survivalQueries.length;
+  const rotationIndex = Number(state?.searchQueryIndex || 0);
+  const searchQueryIndex = await selectSurvivalQueryIndex(db, rotationIndex);
   const [fundingResearch, webResearch, polymarketResearch] = await Promise.all([
     inspectFundingSource(fundingSourceIndex),
     searchSurvivalOpportunities(db, searchQueryIndex),
@@ -2446,7 +2475,7 @@ export async function runAgentCycle() {
           lastRunAt: now,
           nextWake: "Mỗi giờ, vào phút 17",
           fundingSourceIndex: (fundingSourceIndex + 1) % fundingSources.length,
-          searchQueryIndex: (searchQueryIndex + 1) % survivalQueries.length,
+          searchQueryIndex: rotationIndex + 1,
           updatedAt: now,
         },
       },
@@ -2509,6 +2538,33 @@ export async function runAgentCycle() {
       createdAt: now,
     }),
   ];
+  const usefulSearchResults = webResearch.results.filter((item) =>
+    /(cần|tuyển|thuê|looking for|hiring|need help|freelance|contract|rfp|bot|api|automation|chatbot)/i.test(
+      `${item.title} ${item.description}`,
+    ),
+  ).length;
+  writes.push(
+    db.collection("search_lane_stats").updateOne(
+      { query: webResearch.query },
+      {
+        $set: {
+          kind: webResearch.kind,
+          lastError: webResearch.error || "",
+          lastUsedAt: now,
+          updatedAt: now,
+        },
+        $inc: {
+          attempts: 1,
+          results: webResearch.results.length,
+          usefulResults: usefulSearchResults,
+          qualified:
+            matchedSearchResult && opportunityAssessment?.qualified ? 1 : 0,
+        },
+        $setOnInsert: { createdAt: now },
+      },
+      { upsert: true },
+    ),
+  );
   if (opportunityAssessment && !opportunityAssessment.qualified && decision.opportunity)
     writes.push(
       db.collection("agent_lessons").updateOne(

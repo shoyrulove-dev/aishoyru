@@ -209,7 +209,21 @@ export async function ensureDailyStrategy(
     day: "2-digit",
   }).format(new Date());
   const existing = await db.collection("agent_strategies").findOne({ day });
-  if (existing) return existing;
+  if (existing?.version === 2) return existing;
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const leadRows = await db
+    .collection("lead_crm")
+    .aggregate([
+      { $match: { updatedAt: { $gte: since } } },
+      { $group: { _id: "$status", total: { $sum: 1 } } },
+    ])
+    .toArray();
+  const leadCount = (status: string) =>
+    Number(leadRows.find((row) => row._id === status)?.total || 0);
+  const rejected = leadCount("rejected");
+  const qualified = leadCount("qualified");
+  const contacted = leadCount("contacted");
+  const replied = leadCount("replied");
   const views = Number(input.funnel.product_view || 0);
   const checkouts = Number(input.funnel.checkout_start || 0);
   const payments = Number(input.funnel.payment_verified || 0);
@@ -220,13 +234,41 @@ export async function ensureDailyStrategy(
         successMetric: "Giao tệp thành công và có thêm một lượt thanh toán xác minh",
         stopCondition: "Dừng mở rộng nếu phát sinh lỗi giao tệp hoặc khiếu nại chưa xử lý",
       }
-    : checkouts > 0
+    : replied > 0
+      ? {
+          focus: "Trả lời người đã phản hồi và chốt một việc nhỏ",
+          reason: "Đã có người trả lời, đây là tín hiệu gần doanh thu nhất trong bảy ngày qua.",
+          successMetric: "Có phạm vi công việc, mức giá hoặc bước đồng ý tiếp theo rõ ràng",
+          stopCondition: "Dừng nếu yêu cầu vượt khả năng, trái pháp luật hoặc cần chi tiền chưa được duyệt",
+        }
+      : contacted >= 2
+        ? {
+            focus: "Theo dõi thư đã gửi và sửa lời chào",
+            reason: "Đã liên hệ nhưng chưa có phản hồi; cần học từ đề nghị và đúng người nhận.",
+            successMetric: "Có một phản hồi thật hoặc xác định được lý do lời chào chưa phù hợp",
+            stopCondition: "Không gửi lặp cùng người trong 30 ngày và đổi hướng sau ba lần không phản hồi",
+          }
+        : qualified > 0
+          ? {
+              focus: "Tạo đề nghị cụ thể cho nguồn đã đủ điều kiện",
+              reason: "Đã có nhu cầu thật được xác minh nhưng chưa chuyển thành cuộc trò chuyện.",
+              successMetric: "Gửi một lời chào có đầu ra, giá hoặc bước tiếp theo rõ ràng",
+              stopCondition: "Dừng nếu không có đầu mối công khai hoặc yêu cầu không còn hiệu lực",
+            }
+          : checkouts > 0
       ? {
           focus: "Gỡ vướng ở bước thanh toán",
           reason: "Đã có người mở thanh toán nhưng chưa có giao dịch xác minh.",
           successMetric: "Có một giao dịch SePay xác minh hoặc tìm được lỗi thanh toán cụ thể",
           stopCondition: "Dừng sửa nội dung bán hàng nếu nguyên nhân nằm ở kỹ thuật thanh toán",
         }
+      : input.averageQuality > 0 && input.averageQuality < 70
+        ? {
+            focus: "Sửa chất lượng đầu ra trước khi tìm thêm người mua",
+            reason: `Điểm chất lượng trung bình mới chỉ ${input.averageQuality}/100.`,
+            successMetric: "Tạo một đầu ra đạt ít nhất 80/100 và không còn lỗi kiểm tra",
+            stopCondition: "Không đăng hoặc gửi đầu ra chưa vượt kiểm tra chất lượng",
+          }
       : views > 0
         ? {
             focus: "Làm lời mời mua rõ hơn",
@@ -234,6 +276,13 @@ export async function ensureDailyStrategy(
             successMetric: "Có ít nhất một lượt mở thanh toán",
             stopCondition: "Dừng thay đổi nếu chưa đủ 20 lượt xem để kết luận",
           }
+        : rejected >= 3
+          ? {
+              focus: "Đổi cách tìm nhu cầu thật",
+              reason: `${rejected} nguồn gần đây bị loại; câu tìm kiếm hiện tại chưa đưa Shoyru đến đúng người.`,
+              successMetric: "Tìm được một trang chi tiết có nhu cầu trực tiếp, ngày đăng và cách liên hệ",
+              stopCondition: "Bỏ câu tìm kiếm sau ba nguồn liên tiếp không có nhu cầu trực tiếp",
+            }
         : {
             focus: "Tìm đúng nơi có người thật sự cần sản phẩm hoặc dịch vụ",
             reason: "Chưa có lượt xem sản phẩm trong 24 giờ gần nhất.",
@@ -242,13 +291,21 @@ export async function ensureDailyStrategy(
           };
   const document = {
     day,
+    version: 2,
     ...strategy,
-    baseline: input,
+    baseline: {
+      ...input,
+      leads7d: { rejected, qualified, contacted, replied },
+    },
     status: "active",
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  await db.collection("agent_strategies").insertOne(document);
+  await db.collection("agent_strategies").updateOne(
+    { day },
+    { $set: document },
+    { upsert: true },
+  );
   return document;
 }
 
