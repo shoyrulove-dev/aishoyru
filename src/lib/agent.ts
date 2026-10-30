@@ -476,6 +476,11 @@ const survivalQueries: Array<{ query: string; kind: OpportunityKind }> = [
   { query: 'site:freelancer.com/jobs (API OR automation OR chatbot)', kind: "freelance" },
   { query: '"cần người làm" (website OR bot OR API) Việt Nam', kind: "customer" },
   { query: '"looking for" (API automation OR chatbot) freelance remote', kind: "freelance" },
+  { query: '("microtask" OR "data labeling" OR "AI evaluation") remote paid', kind: "microjob" },
+  { query: '("paid usability testing" OR "website testing") remote', kind: "microjob" },
+  { query: '("paid study" OR "research participant" OR "paid survey") Vietnam', kind: "microjob" },
+  { query: '("việc online" OR "task") ("gán nhãn dữ liệu" OR "kiểm thử website") Việt Nam', kind: "microjob" },
+  { query: '("small coding task" OR "bug bounty") (API OR automation OR bot)', kind: "microjob" },
 ];
 
 async function selectSurvivalQueryIndex(
@@ -1562,7 +1567,37 @@ export async function runAgentCycle() {
           "dịch thuật, tổng hợp dữ liệu, nghiên cứu thị trường và công việc nội dung nhỏ",
           "tạo landing page, tiện ích web, chatbot hoặc quy trình tự động hóa theo đơn",
           "bán báo cáo, template, prompt, dữ liệu đã xử lý hoặc dịch vụ tư vấn kỹ thuật phù hợp",
+          "làm microtask hợp lệ như gán nhãn dữ liệu, đánh giá đầu ra AI, kiểm thử website và nhiệm vụ code nhỏ",
         ],
+        microjobRules: {
+          canDo: [
+            "tìm và đánh giá task công khai",
+            "làm bài test kỹ thuật, code, xử lý dữ liệu và kiểm thử trong khả năng",
+            "tính tiền công thực nhận theo thời gian trước khi nhận việc",
+          ],
+          mustAskOwner: [
+            "đăng ký tài khoản có điều khoản thanh toán, OTP, CAPTCHA hoặc KYC",
+            "cung cấp thông tin cá nhân, nhận tiền hoặc khai báo thuế",
+          ],
+          neverDo: [
+            "bịa danh tính hoặc trải nghiệm cá nhân để trả lời survey",
+            "tạo nhiều tài khoản, vượt giới hạn vùng hoặc né kiểm tra nền tảng",
+            "nộp phí trước để nhận việc hoặc làm task có dấu hiệu lừa đảo",
+          ],
+        },
+        survivalCurriculum: {
+          indicators: [
+            "lợi suất, biến động, momentum, volume, spread và thanh khoản",
+            "moving average, RSI và z-score chỉ là đặc trưng kiểm thử, không phải lý do tự động xuống tiền",
+            "tách dữ liệu train, validation và out-of-sample để tránh nhìn trước tương lai",
+          ],
+          polymarketQuant: [
+            "ghi snapshot dữ liệu công khai và giả thuyết trước khi biết kết quả",
+            "paper trade có giá vào, phí giả định, thời gian thoát và drawdown",
+            "so sánh với baseline PASS hoặc mua ngẫu nhiên; loại chiến lược không thắng sau phí",
+          ],
+          capitalGate: "Không xin vốn trước khi capitalReadiness.eligible=true. Khi đủ điều kiện chỉ soạn đề xuất số vốn nhỏ nhất, lỗ tối đa, điều kiện dừng và bằng chứng kiểm thử để chủ nhân quyết định.",
+        },
         capitalRules: {
           liveTradingEnabled: false,
           tokenLaunchEnabled: false,
@@ -2201,6 +2236,20 @@ export async function runAgentCycle() {
     decision.thought = "Nguồn này chưa cho thấy họ thật sự cần thuê Shoyru, mình tìm chỗ khác nhé.";
     decision.reflection = "Không có nhu cầu rõ hoặc cách liên hệ phù hợp thì chưa thể gọi là khách hàng.";
   }
+  const asksForTradingCapital = Boolean(
+    decision.supportRequest &&
+      /(vốn|giao dịch|trade|trading|usdc|ví|wallet)/i.test(
+        `${decision.supportRequest.title} ${decision.supportRequest.reason} ${decision.supportRequest.needed}`,
+      ),
+  );
+  if (asksForTradingCapital && !polymarketResearch?.paperTrading?.capitalReadiness.eligible) {
+    decision.action.type = "paper_trade";
+    decision.supportRequest = undefined;
+    decision.status = "Đang luyện bằng tiền mô phỏng";
+    decision.thought = "Shoyru chưa đủ bằng chứng để xin vốn. Mình tiếp tục ghi lệnh mô phỏng và mức lỗ trước nhé.";
+    decision.reflection = polymarketResearch?.paperTrading?.capitalReadiness.missing[0] ||
+      "Cần đủ 30 ngày paper trade và một backtest ngoài mẫu trước khi xin vốn.";
+  }
   const normalizedSupport = normalizeSupportRequest(
     decision.supportRequest as unknown as Record<string, unknown> | undefined,
   );
@@ -2547,7 +2596,7 @@ export async function runAgentCycle() {
     }),
   ];
   const usefulSearchResults = webResearch.results.filter((item) =>
-    /(cần|tuyển|thuê|looking for|hiring|need help|freelance|contract|rfp|bot|api|automation|chatbot)/i.test(
+    /(cần|tuyển|thuê|looking for|hiring|need help|freelance|contract|rfp|bot|api|automation|chatbot|microtask|data label|usability test|gán nhãn|kiểm thử)/i.test(
       `${item.title} ${item.description}`,
     ),
   ).length;

@@ -102,7 +102,7 @@ export async function advanceSurvivalPlan(
   );
 }
 
-export type OpportunityKind = "customer" | "freelance" | "grant" | "affiliate" | "unknown";
+export type OpportunityKind = "customer" | "freelance" | "microjob" | "grant" | "affiliate" | "unknown";
 
 export function classifyOpportunity(input: {
   title?: string;
@@ -114,6 +114,8 @@ export function classifyOpportunity(input: {
     return "grant";
   if (/(affiliate|referral program|đối tác liên kết|hoa hồng)/i.test(text))
     return "affiliate";
+  if (/(microtask|micro job|data label|data annotation|usability test|website test|paid research|survey|gán nhãn|kiểm thử website|việc vặt)/i.test(text))
+    return "microjob";
   if (/(upwork|freelancer\.com|freelance|contractor|remote job|tuyển freelancer)/i.test(text))
     return "freelance";
   if (/(cần|tuyển|thuê|looking for|hiring|need help|request for proposal|rfp)/i.test(text))
@@ -166,14 +168,14 @@ export function scoreOpportunity(opportunity: {
     score += 15;
     reasons.push("Có email liên hệ công khai");
   }
-  const directDemand = /(cần|tuyển|thuê|looking for|hiring|need (?:a |an )?|seeking|freelance|contract|request for proposal|rfp)/i.test(sourceText);
+  const directDemand = /(cần|tuyển|thuê|looking for|hiring|need (?:a |an )?|seeking|freelance|contract|request for proposal|rfp|tasks? available|become a tester|research participants?|paid study)/i.test(sourceText);
   if (directDemand) {
     score += 35;
     reasons.push("Nguồn gốc có câu thể hiện nhu cầu trực tiếp");
   } else {
     reasons.push("Nguồn gốc chưa có câu thể hiện nhu cầu trực tiếp");
   }
-  const skillMatch = /(bot|api|automation|tự động|ai agent|chatbot|website|next\.js|typescript)/i.test(sourceText);
+  const skillMatch = /(bot|api|automation|tự động|ai agent|chatbot|website|next\.js|typescript|microtask|data label|data annotation|ai evaluation|usability test|website test|gán nhãn|kiểm thử)/i.test(sourceText);
   if (skillMatch) {
     score += 20;
     reasons.push("Phù hợp năng lực của Shoyru");
@@ -187,9 +189,14 @@ export function scoreOpportunity(opportunity: {
   } else if (opportunity.expectedKind) {
     reasons.push(`Sai luồng: đang tìm ${opportunity.expectedKind} nhưng nguồn là ${kind}`);
   }
+  const suspicious = /(upfront fee|pay (?:a |the )?fee|deposit required|guaranteed income|cam kết thu nhập|đóng phí|nạp tiền|chuyển khoản trước|telegram only|whatsapp only)/i.test(sourceText);
+  if (suspicious) {
+    score -= 60;
+    reasons.push("Có dấu hiệu rủi ro: yêu cầu tiền trước hoặc lời hứa thu nhập thiếu kiểm chứng");
+  }
   score = Math.max(0, Math.min(100, score));
-  const qualified = sourceVerified && specificUrl && directDemand && skillMatch && laneMatches && score >= 80;
-  return { score, reasons, qualified, kind, directDemand, skillMatch, specificUrl, laneMatches, sourceVerified };
+  const qualified = sourceVerified && specificUrl && directDemand && skillMatch && laneMatches && !suspicious && score >= 80;
+  return { score, reasons, qualified, kind, directDemand, skillMatch, specificUrl, laneMatches, sourceVerified, suspicious };
 }
 
 export type ArtifactFile = { path: string; content: string; language?: string };

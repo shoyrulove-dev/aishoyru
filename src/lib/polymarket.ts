@@ -49,6 +49,14 @@ export type PolymarketSignal = {
   reasons: string[];
   invalidation: string;
   observedPrice: number | null;
+  indicators?: {
+    observations: number;
+    simpleMovingAverage: number;
+    zScore: number;
+    returnFromOldest: number;
+    volatility: number;
+    relativeStrengthIndex: number | null;
+  };
 };
 
 export type PolymarketResearch = {
@@ -68,6 +76,45 @@ export type PolymarketResearch = {
   }>;
   signals: PolymarketSignal[];
   warning: string;
+  paperTrading?: PaperTradingSummary;
+};
+
+type PaperPosition = {
+  conditionId: string;
+  market: string;
+  slug: string;
+  side: "YES";
+  status: "open" | "closed";
+  hypothesis: string;
+  entryPrice: number;
+  currentPrice: number;
+  notionalUsdc: number;
+  units: number;
+  assumedFeeUsdc: number;
+  openedAt: Date;
+  updatedAt: Date;
+  closedAt?: Date;
+  exitReason?: string;
+  realizedPnlUsdc?: number;
+};
+
+export type PaperTradingSummary = {
+  mode: "paper-only";
+  liveTradingEnabled: false;
+  startingCapitalUsdc: number;
+  openPositions: number;
+  closedTrades: number;
+  paperDays: number;
+  realizedPnlUsdc: number;
+  unrealizedPnlUsdc: number;
+  maxDrawdownUsdc: number;
+  assumedFeeBps: number;
+  capitalReadiness: {
+    eligible: boolean;
+    minimumDays: 30;
+    missing: string[];
+    note: string;
+  };
 };
 
 const asNumber = (value: unknown, fallback = 0) => {
@@ -202,6 +249,189 @@ function buildSignals(markets: RawMarket[], trades: RawTrade[]): PolymarketSigna
   }).sort((a, b) => b.score - a.score).slice(0, 10);
 }
 
+const rounded = (value: number) => Math.round(value * 10_000) / 10_000;
+
+async function addHistoricalIndicators(db: Db, snapshot: PolymarketResearch) {
+  const history = await db
+    .collection<PolymarketResearch>("polymarket_research")
+    .find({ mode: "research-only" })
+    .sort({ generatedAt: -1 })
+    .limit(30)
+    .toArray();
+  for (const signal of snapshot.signals) {
+    if (signal.observedPrice == null) continue;
+    const prices = history
+      .flatMap((row) => row.signals || [])
+      .filter((old) => old.conditionId === signal.conditionId && old.observedPrice != null)
+      .map((old) => Number(old.observedPrice))
+      .reverse()
+      .concat(signal.observedPrice);
+    if (prices.length < 5) continue;
+    const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    const variance = prices.reduce((sum, price) => sum + (price - mean) ** 2, 0) / prices.length;
+    const deviation = Math.sqrt(variance);
+    const zScore = deviation ? (signal.observedPrice - mean) / deviation : 0;
+    const returns = prices.slice(1).map((price, index) => price / prices[index] - 1);
+    const returnMean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+    const volatility = Math.sqrt(
+      returns.reduce((sum, value) => sum + (value - returnMean) ** 2, 0) / returns.length,
+    );
+    const changes = prices.slice(1).map((price, index) => price - prices[index]);
+    const rsiChanges = changes.slice(-14);
+    const gains = rsiChanges.reduce((sum, value) => sum + Math.max(0, value), 0);
+    const losses = rsiChanges.reduce((sum, value) => sum + Math.max(0, -value), 0);
+    const rsi = rsiChanges.length >= 14
+      ? losses === 0 ? 100 : 100 - 100 / (1 + gains / losses)
+      : null;
+    signal.indicators = {
+      observations: prices.length,
+      simpleMovingAverage: rounded(mean),
+      zScore: rounded(zScore),
+      returnFromOldest: rounded(signal.observedPrice / prices[0] - 1),
+      volatility: rounded(volatility),
+      relativeStrengthIndex: rsi == null ? null : rounded(rsi),
+    };
+    signal.reasons.push(
+      `giá hiện tại lệch ${zScore.toFixed(2)} độ lệch chuẩn so với trung bình ${prices.length} lần quan sát`,
+    );
+  }
+}
+
+async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
+  const now = new Date();
+  const positions = db.collection<PaperPosition>("polymarket_paper_positions");
+  const feeBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_FEE_BPS || 100));
+  const maxOpen = Math.max(1, Number(process.env.POLYMARKET_MAX_OPEN_POSITIONS || 3));
+  const dailyLossBudget = Math.max(0.1, Number(process.env.POLYMARKET_MAX_DAILY_LOSS_USDC || 2));
+  const maxPosition = Math.max(
+    0.1,
+    Math.min(Number(process.env.POLYMARKET_MAX_POSITION_USDC || 5), dailyLossBudget / maxOpen),
+  );
+  const maxHoldHours = Math.max(1, Number(process.env.POLYMARKET_PAPER_MAX_HOLD_HOURS || 24));
+  const byCondition = new Map(snapshot.signals.map((signal) => [signal.conditionId, signal]));
+  const open = await positions.find({ status: "open" }).toArray();
+
+  for (const position of open) {
+    const signal = byCondition.get(position.conditionId);
+    if (signal?.observedPrice == null) continue;
+    const price = signal.observedPrice;
+    const ageHours = (now.getTime() - new Date(position.openedAt).getTime()) / 3_600_000;
+    const grossPnl = position.units * (price - position.entryPrice);
+    const shouldClose = ageHours >= maxHoldHours || price <= 0.03 || price >= 0.97;
+    await positions.updateOne(
+      { _id: position._id },
+      {
+        $set: shouldClose
+          ? {
+              currentPrice: price,
+              updatedAt: now,
+              status: "closed",
+              closedAt: now,
+              exitReason: ageHours >= maxHoldHours ? `Hết thời gian giữ giả lập ${maxHoldHours} giờ` : "Giá sát biên 0 hoặc 1",
+              realizedPnlUsdc: rounded(grossPnl - position.assumedFeeUsdc),
+            }
+          : { currentPrice: price, updatedAt: now },
+      },
+    );
+  }
+
+  const stillOpen = await positions.countDocuments({ status: "open" });
+  const candidates = snapshot.signals.filter(
+    (signal) =>
+      signal.decision === "BUY" &&
+      signal.score >= 75 &&
+      signal.observedPrice != null &&
+      signal.observedPrice >= 0.05 &&
+      signal.observedPrice <= 0.95,
+  );
+  for (const signal of candidates.slice(0, Math.max(0, maxOpen - stillOpen))) {
+    const exists = await positions.findOne({ conditionId: signal.conditionId, status: "open" });
+    if (exists || signal.observedPrice == null) continue;
+    const fee = maxPosition * feeBps / 10_000;
+    await positions.insertOne({
+      conditionId: signal.conditionId,
+      market: signal.market,
+      slug: signal.slug,
+      side: "YES",
+      status: "open",
+      hypothesis: `Dòng lệnh mua chiếm ưu thế, điểm tín hiệu ${signal.score}/100; chỉ kiểm tra giả thuyết bằng tiền mô phỏng.`,
+      entryPrice: signal.observedPrice,
+      currentPrice: signal.observedPrice,
+      notionalUsdc: maxPosition,
+      units: maxPosition / signal.observedPrice,
+      assumedFeeUsdc: rounded(fee),
+      openedAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await db.collection("polymarket_paper_runs").updateOne(
+    { snapshotAt: snapshot.generatedAt },
+    {
+      $setOnInsert: {
+        snapshotAt: snapshot.generatedAt,
+        createdAt: now,
+        signals: snapshot.signals.map((signal) => ({
+          conditionId: signal.conditionId,
+          decision: signal.decision,
+          score: signal.score,
+          observedPrice: signal.observedPrice,
+        })),
+      },
+    },
+    { upsert: true },
+  );
+}
+
+async function getPaperTradingSummary(db: Db): Promise<PaperTradingSummary> {
+  const rows = await db.collection<PaperPosition>("polymarket_paper_positions").find({}).toArray();
+  const runs = await db.collection("polymarket_paper_runs").find({}, { projection: { snapshotAt: 1 } }).toArray();
+  const backtest = await db.collection("quant_backtests").findOne({ outOfSample: true, status: "completed" });
+  const feeBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_FEE_BPS || 100));
+  const startingCapital = Math.max(1, Number(process.env.POLYMARKET_PAPER_CAPITAL_USDC || 50));
+  const closed = rows.filter((row) => row.status === "closed");
+  const open = rows.filter((row) => row.status === "open");
+  const realized = closed.reduce((sum, row) => sum + Number(row.realizedPnlUsdc || 0), 0);
+  const unrealized = open.reduce(
+    (sum, row) => sum + row.units * (row.currentPrice - row.entryPrice) - row.assumedFeeUsdc,
+    0,
+  );
+  const paperDays = new Set(runs.map((row) => new Date(row.snapshotAt as Date).toISOString().slice(0, 10))).size;
+  let equity = startingCapital;
+  let peak = equity;
+  let maxDrawdown = 0;
+  for (const row of closed.sort((a, b) => +new Date(a.closedAt || 0) - +new Date(b.closedAt || 0))) {
+    equity += Number(row.realizedPnlUsdc || 0);
+    peak = Math.max(peak, equity);
+    maxDrawdown = Math.max(maxDrawdown, peak - equity);
+  }
+  const missing: string[] = [];
+  if (paperDays < 30) missing.push(`Cần thêm ${30 - paperDays} ngày paper trade`);
+  if (closed.length < 20) missing.push(`Cần thêm ${20 - closed.length} lệnh mô phỏng đã đóng`);
+  if (!backtest) missing.push("Chưa có backtest ngoài mẫu hoàn tất");
+  if (maxDrawdown > Number(process.env.POLYMARKET_MAX_DRAWDOWN_USDC || 5)) missing.push("Drawdown vượt mức cho phép");
+  return {
+    mode: "paper-only",
+    liveTradingEnabled: false,
+    startingCapitalUsdc: startingCapital,
+    openPositions: open.length,
+    closedTrades: closed.length,
+    paperDays,
+    realizedPnlUsdc: rounded(realized),
+    unrealizedPnlUsdc: rounded(unrealized),
+    maxDrawdownUsdc: rounded(maxDrawdown),
+    assumedFeeBps: feeBps,
+    capitalReadiness: {
+      eligible: missing.length === 0,
+      minimumDays: 30,
+      missing,
+      note: missing.length
+        ? "Chưa được xin vốn hoặc giao dịch tiền thật."
+        : "Đủ dữ liệu để soạn đề xuất vốn; vẫn cần chủ nhân duyệt và kiểm tra pháp lý/khu vực.",
+    },
+  };
+}
+
 export async function scanPolymarketResearch(): Promise<PolymarketResearch> {
   const [markets, broadTrades] = await Promise.all([
     fetchJson<RawMarket[]>(`${GAMMA_URL}/markets?active=true&closed=false&limit=50&order=volume24hr&ascending=false`),
@@ -238,14 +468,16 @@ export async function getPolymarketResearch(db: Db, force = false): Promise<Poly
     { sort: { generatedAt: -1 } },
   );
   if (!force && cached?.generatedAt && Date.now() - new Date(cached.generatedAt).getTime() < CACHE_MS)
-    return cached;
+    return { ...cached, paperTrading: await getPaperTradingSummary(db) };
 
   const snapshot = await scanPolymarketResearch();
+  await addHistoricalIndicators(db, snapshot);
   await db.collection("polymarket_research").insertOne(snapshot);
   await db.collection("polymarket_research").deleteMany({
     generatedAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
   });
-  return snapshot;
+  await updatePaperTrading(db, snapshot);
+  return { ...snapshot, paperTrading: await getPaperTradingSummary(db) };
 }
 
 export function compactPolymarketResearch(snapshot: PolymarketResearch) {
@@ -259,5 +491,6 @@ export function compactPolymarketResearch(snapshot: PolymarketResearch) {
     unusualWallets: snapshot.unusualWallets.slice(0, 5),
     signals: snapshot.signals.slice(0, 5),
     warning: snapshot.warning,
+    paperTrading: snapshot.paperTrading,
   };
 }
