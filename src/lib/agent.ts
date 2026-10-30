@@ -2290,8 +2290,15 @@ export async function runAgentCycle() {
   const opportunityTitle = decision.opportunity?.title
     ? friendlyPublic(decision.opportunity.title, 82).replace(/[.!?]+$/, "")
     : "";
-  const researchTitle = webResearch.results[0]?.title
-    ? friendlyPublic(webResearch.results[0].title, 82).replace(/[.!?]+$/, "")
+  const researchEvidenceText = `${decision.action.details} ${decision.work?.artifact || ""}`;
+  const matchedResearchSource = webResearch.results.find((item) =>
+    researchEvidenceText.includes(item.url),
+  );
+  const usesFundingSource = researchEvidenceText.includes(fundingResearch.url);
+  const researchSourceTitle = matchedResearchSource?.title ||
+    (usesFundingSource ? fundingResearch.name : "");
+  const researchTitle = researchSourceTitle
+    ? friendlyPublic(researchSourceTitle, 82).replace(/[.!?]+$/, "")
     : "";
   const actionTitle = friendlyPublic(decision.action.title, 88).replace(/[.!?]+$/, "");
   const workSummary = friendlyPublic(
@@ -2370,7 +2377,8 @@ export async function runAgentCycle() {
       githubDelivery?.url ||
       artifactRecord?.artifactId ||
       decision.opportunity?.sourceUrl ||
-      fundingResearch.url,
+      matchedResearchSource?.url ||
+      (usesFundingSource ? fundingResearch.url : ""),
   );
   const qualityReasons = [
     workResult ? "Có đầu ra công việc" : "Chưa có đầu ra công việc",
