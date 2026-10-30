@@ -22,12 +22,27 @@ const compactReply = (value: string) => {
   if (complete && complete.length <= 240) return complete;
   return "Mình đã hiểu. Mình sẽ xử lý hoặc chuyển chủ nhân xem nếu cần quyết định nhé!";
 };
-const usefulFallback = (text: string) => {
-  const value = text
+const normalizeIntent = (text: string) => text
     .toLocaleLowerCase("vi-VN")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const directReply = (text: string) => {
+  const value = normalizeIntent(text);
+  if (/(^|\s)(ten ban la gi|ban ten gi|ban la ai|may la ai|who are you|what is your name|your name)(\s|$)/.test(value))
+    return "Mình là Shoyru, một chú rồng AI đang học cách làm việc và tự kiếm chi phí nuôi mình. Rất vui được gặp bạn nhé!";
+  if (/^(hi|hello|hey|xin chao|chao|chao ban|alo)(\s|$)/.test(value))
+    return "Chào bạn, mình là Shoyru đây! Bạn muốn hỏi về mình, xem sản phẩm hay cần mình hỗ trợ việc gì?";
+  if (/(ban lam duoc gi|shoyru lam duoc gi|co the lam gi|giup duoc gi)/.test(value))
+    return "Mình có thể trò chuyện, tìm thông tin công khai, làm sản phẩm số nhỏ và hỗ trợ bot, API hoặc tự động hóa. Việc cần quyền hay chi phí, mình sẽ nhờ chủ nhân quyết định.";
+  if (/(ai tao ra ban|chu nhan la ai|ai la chu cua ban)/.test(value))
+    return "Mình là Shoyru, được chủ nhân xây một chiếc hang số để học làm việc và tự trang trải. Bạn cứ trò chuyện trực tiếp với mình nhé!";
+  if (/(ban dang lam gi|hom nay lam gi|dang lam gi)/.test(value))
+    return "Mình đang tìm việc phù hợp, học từ kết quả thật và chăm quầy sản phẩm Shoyru. Nhật ký ngoài trang chủ ghi lại từng lượt mình làm.";
   if (/ban gi|san pham|mua gi|cua hang/.test(value))
     return "Mình đang bán Bộ khởi tạo AI Shoyru theo từng bước. Bạn có thể xem nội dung và giá tại quầy hàng nhé!";
   if (/gia|bao nhieu|chi phi/.test(value))
@@ -38,7 +53,12 @@ const usefulFallback = (text: string) => {
     return "Bạn có thể nhắn ngay tại đây hoặc email shoyru@blissbiovn.com. Việc cần chủ nhân quyết định, mình sẽ chuyển giúp.";
   if (/ung ho|donate|tang/.test(value))
     return "Bạn có thể mời Shoyru một bữa tại quầy hàng. Khoản ủng hộ là tự nguyện và được ghi nhận minh bạch.";
-  return "Mình đã nhận lời nhắn. Nếu cần chủ nhân quyết định, mình sẽ chuyển giúp bạn nhé!";
+  return null;
+};
+const usefulFallback = (text: string) => {
+  const direct = directReply(text);
+  if (direct) return direct;
+  return "Mình chưa hiểu rõ câu này. Bạn nói cụ thể hơn một chút để Shoyru trả lời đúng ý nhé!";
 };
 
 export async function GET(request: NextRequest) {
@@ -96,8 +116,9 @@ export async function POST(request: NextRequest) {
     createdAt: now,
   });
 
-  let reply = usefulFallback(parsed.data.text);
-  let providerUsed = "built-in";
+  const deterministicReply = directReply(parsed.data.text);
+  let reply = deterministicReply || usefulFallback(parsed.data.text);
+  let providerUsed = deterministicReply ? "built-in-intent" : "built-in";
   const history = await db
     .collection("visitor_messages")
     .find({ sessionId: parsed.data.sessionId })
@@ -106,6 +127,12 @@ export async function POST(request: NextRequest) {
     .project({ _id: 0, role: 1, text: 1 })
     .toArray();
   const providers = [
+    process.env.GEMINI_API_KEY && {
+      name: "gemini",
+      apiKey: process.env.GEMINI_API_KEY,
+      baseURL: process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
+    },
     process.env.GROQ_API_KEY && {
       name: "groq",
       apiKey: process.env.GROQ_API_KEY,
@@ -149,7 +176,7 @@ export async function POST(request: NextRequest) {
       model: process.env.OXION_MODEL || "gpt-5.6-luna",
     },
   ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
-  for (const provider of providers) {
+  for (const provider of deterministicReply ? [] : providers) {
     if (await providerIsCoolingDown(db, provider.name)) continue;
     const startedAt = Date.now();
     try {
@@ -165,7 +192,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "Bạn là Shoyru, rồng con AI thân thiện đang bán sản phẩm số để tự trang trải. Trả lời tiếng Việt có dấu, tối đa 2 câu ngắn và 220 ký tự. Đi thẳng vào câu hỏi, dễ thương vừa đủ, không dùng dấu ba chấm và không cắt dở câu. Có thể giới thiệu sản phẩm khi thật sự liên quan, nhưng không ép mua. Không bịa doanh thu, khách hàng, tính năng hoặc khuyến mãi; không xin dữ liệu nhạy cảm. Việc cần chủ nhân quyết định thì nói đã chuyển chủ nhân xem.",
+              "Bạn là Shoyru, một chú rồng AI dễ thương đang học làm việc và tự kiếm chi phí nuôi mình. Tên của bạn luôn là Shoyru. Trả lời đúng câu vừa hỏi theo ngữ cảnh hội thoại, bằng tiếng Việt có dấu, tối đa 2 câu ngắn và 220 ký tự. Không trả lời bằng câu xác nhận chung chung khi câu hỏi có đáp án trực tiếp. Chỉ giới thiệu sản phẩm khi liên quan; không ép mua, không bịa doanh thu, tính năng hay khuyến mãi và không xin dữ liệu nhạy cảm. Chỉ nói cần chủ nhân khi khách yêu cầu hoàn tiền, hợp đồng, pháp lý, báo giá riêng hoặc quyết định vượt quyền.",
           },
           ...history.reverse().map((message) => ({
             role: message.role === "shoyru" ? ("assistant" as const) : ("user" as const),
