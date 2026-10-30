@@ -223,7 +223,7 @@ export async function getPublicState(): Promise<PublicState> {
       .replace(/[^a-z0-9]+/g, " ")
       .trim();
   const seenConversationText = new Map<string, number>();
-  const conversationsOut = conversations
+  const conversationRows = conversations
     .reverse()
     .filter((x) => {
       const text = String(x.text || "").trim();
@@ -251,6 +251,44 @@ export async function getPublicState(): Promise<PublicState> {
         timeZone: "Asia/Ho_Chi_Minh",
       }),
       text: publicSentence(legacy[String(x.text || "")] || x.text),
+      createdAtMs: new Date(x.createdAt as Date).getTime(),
+    }));
+  const occupiedHours = new Set(
+    conversationRows.map((row) => {
+      const date = new Date(row.createdAtMs + 7 * 60 * 60 * 1000);
+      return `${date.toISOString().slice(0, 13)}`;
+    }),
+  );
+  const activityBackfill = activities
+    .filter((item) => String(item.kind || "") === "ĐÃ LÀM")
+    .filter((item) => {
+      const text = String(item.text || "");
+      if (privateOperations.test(text) || unverifiedClaims.test(text)) return false;
+      const date = new Date(new Date(item.createdAt as Date).getTime() + 7 * 60 * 60 * 1000);
+      const hourKey = date.toISOString().slice(0, 13);
+      if (occupiedHours.has(hourKey)) return false;
+      occupiedHours.add(hourKey);
+      return true;
+    })
+    .map((item) => ({
+      id: `activity-${String(item._id)}`,
+      speaker: "shoyru" as const,
+      at: new Date(item.createdAt as Date).toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Ho_Chi_Minh",
+      }),
+      text: publicSentence(`Shoyru vừa làm xong một bước: ${String(item.text || "")}`, 180),
+      createdAtMs: new Date(item.createdAt as Date).getTime(),
+    }));
+  const conversationsOut = [...conversationRows, ...activityBackfill]
+    .sort((left, right) => left.createdAtMs - right.createdAtMs)
+    .slice(-12)
+    .map((row) => ({
+      id: row.id,
+      speaker: row.speaker,
+      at: row.at,
+      text: row.text,
     }));
   const status = String(state?.status || "Đang nghỉ trong hang");
   const statusVi = privateOperations.test(status)

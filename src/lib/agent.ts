@@ -2504,7 +2504,23 @@ export async function runAgentCycle() {
     const overlap = [...leftWords].filter((word) => rightWords.has(word)).length;
     return overlap / Math.min(leftWords.size, rightWords.size);
   };
-  const publicJournalLine = publicThought;
+  const journalCandidates = [
+    publicThought,
+    workResult?.summary
+      ? `Shoyru vừa làm xong một bước: ${friendlyPublic(workResult.summary, 135)}`
+      : "",
+    researchTitle ? `Shoyru vừa đọc “${researchTitle}” và đã ghi lại điều cần kiểm tra tiếp.` : "",
+    opportunityTitle ? `Shoyru vừa xem kỹ yêu cầu “${opportunityTitle}”.` : "",
+  ].filter(Boolean);
+  const publicJournalLine = journalCandidates.find((candidate) => {
+    const key = journalKey(candidate);
+    return key && !recentJournalKeys.has(key) &&
+      ![...recentJournalKeys].some((recentKey) => journalSimilarity(key, recentKey) >= 0.82);
+  }) || `Shoyru vừa hoàn thành lượt làm việc lúc ${now.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
+  })}. Kết quả đã được ghi vào nhật ký.`;
   const conversationEntries = [{
     speaker: "shoyru",
     text: publicJournalLine,
