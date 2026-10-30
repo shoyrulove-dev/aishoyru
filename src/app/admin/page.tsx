@@ -72,6 +72,25 @@ type Overview = {
   activePlan?: Record<string, unknown> | null;
   activeStrategy?: Record<string, unknown> | null;
   activeCampaign?: Record<string, unknown> | null;
+  survivalCenter: {
+    allocation: Array<{ id: string; label: string; targetPercent: number; purpose: string }>;
+    servicePackages: Array<{ id: string; name: string; deliverable: string; needs: string[]; price: string }>;
+    ownerOnlyActions: string[];
+    workMix24h: Array<{ action: string; total: number }>;
+    careerLanes: Array<{ kind: string; attempts: number; results: number; useful: number; qualified: number }>;
+    chatLeads: { total: number; qualifying: number; qualified: number; needsOwner: number; followUpsDue: number };
+    capital: {
+      policy: Record<string, number | boolean>;
+      paperTrading?: {
+        paperDays: number;
+        openPositions: number;
+        closedTrades: number;
+        realizedPnlUsdc: number;
+        maxDrawdownUsdc: number;
+        capitalReadiness: { eligible: boolean; missing: string[]; note: string };
+      } | null;
+    };
+  };
   trafficSources: Array<{ label: string; views: number; visitors: number }>;
   topPages: Array<{ path: string; views: number; visitors: number }>;
   artifacts: Array<Record<string, unknown>>;
@@ -229,6 +248,7 @@ export default function Admin() {
     );
   const nav = [
     { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+    { id: "survival", label: "Trung tâm sinh tồn", icon: ShieldCheck },
     {
       id: "actions",
       label: "Cần bạn hỗ trợ",
@@ -347,6 +367,7 @@ export default function Admin() {
             </div>
           )}
           {tab === "overview" && <OverviewPanel data={data} setTab={setTab} />}{" "}
+          {tab === "survival" && <SurvivalCenter data={data.survivalCenter} />}{" "}
           {tab === "actions" && (
             <Actions approvals={data.approvals} decide={decide} ownerNote={ownerNote} setOwnerNote={setOwnerNote} sendOwnerNote={sendOwnerNote} />
           )}{" "}
@@ -667,6 +688,99 @@ function OverviewPanel({
         </section>
       </div>
     </>
+  );
+}
+
+function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
+  const paper = data.capital.paperTrading;
+  const policy = data.capital.policy;
+  const stages = [
+    ["Đang hỏi nhu cầu", data.chatLeads.qualifying],
+    ["Đã đủ thông tin", data.chatLeads.qualified],
+    ["Cần chủ nhân", data.chatLeads.needsOwner],
+    ["Đến hạn theo dõi", data.chatLeads.followUpsDue],
+  ];
+  return (
+    <SectionTitle
+      eyebrow="SURVIVAL CONTROL"
+      title="Trung tâm sinh tồn"
+      text="Shoyru ưu tiên việc tạo thu nhập thật, đo kết quả và chỉ xin bạn hỗ trợ khi cần quyền bên ngoài."
+    >
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {data.allocation.map((lane) => (
+          <div key={lane.id} className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+            <p className="text-3xl font-black text-[#f2612c]">{lane.targetPercent}%</p>
+            <h3 className="mt-2 font-black">{lane.label}</h3>
+            <p className="mt-2 text-sm leading-6 text-[#6f7a84]">{lane.purpose}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
+          <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">KHÁCH & CÔNG VIỆC</p>
+          <h2 className="mt-2 text-xl font-black">Từ lời chào đến yêu cầu rõ ràng</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {stages.map(([label, value]) => (
+              <div key={String(label)} className="rounded-xl bg-[#f5f7f8] p-4">
+                <p className="text-2xl font-black">{String(value)}</p>
+                <p className="mt-1 text-xs text-[#77818b]">{String(label)}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-[#66717c]">Tổng {data.chatLeads.total} cuộc trò chuyện được theo dõi. Shoyru chỉ hỏi tối đa 3 câu trước khi tóm tắt yêu cầu.</p>
+        </section>
+
+        <section className="rounded-2xl bg-[#17202a] p-6 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold tracking-[.14em] text-[#ff956f]">VỐN THỬ NGHIỆM</p>
+              <h2 className="mt-2 text-xl font-black">Chưa dùng tiền thật</h2>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${paper?.capitalReadiness.eligible ? "bg-[#dff6e7] text-[#237a43]" : "bg-[#fff0e9] text-[#d05b31]"}`}>
+              {paper?.capitalReadiness.eligible ? "ĐỦ ĐIỀU KIỆN XIN VỐN" : "ĐANG PAPER TRADE"}
+            </span>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-white/7 p-4"><p className="text-2xl font-black">{paper?.paperDays || 0}/{Number(policy.minimumPaperDays || 30)}</p><p className="mt-1 text-xs text-[#aeb7c0]">ngày thử nghiệm</p></div>
+            <div className="rounded-xl bg-white/7 p-4"><p className="text-2xl font-black">{paper?.closedTrades || 0}/{Number(policy.minimumClosedTrades || 20)}</p><p className="mt-1 text-xs text-[#aeb7c0]">lệnh giả lập đã đóng</p></div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-[#b9c1c8]">{paper?.capitalReadiness.note || "Shoyru phải có đủ bằng chứng trước khi được phép gửi đề xuất vốn."}</p>
+          {!!paper?.capitalReadiness.missing?.length && <ul className="mt-3 space-y-1 text-xs text-[#ffb99f]">{paper.capitalReadiness.missing.map((item) => <li key={item}>• {item}</li>)}</ul>}
+          <p className="mt-4 border-t border-white/10 pt-4 text-xs text-[#8f9aa5]">500.000đ chi phí vận hành không được tính là vốn giao dịch.</p>
+        </section>
+      </div>
+
+      <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
+        <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">GÓI DỊCH VỤ CÓ THỂ BÁN</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {data.servicePackages.map((item) => (
+            <article key={item.id} className="rounded-xl border border-[#e5e8eb] p-5">
+              <h3 className="font-black">{item.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#66717c]">{item.deliverable}</p>
+              <p className="mt-3 text-xs font-bold text-[#f2612c]">{item.price}</p>
+              <p className="mt-2 text-xs text-[#8a939c]">Cần biết: {item.needs.join(" · ")}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
+          <h2 className="font-black">Hiệu quả nguồn tìm việc</h2>
+          <div className="mt-4 space-y-3">
+            {!data.careerLanes.length && <p className="text-sm text-[#8b949e]">Chưa đủ dữ liệu để so sánh nguồn.</p>}
+            {data.careerLanes.map((lane) => <div key={lane.kind} className="grid grid-cols-[1fr_auto] gap-4 rounded-xl bg-[#f6f7f8] p-3 text-sm"><span>{lane.kind}</span><b>{lane.qualified} phù hợp / {lane.attempts} lượt</b></div>)}
+          </div>
+        </section>
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
+          <h2 className="font-black">Việc chỉ chủ nhân được làm</h2>
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-[#66717c]">
+            {data.ownerOnlyActions.map((item) => <li key={item} className="flex gap-2"><ShieldCheck className="mt-1 shrink-0 text-[#f2612c]" size={15} /><span>{item}</span></li>)}
+          </ul>
+        </section>
+      </div>
+    </SectionTitle>
   );
 }
 
@@ -1049,6 +1163,8 @@ function ChatCard({
   const sessionId = String(item.sessionId || "");
   const autoReplied = item.autoReplied === true;
   const needsOwner = item.needsOwner === true;
+  const leadStage = String(item.leadStage || "conversation");
+  const stageLabel = leadStage === "qualified" ? "Đã đủ yêu cầu" : leadStage === "qualifying" ? "Đang hỏi nhu cầu" : leadStage === "needs_owner" ? "Cần chủ nhân" : "Đang trò chuyện";
   return (
     <article className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
       <div className="flex items-center justify-between gap-3">
@@ -1061,6 +1177,11 @@ function ChatCard({
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${needsOwner ? "bg-[#fff0e9] text-[#d95b2e]" : autoReplied ? "bg-[#eaf8ef] text-[#24854b]" : "bg-[#fff7df] text-[#9a6700]"}`}>
           {needsOwner ? "Cần bạn xem" : autoReplied ? "Shoyru đã tự trả lời" : "Chưa có trả lời"}
         </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold">
+        <span className="rounded-full bg-[#eef1f4] px-2.5 py-1 text-[#5d6872]">{stageLabel}</span>
+        {Number(item.questionCount || 0) > 0 && <span className="rounded-full bg-[#fff3e9] px-2.5 py-1 text-[#9a5e29]">Đã hỏi {String(item.questionCount)}/3 ý</span>}
+        {Boolean(item.followUpDueAt) && <span className="rounded-full bg-[#edf7ff] px-2.5 py-1 text-[#286b9a]">Theo dõi {new Date(String(item.followUpDueAt)).toLocaleString("vi-VN")}</span>}
       </div>
       <p className="mt-4 rounded-xl bg-[#f4f6f8] p-4 text-sm leading-6 text-[#46515c]">
         <b className="mr-2 text-[#17202a]">Khách:</b>{String(item.lastVisitorText || item.text || "")}

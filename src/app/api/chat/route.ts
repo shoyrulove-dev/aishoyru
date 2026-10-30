@@ -61,6 +61,28 @@ const usefulFallback = (text: string) => {
   return "Mình chưa hiểu rõ câu này. Bạn nói cụ thể hơn một chút để Shoyru trả lời đúng ý nhé!";
 };
 
+const serviceIntent = (text: string) =>
+  /(can|muon|nho|thue|lam giup|bao gia|tim nguoi).{0,60}(bot|api|website|landing page|tu dong hoa|xu ly du lieu)/.test(
+    normalizeIntent(text),
+  );
+
+const ownerDecisionIntent = (text: string) =>
+  /(hoan tien|khieu nai|phap ly|hop dong|xuat hoa don|bao gia rieng|giam gia|mat tien|khong nhan duoc|refund|complaint)/.test(
+    normalizeIntent(text),
+  );
+
+const qualificationReply = (text: string, visitorMessages: string[]) => {
+  if (!serviceIntent(text) && !visitorMessages.some(serviceIntent)) return null;
+  const count = visitorMessages.length;
+  if (count <= 1)
+    return "Shoyru có thể xem việc này. Bạn muốn bot, website hoặc quy trình tự động hóa tạo ra kết quả cụ thể gì?";
+  if (count === 2)
+    return "Mình hiểu mục tiêu rồi. Hiện bạn đang dùng công cụ, API hoặc dữ liệu nào để làm việc đó?";
+  if (count === 3)
+    return "Còn một ý nữa nhé: bạn muốn hoàn thành khi nào và có giới hạn chi phí dự kiến không?";
+  return "Mình đã ghi đủ yêu cầu ban đầu. Shoyru sẽ tóm tắt phạm vi và chuyển chủ nhân xem phần báo giá nếu cần quyết định nhé!";
+};
+
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("sessionId") || "";
   if (!/^[a-zA-Z0-9-]{12,64}$/.test(sessionId))
@@ -126,6 +148,15 @@ export async function POST(request: NextRequest) {
     .limit(8)
     .project({ _id: 0, role: 1, text: 1 })
     .toArray();
+  const visitorMessages = history
+    .filter((message) => message.role === "visitor")
+    .reverse()
+    .map((message) => String(message.text || ""));
+  const qualifyingReply = qualificationReply(parsed.data.text, visitorMessages);
+  if (!deterministicReply && qualifyingReply) {
+    reply = qualifyingReply;
+    providerUsed = "built-in-qualification";
+  }
   const providers = [
     process.env.GEMINI_API_KEY && {
       name: "gemini",
@@ -176,7 +207,7 @@ export async function POST(request: NextRequest) {
       model: process.env.OXION_MODEL || "gpt-5.6-luna",
     },
   ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
-  for (const provider of deterministicReply ? [] : providers) {
+  for (const provider of deterministicReply || qualifyingReply ? [] : providers) {
     if (await providerIsCoolingDown(db, provider.name)) continue;
     const startedAt = Date.now();
     try {
@@ -226,5 +257,55 @@ export async function POST(request: NextRequest) {
     read: true,
     createdAt: new Date(now.getTime() + 1),
   });
+  const needsOwner = ownerDecisionIntent(parsed.data.text);
+  const leadStage = needsOwner
+    ? "needs_owner"
+    : serviceIntent(parsed.data.text) || visitorMessages.some(serviceIntent)
+      ? visitorMessages.length >= 4 ? "qualified" : "qualifying"
+      : "conversation";
+  await db.collection("chat_leads").updateOne(
+    { sessionId: parsed.data.sessionId },
+    {
+      $set: {
+        name: parsed.data.name,
+        stage: leadStage,
+        latestMessage: parsed.data.text,
+        latestReply: reply,
+        needsOwner,
+        questionCount: leadStage === "qualifying" || leadStage === "qualified"
+          ? Math.min(3, visitorMessages.length)
+          : 0,
+        updatedAt: now,
+        followUpDueAt: leadStage === "qualified" ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null,
+      },
+      $setOnInsert: { createdAt: now, source: "website-chat" },
+    },
+    { upsert: true },
+  );
+  if (needsOwner) {
+    await db.collection("approvals").updateOne(
+      { type: "support", status: "pending", supportKey: `chat-${parsed.data.sessionId}` },
+      {
+        $set: {
+          type: "support",
+          status: "pending",
+          supportKey: `chat-${parsed.data.sessionId}`,
+          title: "Khách chat cần chủ nhân quyết định",
+          details: parsed.data.text,
+          supportRequest: {
+            title: "Xem yêu cầu đặc biệt trong chat",
+            reason: `Khách nhắn: ${parsed.data.text}`,
+            needed: "Quyết định cách xử lý yêu cầu của khách",
+            impact: "Shoyru có thể tiếp tục trả lời đúng thẩm quyền.",
+            where: "Admin → Khách & chat",
+            doneWhen: "Shoyru sẽ lưu câu trả lời và tiếp tục cuộc trò chuyện.",
+          },
+          updatedAt: now,
+        },
+        $setOnInsert: { createdAt: now },
+      },
+      { upsert: true },
+    );
+  }
   return NextResponse.json({ ok: true, reply, provider: providerUsed });
 }

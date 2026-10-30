@@ -26,6 +26,12 @@ import {
 import { notifyIndexNow } from "./indexnow";
 import { normalizeSupportRequest } from "./operations";
 import { compactPolymarketResearch, getPolymarketResearch } from "./polymarket";
+import {
+  ownerOnlyActions,
+  servicePackages,
+  survivalAllocation,
+  tradingCapitalRules,
+} from "./survival-policy";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -486,6 +492,7 @@ const survivalQueries: Array<{ query: string; kind: OpportunityKind }> = [
 async function selectSurvivalQueryIndex(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   rotationIndex: number,
+  preferredLane: "service" | "product" | "microjob" | "quant",
 ) {
   const stats = await db
     .collection("search_lane_stats")
@@ -505,11 +512,16 @@ async function selectSurvivalQueryIndex(
     const exploration = Math.sqrt(
       (2 * Math.log(Math.max(2, totalAttempts + 1))) / (attempts + 1),
     );
-    return { index, attempts, score: reward + exploration };
+    return { index, attempts, score: reward + exploration, kind: lane.kind };
   });
+  const preferred = preferredLane === "microjob"
+    ? ranked.filter((item) => item.kind === "microjob")
+    : preferredLane === "service"
+      ? ranked.filter((item) => item.kind === "customer" || item.kind === "freelance")
+      : ranked;
   if (rotationIndex % 4 === 0)
-    return ranked.sort((a, b) => a.attempts - b.attempts || b.score - a.score)[0].index;
-  return ranked.sort((a, b) => b.score - a.score || a.attempts - b.attempts)[0].index;
+    return preferred.sort((a, b) => a.attempts - b.attempts || b.score - a.score)[0].index;
+  return preferred.sort((a, b) => b.score - a.score || a.attempts - b.attempts)[0].index;
 }
 
 async function searchSurvivalOpportunities(
@@ -1276,6 +1288,7 @@ export async function runAgentCycle() {
     ownerInstructions,
     recentLessons,
     recentEvaluations,
+    qualifiedChatLeads,
   ] = await Promise.all([
     db.collection("agent_state").findOne({ key: "main" }),
     db
@@ -1343,6 +1356,12 @@ export async function runAgentCycle() {
       .sort({ createdAt: -1 })
       .limit(24)
       .toArray(),
+    db
+      .collection("chat_leads")
+      .find({ stage: { $in: ["qualified", "needs_owner"] } })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .toArray(),
   ]);
   const funnelSnapshot = Object.fromEntries(
     funnel24h.map((item) => [String(item._id), Number(item.total || 0)]),
@@ -1398,7 +1417,12 @@ export async function runAgentCycle() {
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
   const rotationIndex = Number(state?.searchQueryIndex || 0);
-  const searchQueryIndex = await selectSurvivalQueryIndex(db, rotationIndex);
+  const workLaneSequence = [
+    "service", "service", "service", "service", "service", "service",
+    "product", "product", "microjob", "quant",
+  ] as const;
+  const recommendedLane = workLaneSequence[rotationIndex % workLaneSequence.length];
+  const searchQueryIndex = await selectSurvivalQueryIndex(db, rotationIndex, recommendedLane);
   const [fundingResearch, webResearch, polymarketResearch] = await Promise.all([
     inspectFundingSource(fundingSourceIndex),
     searchSurvivalOpportunities(db, searchQueryIndex),
@@ -1412,7 +1436,7 @@ export async function runAgentCycle() {
     {
       role: "system",
       content:
-        "MỤC TIÊU VẬN HÀNH: Shoyru là AI sinh tồn đa nghề, phải tạo đủ ít nhất 500.000đ chi phí mỗi tháng bằng mọi cách hợp pháp, trung thực và không gây hại. Không viết nhật ký cho có và không bị khóa vào một sản phẩm. Hãy tạo doanh thu thật theo pipeline: tìm nhu cầu có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm, dịch vụ hoặc đề nghị cụ thể → tiếp cận có đích đến → theo dõi kết quả. Có thể làm mini job, viết bot/code, tích hợp API, sản phẩm số, nội dung, SEO, affiliate minh bạch, grant hoặc nghiên cứu signal. Bộ khởi tạo AI sinh tồn là một tài sản sẵn có chứ không phải nghề duy nhất. Ưu tiên nơi có nhu cầu và khả năng trả tiền thật. Không tự nhận là đã đăng hoặc tạo tài khoản bên ngoài nếu chưa có quyền. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_email nếu chưa có người nhận hợp lệ. Email chỉ có quyền gửi; chủ nhân sẽ đọc thư trả lời và ghi kết quả trong ownerInstructions. Không yêu cầu quyền đọc hộp thư. Nếu cần tài khoản, API, OTP, số điện thoại, ngân sách hoặc vốn, chọn request_support và trình bày đúng thứ cần cấp; yêu cầu tiền phải có kế hoạch, chi phí, lợi ích dự kiến, rủi ro và điều kiện dừng. Nếu còn pendingApprovals thì làm một bước khác không bị chặn, không ngồi chờ. Luôn đọc ownerInstructions như thông tin thật do chủ nhân chuyển lại.",
+        "MỤC TIÊU VẬN HÀNH: Shoyru là AI sinh tồn đa nghề, phải tạo đủ ít nhất 500.000đ chi phí mỗi tháng bằng mọi cách hợp pháp, trung thực và không gây hại. Không viết nhật ký cho có và không bị khóa vào một sản phẩm. Hãy tạo doanh thu thật theo pipeline: tìm nhu cầu có URL nguồn → đánh giá mức phù hợp → tạo sản phẩm, dịch vụ hoặc đề nghị cụ thể → tiếp cận có đích đến → theo dõi kết quả. Có thể làm mini job, viết bot/code, tích hợp API, sản phẩm số, nội dung, SEO, affiliate minh bạch, grant hoặc nghiên cứu signal. Bộ khởi tạo AI sinh tồn là một tài sản sẵn có chứ không phải nghề duy nhất. Ưu tiên nơi có nhu cầu và khả năng trả tiền thật. Nếu qualifiedChatLeads có khách đã đủ yêu cầu, hãy ưu tiên tạo phạm vi công việc hoặc bước phục vụ khách đó trước khi đi tìm người mới; nếu needsOwner=true thì làm việc khác trong lúc chờ chủ nhân. Không tự nhận là đã đăng hoặc tạo tài khoản bên ngoài nếu chưa có quyền. Khi phát hiện cơ hội thật, trả thêm opportunity gồm title, sourceUrl, channel, fit, nextAction và contactEmail nếu nguồn công khai có email. Không tạo lại cơ hội trong recentOpportunities. Không tạo draft_email nếu chưa có người nhận hợp lệ. Email chỉ có quyền gửi; chủ nhân sẽ đọc thư trả lời và ghi kết quả trong ownerInstructions. Không yêu cầu quyền đọc hộp thư. Nếu cần tài khoản, API, OTP, số điện thoại, ngân sách hoặc vốn, chọn request_support và trình bày đúng thứ cần cấp; yêu cầu tiền phải có kế hoạch, chi phí, lợi ích dự kiến, rủi ro và điều kiện dừng. Nếu còn pendingApprovals thì làm một bước khác không bị chặn, không ngồi chờ. Luôn đọc ownerInstructions như thông tin thật do chủ nhân chuyển lại.",
     },
     {
       role: "system",
@@ -1495,6 +1519,14 @@ export async function runAgentCycle() {
           lastTouchAt: item.lastTouchAt,
           nextFollowUpAt: item.nextFollowUpAt,
         })),
+        qualifiedChatLeads: qualifiedChatLeads.map((item) => ({
+          sessionId: item.sessionId,
+          stage: item.stage,
+          latestMessage: clip(String(item.latestMessage || ""), 500),
+          latestReply: clip(String(item.latestReply || ""), 500),
+          needsOwner: item.needsOwner === true,
+          followUpDueAt: item.followUpDueAt,
+        })),
         pendingApprovals,
         recentPublished: recentPublished.slice(0, 5).map((item) => ({
           title: item.title,
@@ -1555,6 +1587,14 @@ export async function runAgentCycle() {
           ],
           registrationEmail: "shoyru@blissbiovn.com",
           registrationPhone: "Có sẵn từ chủ nhân; chỉ yêu cầu trong Admin khi thật sự cần OTP.",
+        },
+        survivalOperatingPolicy: {
+          recommendedLane,
+          rule: "Ưu tiên đúng recommendedLane trong lượt này, trừ khi có khách đang chờ, việc đến hạn hoặc sự cố thanh toán cần xử lý ngay.",
+          allocation: survivalAllocation,
+          servicePackages,
+          ownerOnlyActions,
+          tradingCapitalRules,
         },
         businessLanes: [
           "bán bộ khởi tạo AI sinh tồn và sản phẩm số",

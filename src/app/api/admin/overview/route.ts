@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Db } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getOperationalHealth } from "@/lib/operations";
+import { getPolymarketResearch } from "@/lib/polymarket";
+import {
+  ownerOnlyActions,
+  servicePackages,
+  survivalAllocation,
+  tradingCapitalRules,
+} from "@/lib/survival-policy";
 
 const allowed = (request: NextRequest) =>
   Boolean(process.env.ADMIN_API_KEY) &&
@@ -294,6 +301,20 @@ export async function GET(request: NextRequest) {
       },
     ]).toArray(),
   ]);
+  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket] = await Promise.all([
+    db.collection("search_lane_stats").aggregate([
+      { $group: { _id: "$kind", attempts: { $sum: "$attempts" }, results: { $sum: "$results" }, useful: { $sum: "$usefulResults" }, qualified: { $sum: "$qualified" } } },
+      { $sort: { qualified: -1, useful: -1 } },
+    ]).toArray(),
+    db.collection("tasks").aggregate([
+      { $match: { createdAt: { $gte: since24h }, status: { $in: ["completed", "needs_revision"] } } },
+      { $group: { _id: "$type", total: { $sum: 1 } } },
+    ]).toArray(),
+    db.collection("chat_leads").find({}).sort({ updatedAt: -1 }).limit(50).toArray(),
+    process.env.POLYMARKET_RESEARCH_ENABLED === "false"
+      ? Promise.resolve(null)
+      : getPolymarketResearch(db).catch(() => null),
+  ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   const crmCount = (status: string) =>
     Number(crmStages.find((item) => item._id === status)?.total || 0);
@@ -333,10 +354,14 @@ export async function GET(request: NextRequest) {
       const replyAt = item.lastReplyAt ? new Date(item.lastReplyAt as Date).getTime() : 0;
       const visitorText = String(item.lastVisitorText || "");
       const needsOwner = /(hoàn tiền|khiếu nại|pháp lý|hợp đồng|xuất hóa đơn|báo giá riêng|giảm giá|mất tiền|không nhận được|refund|complaint)/i.test(visitorText);
+      const lead = chatLeadRows.find((row) => String(row.sessionId || "") === String(item.sessionId || ""));
       return {
         ...item,
         autoReplied: replyAt > visitorAt,
-        needsOwner,
+        needsOwner: lead?.needsOwner === true || needsOwner,
+        leadStage: String(lead?.stage || "conversation"),
+        questionCount: Number(lead?.questionCount || 0),
+        followUpDueAt: lead?.followUpDueAt || null,
       } as Record<string, unknown>;
     });
   return NextResponse.json({
@@ -360,6 +385,30 @@ export async function GET(request: NextRequest) {
     evaluations,
     activeStrategy,
     activeCampaign,
+    survivalCenter: {
+      allocation: survivalAllocation,
+      servicePackages,
+      ownerOnlyActions,
+      workMix24h: taskLaneRows.map((item) => ({ action: String(item._id || "khác"), total: Number(item.total || 0) })),
+      careerLanes: careerLaneRows.map((item) => ({
+        kind: String(item._id || "unknown"),
+        attempts: Number(item.attempts || 0),
+        results: Number(item.results || 0),
+        useful: Number(item.useful || 0),
+        qualified: Number(item.qualified || 0),
+      })),
+      chatLeads: {
+        total: chatLeadRows.length,
+        qualifying: chatLeadRows.filter((item) => item.stage === "qualifying").length,
+        qualified: chatLeadRows.filter((item) => item.stage === "qualified").length,
+        needsOwner: chatLeadRows.filter((item) => item.stage === "needs_owner").length,
+        followUpsDue: chatLeadRows.filter((item) => item.followUpDueAt && new Date(item.followUpDueAt as Date) <= new Date()).length,
+      },
+      capital: {
+        policy: tradingCapitalRules,
+        paperTrading: polymarket?.paperTrading || null,
+      },
+    },
     trafficSources,
     topPages: topPageRows.map((item) => ({ path: String(item._id || "/"), views: Number(item.views || 0), visitors: item.sessions?.length || 0 })),
     metrics: {
