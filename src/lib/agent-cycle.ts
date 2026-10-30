@@ -9,6 +9,7 @@ import {
   failCycleJob,
   recordOperationalSnapshot,
   recoverStaleOperations,
+  queueMissingRecentCycles,
 } from "./operations";
 
 const HOUR = 60 * 60 * 1000;
@@ -50,6 +51,7 @@ export async function runClaimedAgentCycle(
   const slot = vietnamCycleSlot(now);
   await ensureOperationalIndexes(db);
   await recoverStaleOperations(db, now);
+  await queueMissingRecentCycles(db, now);
   const claimed = await claimCycleJob(db, slot, source, Boolean(options.force));
   if (!claimed.job)
     return {

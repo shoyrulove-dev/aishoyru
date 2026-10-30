@@ -74,6 +74,8 @@ type Overview = {
   activeCampaign?: Record<string, unknown> | null;
   survivalCenter: {
     allocation: Array<{ id: string; label: string; targetPercent: number; purpose: string }>;
+    adaptiveSequence?: string[];
+    weeklyReport?: { title: string; content: string; publishedAt: string } | null;
     servicePackages: Array<{ id: string; name: string; deliverable: string; needs: string[]; price: string }>;
     ownerOnlyActions: string[];
     workMix24h: Array<{ action: string; total: number }>;
@@ -718,6 +720,9 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
           </div>
         ))}
       </div>
+      <div className="mt-3 rounded-xl border border-[#dfe4e8] bg-white px-4 py-3 text-sm text-[#66717c]">
+        Nhịp thực tế đang dùng: <b className="text-[#17202a]">{data.adaptiveSequence?.length ? data.adaptiveSequence.join(" → ") : "đang thu thập dữ liệu để tự điều chỉnh"}</b>
+      </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
         <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
@@ -787,6 +792,13 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
           </ul>
         </section>
       </div>
+      {data.weeklyReport && (
+        <section className="mt-6 rounded-2xl border border-[#ffd6c6] bg-[#fff9f6] p-6">
+          <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">BÁO CÁO SINH TỒN GẦN NHẤT</p>
+          <h2 className="mt-2 text-xl font-black">{data.weeklyReport.title}</h2>
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#66717c]">{data.weeklyReport.content}</p>
+        </section>
+      )}
     </SectionTitle>
   );
 }
@@ -1171,7 +1183,7 @@ function ChatCard({
   const autoReplied = item.autoReplied === true;
   const needsOwner = item.needsOwner === true;
   const leadStage = String(item.leadStage || "conversation");
-  const stageLabel = leadStage === "qualified" ? "Đã đủ yêu cầu" : leadStage === "qualifying" ? "Đang hỏi nhu cầu" : leadStage === "needs_owner" ? "Cần chủ nhân" : "Đang trò chuyện";
+  const stageLabel = leadStage === "qualified" ? "Đã đủ yêu cầu" : leadStage === "qualifying" ? "Đang hỏi nhu cầu" : leadStage === "needs_owner" ? "Cần chủ nhân" : leadStage === "follow_up_sent" ? "Đã nhắc lại" : "Đang trò chuyện";
   return (
     <article className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
       <div className="flex items-center justify-between gap-3">

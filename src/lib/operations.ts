@@ -96,6 +96,29 @@ export async function recoverStaleOperations(db: Db, now = new Date()) {
   };
 }
 
+export async function queueMissingRecentCycles(db: Db, now = new Date()) {
+  const queued: string[] = [];
+  for (let offset = 2; offset >= 1; offset -= 1) {
+    const value = new Date(now.getTime() - offset * 60 * MINUTE);
+    const shifted = new Date(value.getTime() + 7 * 60 * MINUTE);
+    const slot = [
+      shifted.getUTCFullYear(),
+      String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+      String(shifted.getUTCDate()).padStart(2, "0"),
+      String(shifted.getUTCHours()).padStart(2, "0"),
+    ].join("-");
+    const exists = await db.collection("agent_jobs").findOne({ slot });
+    if (exists) continue;
+    await db.collection("agent_jobs").updateOne(
+      { _id: `${slot}-backfill` as never },
+      { $setOnInsert: { type: "agent-cycle", slot, status: "queued", attempts: 0, requestedBy: "watchdog-backfill", createdAt: now, updatedAt: now, nextAttemptAt: now, expiresAt: new Date(now.getTime() + 30 * DAY) } },
+      { upsert: true },
+    );
+    queued.push(slot);
+  }
+  return queued;
+}
+
 export async function claimCycleJob(db: Db, slot: string, source: CycleSource, force = false) {
   const now = new Date();
   let id = force ? `${slot}-force-${crypto.randomUUID()}` : slot;

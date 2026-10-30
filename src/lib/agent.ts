@@ -32,6 +32,7 @@ import {
   survivalAllocation,
   tradingCapitalRules,
 } from "./survival-policy";
+import { evaluatePublicLanguage } from "./language-quality";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -524,6 +525,36 @@ async function selectSurvivalQueryIndex(
   return preferred.sort((a, b) => b.score - a.score || a.attempts - b.attempts)[0].index;
 }
 
+async function adaptiveWorkLaneSequence(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+) {
+  const rows = await db.collection("search_lane_stats").aggregate([
+    { $group: { _id: "$kind", attempts: { $sum: "$attempts" }, qualified: { $sum: "$qualified" } } },
+  ]).toArray();
+  const metric = (kinds: string[]) => {
+    const selected = rows.filter((row) => kinds.includes(String(row._id)));
+    const attempts = selected.reduce((sum, row) => sum + Number(row.attempts || 0), 0);
+    const qualified = selected.reduce((sum, row) => sum + Number(row.qualified || 0), 0);
+    return { attempts, rate: attempts ? qualified / attempts : 0 };
+  };
+  const service = metric(["customer", "freelance"]);
+  const microjob = metric(["microjob"]);
+  const microSlots = microjob.attempts >= 5 && microjob.rate > service.rate * 1.25 ? 2 : 1;
+  const serviceSlots = 7 - microSlots;
+  const sequence = [
+    ...Array(serviceSlots).fill("service"),
+    "product", "product",
+    ...Array(microSlots).fill("microjob"),
+    "quant",
+  ] as Array<"service" | "product" | "microjob" | "quant">;
+  await db.collection("survival_policy_state").updateOne(
+    { key: "adaptive-allocation" },
+    { $set: { sequence, service, microjob, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+    { upsert: true },
+  );
+  return sequence;
+}
+
 async function searchSurvivalOpportunities(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   index: number,
@@ -678,7 +709,7 @@ async function publishWeeklySurvivalReport(
     publishedAt: { $gte: since },
   });
   if (existing) return;
-  const [moneyRows, cycles, posts, opportunities, views, visitors] = await Promise.all([
+  const [moneyRows, cycles, posts, opportunities, views, visitors, chats, quant, lanes] = await Promise.all([
     db.collection("transactions").aggregate([
       { $match: { verified: true, createdAt: { $gte: since } } },
       { $group: { _id: "$kind", total: { $sum: "$amount" } } },
@@ -688,6 +719,9 @@ async function publishWeeklySurvivalReport(
     db.collection("opportunities").countDocuments({ createdAt: { $gte: since } }),
     db.collection("engagement_events").countDocuments({ type: "page_view", createdAt: { $gte: since } }),
     db.collection("engagement_events").distinct("sessionId", { type: "page_view", createdAt: { $gte: since } }),
+    db.collection("chat_leads").countDocuments({ updatedAt: { $gte: since } }),
+    db.collection("quant_weekly_reports").findOne({}, { sort: { week: -1 } }),
+    db.collection("search_lane_stats").find({}).sort({ qualified: -1, usefulResults: -1 }).limit(1).toArray(),
   ]);
   const total = (kind: string) => Number(moneyRows.find((row) => row._id === kind)?.total || 0);
   const income = total("income");
@@ -706,10 +740,13 @@ async function publishWeeklySurvivalReport(
     `• ${cycles} lượt hoạt động đã được ghi nhận.`,
     `• ${posts} bài hoặc kết quả đã công bố.`,
     `• ${opportunities} nguồn công việc đã được lưu để kiểm tra.`,
+    `• ${chats} cuộc trò chuyện với khách được theo dõi.`,
     `• ${views} lượt xem từ ${visitors.length} người dùng trình duyệt.`,
     `• Doanh thu đã xác minh: ${money(income)}.`,
     `• Chi phí đã xác minh: ${money(expense)}.`,
     `• Số tiền tự kiếm còn lại: ${money(net)}.`,
+    `• Paper trade tuần này: ${Number(quant?.closed || 0)} lệnh đóng, PnL ${Number(quant?.realizedPnlUsdc || 0).toFixed(2)} USDC.`,
+    `• Nguồn tìm việc tốt nhất hiện tại: ${String(lanes[0]?.kind || "chưa đủ dữ liệu")}.`,
     "",
     "Chủ nhân đã cấp sẵn 500.000đ chi phí vận hành tháng này. Khoản đó giúp Shoyru sống, nhưng không được tính là tiền rồng con tự kiếm.",
     income > 0
@@ -745,10 +782,70 @@ async function publishWeeklySurvivalReport(
     ]);
 }
 
+async function processDueChatFollowUps(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+) {
+  const now = new Date();
+  const due = await db.collection("chat_leads")
+    .find({ stage: "qualified", followUpDueAt: { $lte: now }, followedUpAt: { $exists: false } })
+    .sort({ followUpDueAt: 1 }).limit(5).toArray();
+  for (const lead of due) {
+    const sessionId = String(lead.sessionId || "");
+    if (!sessionId) continue;
+    const text = "Shoyru đã xem lại yêu cầu của bạn rồi. Nếu bạn vẫn cần hỗ trợ, hãy nhắn thêm thời hạn hoặc phần quan trọng nhất để mình chuẩn bị phạm vi công việc nhé!";
+    await db.collection("visitor_messages").insertOne({
+      sessionId,
+      name: "Shoyru",
+      text,
+      role: "shoyru",
+      read: true,
+      source: "automatic-follow-up",
+      createdAt: now,
+    });
+    await db.collection("chat_leads").updateOne(
+      { _id: lead._id, followedUpAt: { $exists: false } },
+      { $set: { stage: "follow_up_sent", latestReply: text, followedUpAt: now, updatedAt: now } },
+    );
+  }
+  return due.length;
+}
+
+async function learnFromResolvedOutcomes(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+) {
+  const resolved = await db.collection("lead_crm")
+    .find({ status: { $in: ["converted", "rejected", "lost"] }, learnedAt: { $exists: false } })
+    .sort({ updatedAt: 1 }).limit(20).toArray();
+  for (const lead of resolved) {
+    const won = lead.status === "converted";
+    await db.collection("agent_lessons").updateOne(
+      { type: "lead_outcome", sourceUrl: String(lead.sourceUrl || lead._id) },
+      {
+        $set: {
+          lesson: won
+            ? "Nguồn và cách tiếp cận này đã tạo kết quả thật; ưu tiên thử lại với nhu cầu tương tự."
+            : "Nguồn hoặc cách tiếp cận này không tạo kết quả; không lặp lại nếu chưa có bằng chứng mới.",
+          outcome: String(lead.status),
+          confidence: "high",
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true },
+    );
+    await db.collection("lead_crm").updateOne({ _id: lead._id }, { $set: { learnedAt: new Date() } });
+  }
+  return resolved.length;
+}
+
 export async function runAgentCycle() {
   const db = await getDb();
   if (!db) throw new Error("MONGODB_URI chưa được cấu hình");
-  await publishWeeklySurvivalReport(db);
+  await Promise.all([
+    publishWeeklySurvivalReport(db),
+    processDueChatFollowUps(db),
+    learnFromResolvedOutcomes(db),
+  ]);
   if (process.env.BRAVE_SEARCH_API_KEY)
     await db.collection("approvals").updateMany(
       {
@@ -1188,6 +1285,19 @@ export async function runAgentCycle() {
     throw new Error(
       "Chưa cấu hình API key cho Groq, OpenRouter, Kilo hoặc OpenAI",
     );
+  const providerHealth = await db.collection("ai_provider_health").find({
+    provider: { $in: providers.map((item) => item.name) },
+  }).toArray();
+  const providerScore = (name: string) => {
+    const row = providerHealth.find((item) => item.provider === name);
+    if (!row) return 50;
+    const success = Number(row.totalSuccess || 0);
+    const failure = Number(row.totalFailure || 0);
+    const successRate = success + failure ? success / (success + failure) : 0.5;
+    const latencyPenalty = Math.min(20, Number(row.lastLatencyMs || 0) / 1000);
+    return successRate * 100 - latencyPenalty - Number(row.consecutiveFailures || 0) * 12;
+  };
+  providers.sort((left, right) => providerScore(right.name) - providerScore(left.name));
   async function completeJson(
     messages: AiMessage[],
     options: { validatePublic?: boolean; excludeProvider?: string; maxProviders?: number } = {},
@@ -1417,10 +1527,7 @@ export async function runAgentCycle() {
   const fundingSourceIndex =
     Number(state?.fundingSourceIndex || 0) % fundingSources.length;
   const rotationIndex = Number(state?.searchQueryIndex || 0);
-  const workLaneSequence = [
-    "service", "service", "service", "service", "service", "service",
-    "product", "product", "microjob", "quant",
-  ] as const;
+  const workLaneSequence = await adaptiveWorkLaneSequence(db);
   const recommendedLane = workLaneSequence[rotationIndex % workLaneSequence.length];
   const searchQueryIndex = await selectSurvivalQueryIndex(db, rotationIndex, recommendedLane);
   const [fundingResearch, webResearch, polymarketResearch] = await Promise.all([
@@ -2459,7 +2566,18 @@ export async function runAgentCycle() {
     ? "Việc này chưa thuận lợi. Shoyru đổi sang một hướng khác trước, không ngồi chờ."
     : concreteNarrative?.thought || decision.thought;
   const publicStatus = friendlyPublic(publicStatusRaw, 60);
-  const publicThought = friendlyPublic(publicThoughtRaw, 140);
+  const publicThoughtCandidate = friendlyPublic(publicThoughtRaw, 140);
+  const publicReflectionCandidate = friendlyPublic(
+    concreteNarrative?.reflection || decision.reflection,
+    180,
+  );
+  const languageQuality = evaluatePublicLanguage([
+    publicThoughtCandidate,
+    publicReflectionCandidate,
+  ]);
+  const publicThought = languageQuality.passed
+    ? publicThoughtCandidate
+    : `Shoyru đang làm “${actionTitle || "một việc nhỏ"}” và sẽ ghi lại kết quả kiểm tra được.`;
   const hasVerifiableEvidence = Boolean(
     postSlug ||
       emailDelivery?.providerId ||
@@ -2625,6 +2743,7 @@ export async function runAgentCycle() {
       provider: decisionResponse.provider,
       model: decisionResponse.model,
       critique,
+      languageQuality,
       createdAt: now,
     }),
     db.collection("funding_research").insertOne({
@@ -2639,6 +2758,7 @@ export async function runAgentCycle() {
       reasons: qualityReasons,
       actionType: decision.action.type,
       critique,
+      languageQuality,
       evidence: {
         sourceUrl: decision.opportunity?.sourceUrl || fundingResearch.url,
         artifactId: artifactRecord?.artifactId,

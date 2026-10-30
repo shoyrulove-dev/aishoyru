@@ -1,0 +1,30 @@
+name: Shoyru quant shadow collector
+
+on:
+  schedule:
+    - cron: "2,17,32,47 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: shoyru-quant-shadow
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Collect public market snapshot
+        run: |
+          oidc_response=$(curl --silent --show-error --fail \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=aishoyru-quant")
+          oidc_token=$(echo "$oidc_response" | jq -r '.value')
+          test -n "$oidc_token" && test "$oidc_token" != "null" || exit 1
+          curl --silent --show-error --fail --max-time 90 \
+            -H "Authorization: Bearer $oidc_token" \
+            https://shoyruai.blissbiovn.com/api/cron/quant

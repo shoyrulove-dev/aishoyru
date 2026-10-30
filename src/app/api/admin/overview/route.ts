@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
       },
     ]).toArray(),
   ]);
-  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket] = await Promise.all([
+  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket, adaptivePolicy, weeklyReport] = await Promise.all([
     db.collection("search_lane_stats").aggregate([
       { $group: { _id: "$kind", attempts: { $sum: "$attempts" }, results: { $sum: "$results" }, useful: { $sum: "$usefulResults" }, qualified: { $sum: "$qualified" } } },
       { $sort: { qualified: -1, useful: -1 } },
@@ -314,6 +314,8 @@ export async function GET(request: NextRequest) {
     process.env.POLYMARKET_RESEARCH_ENABLED === "false"
       ? Promise.resolve(null)
       : getPolymarketResearch(db).catch(() => null),
+    db.collection("survival_policy_state").findOne({ key: "adaptive-allocation" }),
+    db.collection("published_posts").findOne({ reportType: "weekly-survival" }, { sort: { publishedAt: -1 } }),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   const crmCount = (status: string) =>
@@ -387,6 +389,12 @@ export async function GET(request: NextRequest) {
     activeCampaign,
     survivalCenter: {
       allocation: survivalAllocation,
+      adaptiveSequence: Array.isArray(adaptivePolicy?.sequence) ? adaptivePolicy.sequence : [],
+      weeklyReport: weeklyReport ? {
+        title: weeklyReport.title,
+        content: weeklyReport.content,
+        publishedAt: weeklyReport.publishedAt,
+      } : null,
       servicePackages,
       ownerOnlyActions,
       workMix24h: taskLaneRows.map((item) => ({ action: String(item._id || "khác"), total: Number(item.total || 0) })),

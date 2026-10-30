@@ -271,6 +271,7 @@ export async function POST(request: NextRequest) {
         stage: leadStage,
         latestMessage: parsed.data.text,
         latestReply: reply,
+        conversationBrief: visitorMessages.slice(-4).join(" | ").slice(0, 1200),
         needsOwner,
         questionCount: leadStage === "qualifying" || leadStage === "qualified"
           ? Math.min(3, visitorMessages.length)
