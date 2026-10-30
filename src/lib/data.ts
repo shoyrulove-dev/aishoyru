@@ -260,7 +260,6 @@ export async function getPublicState(): Promise<PublicState> {
     }),
   );
   const activityBackfill = activities
-    .filter((item) => String(item.kind || "") === "ĐÃ LÀM")
     .filter((item) => {
       const text = String(item.text || "");
       if (privateOperations.test(text) || unverifiedClaims.test(text)) return false;
@@ -278,7 +277,12 @@ export async function getPublicState(): Promise<PublicState> {
         minute: "2-digit",
         timeZone: "Asia/Ho_Chi_Minh",
       }),
-      text: publicSentence(`Shoyru vừa làm xong một bước: ${String(item.text || "")}`, 180),
+      text: publicSentence(
+        String(item.kind || "") === "ĐÃ LÀM"
+          ? `Shoyru vừa làm xong một bước: ${String(item.text || "")}`
+          : String(item.text || ""),
+        180,
+      ),
       createdAtMs: new Date(item.createdAt as Date).getTime(),
     }));
   const conversationsOut = [...conversationRows, ...activityBackfill]
