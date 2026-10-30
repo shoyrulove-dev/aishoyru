@@ -1008,7 +1008,7 @@ function Visitors({
           color="orange"
         />
         <Metric
-          label="Chưa đọc"
+          label="Bạn chưa xem"
           value={String(data.metrics.unreadChats)}
           icon={Mail}
           color="purple"
@@ -1047,6 +1047,8 @@ function ChatCard({
 }) {
   const [text, setText] = useState("");
   const sessionId = String(item.sessionId || "");
+  const autoReplied = item.autoReplied === true;
+  const needsOwner = item.needsOwner === true;
   return (
     <article className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
       <div className="flex items-center justify-between gap-3">
@@ -1056,15 +1058,21 @@ function ChatCard({
             Phiên {sessionId.slice(0, 8)}…
           </p>
         </div>
-        {!item.read && (
-          <span className="rounded-full bg-[#fff0e9] px-3 py-1 text-xs font-bold text-[#d95b2e]">
-            Tin mới
-          </span>
-        )}
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${needsOwner ? "bg-[#fff0e9] text-[#d95b2e]" : autoReplied ? "bg-[#eaf8ef] text-[#24854b]" : "bg-[#fff7df] text-[#9a6700]"}`}>
+          {needsOwner ? "Cần bạn xem" : autoReplied ? "Shoyru đã tự trả lời" : "Chưa có trả lời"}
+        </span>
       </div>
       <p className="mt-4 rounded-xl bg-[#f4f6f8] p-4 text-sm leading-6 text-[#46515c]">
-        {String(item.text || "")}
+        <b className="mr-2 text-[#17202a]">Khách:</b>{String(item.lastVisitorText || item.text || "")}
       </p>
+      {item.lastReplyText ? (
+        <p className="mt-2 rounded-xl bg-[#eef8f1] p-4 text-sm leading-6 text-[#356149]">
+          <b className="mr-2 text-[#24854b]">Shoyru:</b>{String(item.lastReplyText)}
+        </p>
+      ) : null}
+      {!item.read && (
+        <p className="mt-2 text-xs font-semibold text-[#8b949e]">Tin này chưa được chủ nhân mở xem, nhưng Shoyru vẫn có thể đã trả lời tự động.</p>
+      )}
       <div className="mt-4 flex gap-2">
         <input
           value={text}

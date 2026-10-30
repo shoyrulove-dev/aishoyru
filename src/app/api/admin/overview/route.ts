@@ -218,9 +218,9 @@ export async function GET(request: NextRequest) {
     ]).toArray(),
     db
       .collection("visitor_messages")
-      .find({ role: "visitor" })
+      .find({ role: { $in: ["visitor", "shoyru"] } })
       .sort({ createdAt: -1 })
-      .limit(40)
+      .limit(100)
       .toArray(),
     db
       .collection("ai_provider_health")
@@ -308,6 +308,37 @@ export async function GET(request: NextRequest) {
     if (source && campaign && campaign !== "shoyru") label = `${source} · ${campaign}`;
     return { label, views: Number(item.views || 0), visitors: item.sessions?.length || 0 };
   });
+  const chatSessionMap = new Map<string, Record<string, unknown>>();
+  for (const message of chats) {
+    const sessionId = String(message.sessionId || "");
+    if (!sessionId) continue;
+    const current = chatSessionMap.get(sessionId) || { sessionId };
+    if (message.role === "visitor" && !current.lastVisitorText) {
+      current.name = message.name || "Bạn mới";
+      current.lastVisitorText = message.text;
+      current.lastVisitorAt = message.createdAt;
+      current.read = message.read === true;
+    }
+    if (message.role === "shoyru" && !current.lastReplyText) {
+      current.lastReplyText = message.text;
+      current.lastReplyAt = message.createdAt;
+      current.replySource = message.source || "auto";
+    }
+    chatSessionMap.set(sessionId, current);
+  }
+  const chatSessions: Array<Record<string, unknown>> = [...chatSessionMap.values()]
+    .filter((item) => item.lastVisitorText)
+    .map((item) => {
+      const visitorAt = new Date(item.lastVisitorAt as Date).getTime();
+      const replyAt = item.lastReplyAt ? new Date(item.lastReplyAt as Date).getTime() : 0;
+      const visitorText = String(item.lastVisitorText || "");
+      const needsOwner = /(hoàn tiền|khiếu nại|pháp lý|hợp đồng|xuất hóa đơn|báo giá riêng|giảm giá|mất tiền|không nhận được|refund|complaint)/i.test(visitorText);
+      return {
+        ...item,
+        autoReplied: replyAt > visitorAt,
+        needsOwner,
+      } as Record<string, unknown>;
+    });
   return NextResponse.json({
     approvals: approvals.map((item) => normalizeApproval(item)),
     projects,
@@ -315,7 +346,7 @@ export async function GET(request: NextRequest) {
     runs,
     orders,
     published,
-    chats,
+    chats: chatSessions,
     aiHealth,
     operations,
     aiUsageToday: aiUsageToday[0] || {
@@ -339,7 +370,7 @@ export async function GET(request: NextRequest) {
       views24h: Number(event("page_view")?.total || 0),
       visitors24h: Number(event("page_view")?.sessions?.length || 0),
       chatOpens24h: Number(event("chat_open")?.total || 0),
-      unreadChats: chats.filter((item) => !item.read).length,
+      unreadChats: chatSessions.filter((item) => item.read !== true).length,
       productViews24h: Number(event("product_view")?.total || 0),
       checkoutStarts24h: Number(event("checkout_start")?.total || 0),
       qrCreated24h: Number(event("qr_created")?.total || 0),
