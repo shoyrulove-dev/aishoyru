@@ -30,6 +30,10 @@ export async function GET() {
               paperDays: result.paperTrading.paperDays,
               openPositions: result.paperTrading.openPositions,
               closedTrades: result.paperTrading.closedTrades,
+              shadowMode: result.paperTrading.shadowMode,
+              killSwitch: result.paperTrading.killSwitch,
+              backtest: result.paperTrading.backtest,
+              weeklyReport: result.paperTrading.weeklyReport,
               capitalEligible: result.paperTrading.capitalReadiness.eligible,
               missingRequirements: result.paperTrading.capitalReadiness.missing,
             }

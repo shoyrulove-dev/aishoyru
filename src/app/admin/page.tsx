@@ -87,6 +87,9 @@ type Overview = {
         closedTrades: number;
         realizedPnlUsdc: number;
         maxDrawdownUsdc: number;
+        killSwitch?: { active: boolean; reasons: string[] };
+        backtest?: { status: string; observations: number; outOfSampleObservations: number; strategyPnlUsdc: number; beatsPassBaseline: boolean } | null;
+        weeklyReport?: { week: string; opened: number; closed: number; realizedPnlUsdc: number; winRate: number } | null;
         capitalReadiness: { eligible: boolean; missing: string[]; note: string };
       } | null;
     };
@@ -746,6 +749,10 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
             <div className="rounded-xl bg-white/7 p-4"><p className="text-2xl font-black">{paper?.closedTrades || 0}/{Number(policy.minimumClosedTrades || 20)}</p><p className="mt-1 text-xs text-[#aeb7c0]">lệnh giả lập đã đóng</p></div>
           </div>
           <p className="mt-4 text-sm leading-6 text-[#b9c1c8]">{paper?.capitalReadiness.note || "Shoyru phải có đủ bằng chứng trước khi được phép gửi đề xuất vốn."}</p>
+          <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-lg bg-white/7 p-3">Backtest: <b>{paper?.backtest?.status === "completed" ? `${paper.backtest.outOfSampleObservations} mẫu ngoài tập` : `${paper?.backtest?.observations || 0}/60 quan sát`}</b></div>
+            <div className="rounded-lg bg-white/7 p-3">Kill switch: <b className={paper?.killSwitch?.active ? "text-[#ff956f]" : "text-[#76d595]"}>{paper?.killSwitch?.active ? "ĐANG CHẶN" : "SẴN SÀNG"}</b></div>
+          </div>
           {!!paper?.capitalReadiness.missing?.length && <ul className="mt-3 space-y-1 text-xs text-[#ffb99f]">{paper.capitalReadiness.missing.map((item) => <li key={item}>• {item}</li>)}</ul>}
           <p className="mt-4 border-t border-white/10 pt-4 text-xs text-[#8f9aa5]">500.000đ chi phí vận hành không được tính là vốn giao dịch.</p>
         </section>
