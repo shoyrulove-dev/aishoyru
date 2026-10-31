@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { estimateServiceScope } from "@/lib/survival-maintenance";
 import {
   providerIsCoolingDown,
   recordProviderFailure,
@@ -263,22 +264,27 @@ export async function POST(request: NextRequest) {
     : serviceIntent(parsed.data.text) || visitorMessages.some(serviceIntent)
       ? visitorMessages.length >= 4 ? "qualified" : "qualifying"
       : "conversation";
+  const scopeEstimate = leadStage === "qualified"
+    ? estimateServiceScope(visitorMessages)
+    : null;
+  const leadUpdate: Record<string, unknown> = {
+    name: parsed.data.name,
+    stage: leadStage,
+    latestMessage: parsed.data.text,
+    latestReply: reply,
+    conversationBrief: visitorMessages.slice(-4).join(" | ").slice(0, 1200),
+    needsOwner,
+    questionCount: leadStage === "qualifying" || leadStage === "qualified"
+      ? Math.min(3, visitorMessages.length)
+      : 0,
+    updatedAt: now,
+    followUpDueAt: leadStage === "qualified" ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null,
+  };
+  if (scopeEstimate) leadUpdate.scopeEstimate = scopeEstimate;
   await db.collection("chat_leads").updateOne(
     { sessionId: parsed.data.sessionId },
     {
-      $set: {
-        name: parsed.data.name,
-        stage: leadStage,
-        latestMessage: parsed.data.text,
-        latestReply: reply,
-        conversationBrief: visitorMessages.slice(-4).join(" | ").slice(0, 1200),
-        needsOwner,
-        questionCount: leadStage === "qualifying" || leadStage === "qualified"
-          ? Math.min(3, visitorMessages.length)
-          : 0,
-        updatedAt: now,
-        followUpDueAt: leadStage === "qualified" ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null,
-      },
+      $set: leadUpdate,
       $setOnInsert: { createdAt: now, source: "website-chat" },
     },
     { upsert: true },

@@ -76,6 +76,10 @@ type Overview = {
     allocation: Array<{ id: string; label: string; targetPercent: number; purpose: string }>;
     adaptiveSequence?: string[];
     weeklyReport?: { title: string; content: string; publishedAt: string } | null;
+    activeTrial?: Record<string, unknown> | null;
+    financialTruth?: Record<string, unknown> | null;
+    reusableAssets?: Array<Record<string, unknown>>;
+    brainE2e?: Record<string, unknown> | null;
     servicePackages: Array<{ id: string; name: string; deliverable: string; needs: string[]; price: string }>;
     ownerOnlyActions: string[];
     workMix24h: Array<{ action: string; total: number }>;
@@ -723,6 +727,24 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
       <div className="mt-3 rounded-xl border border-[#dfe4e8] bg-white px-4 py-3 text-sm text-[#66717c]">
         Nhịp thực tế đang dùng: <b className="text-[#17202a]">{data.adaptiveSequence?.length ? data.adaptiveSequence.join(" → ") : "đang thu thập dữ liệu để tự điều chỉnh"}</b>
       </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+          <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">THỬ VIỆC CÓ KPI</p>
+          <h2 className="mt-2 font-black">{String(data.activeTrial?.title || "Đang tạo thử nghiệm đầu tiên")}</h2>
+          <p className="mt-2 text-sm text-[#66717c]">Tiến độ: <b>{String(data.activeTrial?.progress || 0)}/{String((data.activeTrial?.kpi as Record<string, unknown> | undefined)?.target || 1)}</b> · {String(data.activeTrial?.outcome || "Đang chạy")}</p>
+        </section>
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+          <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">SỰ THẬT TÀI CHÍNH</p>
+          <p className="mt-2 text-sm text-[#66717c]">Ngân sách vận hành: <b>{money(Number(data.financialTruth?.operatingBudgetVnd || 500000))}</b></p>
+          <p className="mt-1 text-sm text-[#66717c]">Doanh thu xác minh: <b>{money(Number(data.financialTruth?.verifiedRevenueVnd || 0))}</b></p>
+          <p className="mt-1 text-sm text-[#66717c]">Vốn trade đã duyệt: <b>{String(data.financialTruth?.approvedTradingCapitalUsdc || 0)} USDC</b></p>
+        </section>
+        <section className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
+          <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">E2E BỘ NÃO</p>
+          <p className="mt-2 text-3xl font-black text-[#25864b]">{String(data.brainE2e?.passed || 0)}/{String(data.brainE2e?.total || 7)}</p>
+          <p className="mt-2 text-sm text-[#66717c]">Kiểm tra ngữ cảnh, vốn, provider, lịch chạy và câu bị cắt dở mỗi ngày.</p>
+        </section>
+      </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
         <section className="rounded-2xl border border-[#dfe4e8] bg-white p-6">
@@ -792,6 +814,18 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
           </ul>
         </section>
       </div>
+      <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
+        <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">KHO NĂNG LỰC TÁI SỬ DỤNG</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {!data.reusableAssets?.length && <p className="text-sm text-[#8b949e]">Chưa có artifact đạt kiểm tra để đưa vào kho.</p>}
+          {data.reusableAssets?.map((asset, index) => (
+            <div key={String(asset.key || index)} className="rounded-xl bg-[#f6f7f8] p-4">
+              <b>{String(asset.name || "Tài sản chưa đặt tên")}</b>
+              <p className="mt-1 text-xs text-[#77818b]">{String(asset.actionType || "artifact")} · {String(asset.fileCount || 0)} tệp · {String(asset.versions || 1)} phiên bản</p>
+            </div>
+          ))}
+        </div>
+      </section>
       {data.weeklyReport && (
         <section className="mt-6 rounded-2xl border border-[#ffd6c6] bg-[#fff9f6] p-6">
           <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">BÁO CÁO SINH TỒN GẦN NHẤT</p>
@@ -1183,6 +1217,7 @@ function ChatCard({
   const autoReplied = item.autoReplied === true;
   const needsOwner = item.needsOwner === true;
   const leadStage = String(item.leadStage || "conversation");
+  const estimate = item.scopeEstimate as Record<string, unknown> | undefined;
   const stageLabel = leadStage === "qualified" ? "Đã đủ yêu cầu" : leadStage === "qualifying" ? "Đang hỏi nhu cầu" : leadStage === "needs_owner" ? "Cần chủ nhân" : leadStage === "follow_up_sent" ? "Đã nhắc lại" : "Đang trò chuyện";
   return (
     <article className="rounded-2xl border border-[#e1e5e9] bg-white p-5">
@@ -1210,6 +1245,16 @@ function ChatCard({
           <b className="mr-2 text-[#24854b]">Shoyru:</b>{String(item.lastReplyText)}
         </p>
       ) : null}
+      {estimate && (
+        <div className="mt-3 rounded-xl border border-[#ffd9c8] bg-[#fff8f4] p-4 text-sm text-[#58636e]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <b className="text-[#17202a]">Ước tính nội bộ</b>
+            <span className="rounded-full bg-[#fff0e9] px-2.5 py-1 text-[11px] font-bold text-[#d95b2e]">CẦN CHỦ NHÂN DUYỆT</span>
+          </div>
+          <p className="mt-2">{String(estimate.kind || "Dịch vụ")} · {money(Number(estimate.estimatedPriceMinVnd || 0))}–{money(Number(estimate.estimatedPriceMaxVnd || 0))} · {String(estimate.estimatedDelivery || "Chưa rõ")}</p>
+          <p className="mt-1 text-xs text-[#8a939c]">Shoyru không tự gửi mức giá này cho khách.</p>
+        </div>
+      )}
       {!item.read && (
         <p className="mt-2 text-xs font-semibold text-[#8b949e]">Tin này chưa được chủ nhân mở xem, nhưng Shoyru vẫn có thể đã trả lời tự động.</p>
       )}

@@ -288,21 +288,24 @@ export async function createDailyBackup(db: Db) {
   const day = now.toISOString().slice(0, 10);
   const existing = await db.collection("system_backups").findOne({ day });
   if (existing) return { created: false, day };
-  const [state, plans, campaigns, leads, lessons, instructions] = await Promise.all([
+  const [state, plans, campaigns, leads, lessons, instructions, trials, assets, financialTruth] = await Promise.all([
     db.collection("agent_state").find({}).limit(20).toArray(),
     db.collection("agent_plans").find({}).sort({ updatedAt: -1 }).limit(20).toArray(),
     db.collection("growth_campaigns").find({}).sort({ updatedAt: -1 }).limit(20).toArray(),
     db.collection("lead_crm").find({}).sort({ updatedAt: -1 }).limit(500).toArray(),
     db.collection("agent_lessons").find({}).sort({ updatedAt: -1 }).limit(200).toArray(),
     db.collection("owner_instructions").find({}).sort({ createdAt: -1 }).limit(100).toArray(),
+    db.collection("survival_trials").find({}).sort({ updatedAt: -1 }).limit(30).toArray(),
+    db.collection("asset_library").find({}).sort({ updatedAt: -1 }).limit(200).toArray(),
+    db.collection("financial_truth").find({}).limit(10).toArray(),
   ]);
   await db.collection("system_backups").insertOne({
     day,
     version: 1,
     createdAt: now,
     expiresAt: new Date(now.getTime() + 30 * DAY),
-    collections: { agent_state: state, agent_plans: plans, growth_campaigns: campaigns, lead_crm: leads, agent_lessons: lessons, owner_instructions: instructions },
-    counts: { state: state.length, plans: plans.length, campaigns: campaigns.length, leads: leads.length, lessons: lessons.length, instructions: instructions.length },
+    collections: { agent_state: state, agent_plans: plans, growth_campaigns: campaigns, lead_crm: leads, agent_lessons: lessons, owner_instructions: instructions, survival_trials: trials, asset_library: assets, financial_truth: financialTruth },
+    counts: { state: state.length, plans: plans.length, campaigns: campaigns.length, leads: leads.length, lessons: lessons.length, instructions: instructions.length, trials: trials.length, assets: assets.length, financialTruth: financialTruth.length },
   });
   return { created: true, day };
 }

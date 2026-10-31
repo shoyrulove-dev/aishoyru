@@ -33,6 +33,7 @@ import {
   tradingCapitalRules,
 } from "./survival-policy";
 import { evaluatePublicLanguage } from "./language-quality";
+import { runSurvivalMaintenance } from "./survival-maintenance";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -845,6 +846,7 @@ export async function runAgentCycle() {
     publishWeeklySurvivalReport(db),
     processDueChatFollowUps(db),
     learnFromResolvedOutcomes(db),
+    runSurvivalMaintenance(db),
   ]);
   if (process.env.BRAVE_SEARCH_API_KEY)
     await db.collection("approvals").updateMany(
