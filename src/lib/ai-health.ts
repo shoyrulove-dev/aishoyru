@@ -1,21 +1,45 @@
 import type { Db } from "mongodb";
 
 const FAILURE_LIMIT = 3;
-const COOLDOWN_MS = 20 * 60 * 1000;
-const PROBE_AFTER_MS = 5 * 60 * 1000;
+
+export type ProviderFailureType = "auth" | "quota" | "model" | "request-format" | "timeout" | "invalid-output" | "upstream";
+
+export function classifyProviderError(error: unknown): ProviderFailureType {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = Number((error as { status?: number } | null)?.status || 0);
+  if (status === 401 || status === 403 || /unauthor|forbidden|invalid.*key|authentication/i.test(message)) return "auth";
+  if (status === 429 || /rate|quota|limit|credit|balance|insufficient/i.test(message)) return "quota";
+  if (status === 404 || /model.+not|unknown model|does not exist/i.test(message)) return "model";
+  if (status === 400 || /response_format|json_object|unsupported|invalid request/i.test(message)) return "request-format";
+  if (/timeout|timed out|abort/i.test(message)) return "timeout";
+  if (/tiếng Việt|public|JSON|parse/i.test(message)) return "invalid-output";
+  return "upstream";
+}
+
+const retryDelay = (type: ProviderFailureType, failures: number) => {
+  if (type === "auth") return 6 * 60 * 60 * 1000;
+  if (type === "quota") return 2 * 60 * 60 * 1000;
+  if (type === "model" || type === "request-format") return 60 * 60 * 1000;
+  if (type === "timeout") return Math.min(30, 5 * Math.max(1, failures - 1)) * 60 * 1000;
+  return Math.min(30, 10 * Math.max(1, failures - 1)) * 60 * 1000;
+};
+
+export function providerTimeoutMs(provider: string) {
+  if (provider === "groq") return 8_000;
+  if (["nvidia", "gemini", "openrouter", "kilo", "kilo-fallback"].includes(provider)) return 15_000;
+  if (provider === "cloudflare") return 12_000;
+  return 10_000;
+}
 
 export async function providerIsCoolingDown(db: Db, provider: string) {
   const health = await db.collection("ai_provider_health").findOne(
     { provider },
-    { projection: { cooldownUntil: 1, updatedAt: 1 } },
+    { projection: { nextProbeAt: 1, cooldownUntil: 1 } },
   );
   const now = new Date();
-  const updatedAt = health?.updatedAt instanceof Date ? health.updatedAt : null;
   return Boolean(
-    health?.cooldownUntil instanceof Date &&
-      health.cooldownUntil > now &&
-      updatedAt &&
-      now.getTime() - updatedAt.getTime() < PROBE_AFTER_MS,
+    (health?.nextProbeAt instanceof Date && health.nextProbeAt > now) ||
+      (health?.cooldownUntil instanceof Date && health.cooldownUntil > now),
   );
 }
 
@@ -35,11 +59,12 @@ export async function recordProviderSuccess(
         status: "healthy",
         consecutiveFailures: 0,
         cooldownUntil: null,
+        nextProbeAt: null,
         lastSuccessAt: now,
         lastLatencyMs: latencyMs,
         updatedAt: now,
       },
-      $unset: { lastError: "" },
+      $unset: { lastError: "", failureType: "" },
       $inc: { totalSuccess: 1 },
     },
     { upsert: true },
@@ -80,15 +105,19 @@ export async function recordProviderFailure(
   );
   const failures = Number(previous?.consecutiveFailures || 0) + 1;
   const now = new Date();
+  const failureType = classifyProviderError(error);
   const cooling = failures >= FAILURE_LIMIT;
+  const delay = retryDelay(failureType, failures);
   await db.collection("ai_provider_health").updateOne(
     { provider },
     {
       $set: {
         model,
         status: cooling ? "cooldown" : "degraded",
+        failureType,
         consecutiveFailures: failures,
-        cooldownUntil: cooling ? new Date(now.getTime() + COOLDOWN_MS) : null,
+        cooldownUntil: cooling ? new Date(now.getTime() + delay) : null,
+        nextProbeAt: new Date(now.getTime() + delay),
         lastFailureAt: now,
         lastError: (error instanceof Error ? error.message : String(error)).slice(0, 240),
         updatedAt: now,

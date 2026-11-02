@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { estimateServiceScope } from "@/lib/survival-maintenance";
 import {
   providerIsCoolingDown,
+  providerTimeoutMs,
   recordProviderFailure,
   recordProviderSuccess,
 } from "@/lib/ai-health";
@@ -215,7 +216,7 @@ export async function POST(request: NextRequest) {
       const client = new OpenAI({
         apiKey: provider.apiKey,
         baseURL: provider.baseURL,
-        timeout: 12000,
+        timeout: providerTimeoutMs(provider.name),
       });
       const result = await client.chat.completions.create({
         model: provider.model,

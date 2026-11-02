@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
       },
     ]).toArray(),
   ]);
-  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket, adaptivePolicy, weeklyReport, activeTrial, financialTruth, assetRows, brainE2e] = await Promise.all([
+  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket, adaptivePolicy, weeklyReport, activeTrial, financialTruth, assetRows, brainE2e, productivityAlert] = await Promise.all([
     db.collection("search_lane_stats").aggregate([
       { $group: { _id: "$kind", attempts: { $sum: "$attempts" }, results: { $sum: "$results" }, useful: { $sum: "$usefulResults" }, qualified: { $sum: "$qualified" } } },
       { $sort: { qualified: -1, useful: -1 } },
@@ -320,6 +320,7 @@ export async function GET(request: NextRequest) {
     db.collection("financial_truth").findOne({ key: "current" }),
     db.collection("asset_library").find({}).sort({ updatedAt: -1 }).limit(12).toArray(),
     db.collection("brain_e2e_runs").findOne({}, { sort: { createdAt: -1 } }),
+    db.collection("operational_alerts").findOne({ key: "three-low-value-cycles", status: "open" }),
   ]);
   const event = (type: string) => engagement.find((item) => item._id === type);
   const crmCount = (status: string) =>
@@ -405,6 +406,7 @@ export async function GET(request: NextRequest) {
       financialTruth: financialTruth || null,
       reusableAssets: assetRows,
       brainE2e: brainE2e || null,
+      productivityAlert: productivityAlert || null,
       servicePackages,
       ownerOnlyActions,
       workMix24h: taskLaneRows.map((item) => ({ action: String(item._id || "khác"), total: Number(item.total || 0) })),

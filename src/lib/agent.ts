@@ -4,6 +4,7 @@ import { isIP } from "node:net";
 import { getDb } from "./mongodb";
 import {
   providerIsCoolingDown,
+  providerTimeoutMs,
   recordProviderFailure,
   recordProviderSuccess,
 } from "./ai-health";
@@ -1317,7 +1318,7 @@ export async function runAgentCycle() {
         const client = new OpenAI({
           apiKey: provider.apiKey,
           baseURL: provider.baseURL,
-          timeout: 7000,
+          timeout: providerTimeoutMs(provider.name),
           maxRetries: 0,
         });
         const request = (strictJson: boolean) =>

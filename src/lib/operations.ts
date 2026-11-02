@@ -18,6 +18,10 @@ export async function ensureOperationalIndexes(db: Db) {
     ),
     db.collection("system_backups").createIndex({ createdAt: -1 }),
     db.collection("operational_snapshots").createIndex({ createdAt: -1 }),
+    db.collection("conversations").createIndex(
+      { cycleSlot: 1 },
+      { unique: true, partialFilterExpression: { cycleSlot: { $type: "string" } } },
+    ),
     db.collection("agent_jobs").createIndex(
       { expiresAt: 1 },
       { expireAfterSeconds: 0 },

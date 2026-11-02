@@ -80,6 +80,7 @@ type Overview = {
     financialTruth?: Record<string, unknown> | null;
     reusableAssets?: Array<Record<string, unknown>>;
     brainE2e?: Record<string, unknown> | null;
+    productivityAlert?: Record<string, unknown> | null;
     servicePackages: Array<{ id: string; name: string; deliverable: string; needs: string[]; price: string }>;
     ownerOnlyActions: string[];
     workMix24h: Array<{ action: string; total: number }>;
@@ -92,6 +93,10 @@ type Overview = {
         openPositions: number;
         closedTrades: number;
         realizedPnlUsdc: number;
+        unrealizedPnlUsdc: number;
+        winRate: number;
+        assumedFeeBps: number;
+        assumedSlippageBps: number;
         maxDrawdownUsdc: number;
         killSwitch?: { active: boolean; reasons: string[] };
         backtest?: { status: string; observations: number; outOfSampleObservations: number; strategyPnlUsdc: number; beatsPassBaseline: boolean } | null;
@@ -727,6 +732,12 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
       <div className="mt-3 rounded-xl border border-[#dfe4e8] bg-white px-4 py-3 text-sm text-[#66717c]">
         Nhịp thực tế đang dùng: <b className="text-[#17202a]">{data.adaptiveSequence?.length ? data.adaptiveSequence.join(" → ") : "đang thu thập dữ liệu để tự điều chỉnh"}</b>
       </div>
+      {data.productivityAlert && (
+        <div className="mt-3 rounded-xl border border-[#f1d49a] bg-[#fff8e8] px-4 py-3 text-sm text-[#805b18]">
+          <b>{String(data.productivityAlert.title || "Nhịp làm việc cần đổi hướng")}</b>
+          <span className="ml-2">{String(data.productivityAlert.detail || "Shoyru sẽ chọn việc có đầu ra rõ hơn ở lượt kế tiếp.")}</span>
+        </div>
+      )}
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <section className="rounded-2xl border border-[#dfe4e8] bg-white p-5">
           <p className="text-xs font-bold tracking-[.14em] text-[#f2612c]">THỬ VIỆC CÓ KPI</p>
@@ -779,7 +790,10 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
           <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
             <div className="rounded-lg bg-white/7 p-3">Backtest: <b>{paper?.backtest?.status === "completed" ? `${paper.backtest.outOfSampleObservations} mẫu ngoài tập` : `${paper?.backtest?.observations || 0}/60 quan sát`}</b></div>
             <div className="rounded-lg bg-white/7 p-3">Kill switch: <b className={paper?.killSwitch?.active ? "text-[#ff956f]" : "text-[#76d595]"}>{paper?.killSwitch?.active ? "ĐANG CHẶN" : "SẴN SÀNG"}</b></div>
+            <div className="rounded-lg bg-white/7 p-3">PnL đã chốt: <b>{Number(paper?.realizedPnlUsdc || 0).toFixed(2)} USDC</b></div>
+            <div className="rounded-lg bg-white/7 p-3">Tỷ lệ thắng: <b>{Math.round(Number(paper?.winRate || 0) * 100)}%</b></div>
           </div>
+          <p className="mt-3 text-xs text-[#8f9aa5]">Mô phỏng đã tính {Number(paper?.assumedFeeBps || 0)} bps phí và {Number(paper?.assumedSlippageBps || 0)} bps trượt giá mỗi chiều.</p>
           {!!paper?.capitalReadiness.missing?.length && <ul className="mt-3 space-y-1 text-xs text-[#ffb99f]">{paper.capitalReadiness.missing.map((item) => <li key={item}>• {item}</li>)}</ul>}
           <p className="mt-4 border-t border-white/10 pt-4 text-xs text-[#8f9aa5]">500.000đ chi phí vận hành không được tính là vốn giao dịch.</p>
         </section>

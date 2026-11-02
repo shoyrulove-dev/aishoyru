@@ -91,6 +91,8 @@ type PaperPosition = {
   notionalUsdc: number;
   units: number;
   assumedFeeUsdc: number;
+  assumedSlippageUsdc?: number;
+  assumedTradingCostUsdc?: number;
   openedAt: Date;
   updatedAt: Date;
   closedAt?: Date;
@@ -110,6 +112,8 @@ export type PaperTradingSummary = {
   unrealizedPnlUsdc: number;
   maxDrawdownUsdc: number;
   assumedFeeBps: number;
+  assumedSlippageBps: number;
+  winRate: number;
   killSwitch: { active: boolean; reasons: string[] };
   backtest: {
     status: "completed" | "insufficient_data";
@@ -295,10 +299,11 @@ async function runOutOfSampleBacktest(db: Db): Promise<BacktestResult> {
   const split = Math.floor(observations.length * 0.7);
   const test = observations.slice(split);
   const feeRate = Math.max(0, Number(process.env.POLYMARKET_PAPER_FEE_BPS || 100)) / 10_000;
+  const slippageRate = Math.max(0, Number(process.env.POLYMARKET_PAPER_SLIPPAGE_BPS || 50)) / 10_000;
   const position = Math.max(0.1, Number(process.env.POLYMARKET_BACKTEST_POSITION_USDC || 1));
   const strategyPnl = test.reduce((sum, row) => {
     const gross = position * (row.exit / row.entry - 1);
-    return sum + gross - position * feeRate * 2;
+    return sum + gross - position * (feeRate + slippageRate) * 2;
   }, 0);
   const result: BacktestResult = {
     status: observations.length >= 60 && test.length >= 18 ? "completed" : "insufficient_data",
@@ -416,6 +421,7 @@ async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
   const now = new Date();
   const positions = db.collection<PaperPosition>("polymarket_paper_positions");
   const feeBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_FEE_BPS || 100));
+  const slippageBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_SLIPPAGE_BPS || 50));
   const maxOpen = Math.max(1, Number(process.env.POLYMARKET_MAX_OPEN_POSITIONS || 3));
   const dailyLossBudget = Math.max(0.1, Number(process.env.POLYMARKET_MAX_DAILY_LOSS_USDC || 2));
   const maxPosition = Math.max(
@@ -432,7 +438,8 @@ async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
     const price = signal.observedPrice;
     const ageHours = (now.getTime() - new Date(position.openedAt).getTime()) / 3_600_000;
     const grossPnl = position.units * (price - position.entryPrice);
-    const shouldClose = ageHours >= maxHoldHours || price <= 0.03 || price >= 0.97;
+    const shouldClose = ageHours >= maxHoldHours || price <= 0.03 || price >= 0.97 || signal.decision !== "BUY" || signal.score < 60;
+    const tradingCost = Number(position.assumedTradingCostUsdc || position.assumedFeeUsdc || 0);
     await positions.updateOne(
       { _id: position._id },
       {
@@ -442,8 +449,12 @@ async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
               updatedAt: now,
               status: "closed",
               closedAt: now,
-              exitReason: ageHours >= maxHoldHours ? `Hết thời gian giữ giả lập ${maxHoldHours} giờ` : "Giá sát biên 0 hoặc 1",
-              realizedPnlUsdc: rounded(grossPnl - position.assumedFeeUsdc),
+              exitReason: ageHours >= maxHoldHours
+                ? `Hết thời gian giữ giả lập ${maxHoldHours} giờ`
+                : signal.decision !== "BUY" || signal.score < 60
+                  ? "Tín hiệu không còn đạt điều kiện giữ"
+                  : "Giá sát biên 0 hoặc 1",
+              realizedPnlUsdc: rounded(grossPnl - tradingCost),
             }
           : { currentPrice: price, updatedAt: now },
       },
@@ -464,6 +475,7 @@ async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
     const exists = await positions.findOne({ conditionId: signal.conditionId, status: "open" });
     if (exists || signal.observedPrice == null) continue;
     const fee = maxPosition * feeBps / 10_000;
+    const slippage = maxPosition * slippageBps / 10_000;
     const hypothesis = `Dòng lệnh mua chiếm ưu thế, điểm tín hiệu ${signal.score}/100; chỉ kiểm tra giả thuyết bằng tiền mô phỏng.`;
     const hypothesisId = `${signal.conditionId}:${now.toISOString()}`;
     await db.collection("quant_hypotheses").insertOne({
@@ -489,6 +501,8 @@ async function updatePaperTrading(db: Db, snapshot: PolymarketResearch) {
       notionalUsdc: maxPosition,
       units: maxPosition / signal.observedPrice,
       assumedFeeUsdc: rounded(fee * 2),
+      assumedSlippageUsdc: rounded(slippage * 2),
+      assumedTradingCostUsdc: rounded((fee + slippage) * 2),
       openedAt: now,
       updatedAt: now,
     });
@@ -519,14 +533,17 @@ async function getPaperTradingSummary(db: Db): Promise<PaperTradingSummary> {
   const weeklyReport = await db.collection("quant_weekly_reports").findOne({}, { sort: { week: -1 } });
   const killSwitch = await getKillSwitch(db);
   const feeBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_FEE_BPS || 100));
+  const slippageBps = Math.max(0, Number(process.env.POLYMARKET_PAPER_SLIPPAGE_BPS || 50));
   const startingCapital = Math.max(1, Number(process.env.POLYMARKET_PAPER_CAPITAL_USDC || 50));
   const closed = rows.filter((row) => row.status === "closed");
   const open = rows.filter((row) => row.status === "open");
   const realized = closed.reduce((sum, row) => sum + Number(row.realizedPnlUsdc || 0), 0);
   const unrealized = open.reduce(
-    (sum, row) => sum + row.units * (row.currentPrice - row.entryPrice) - row.assumedFeeUsdc,
+    (sum, row) => sum + row.units * (row.currentPrice - row.entryPrice) - Number(row.assumedTradingCostUsdc || row.assumedFeeUsdc || 0),
     0,
   );
+  const wins = closed.filter((row) => Number(row.realizedPnlUsdc || 0) > 0).length;
+  const winRate = closed.length ? wins / closed.length : 0;
   const paperDays = new Set(runs.map((row) => new Date(row.snapshotAt as Date).toISOString().slice(0, 10))).size;
   let equity = startingCapital;
   let peak = equity;
@@ -541,6 +558,8 @@ async function getPaperTradingSummary(db: Db): Promise<PaperTradingSummary> {
   if (closed.length < 20) missing.push(`Cần thêm ${20 - closed.length} lệnh mô phỏng đã đóng`);
   if (!backtest || backtest.status !== "completed") missing.push("Chưa đủ dữ liệu cho backtest ngoài mẫu");
   else if (backtest.beatsPassBaseline !== true) missing.push("Chiến lược chưa thắng baseline PASS sau phí");
+  if (closed.length >= 20 && realized <= 0) missing.push("Paper trade chưa có lợi nhuận dương sau chi phí");
+  if (closed.length >= 20 && winRate < 0.45) missing.push("Tỷ lệ thắng paper trade chưa đạt 45%");
   if (maxDrawdown > Number(process.env.POLYMARKET_MAX_DRAWDOWN_USDC || 5)) missing.push("Drawdown vượt mức cho phép");
   return {
     mode: "paper-only",
@@ -554,6 +573,8 @@ async function getPaperTradingSummary(db: Db): Promise<PaperTradingSummary> {
     unrealizedPnlUsdc: rounded(unrealized),
     maxDrawdownUsdc: rounded(maxDrawdown),
     assumedFeeBps: feeBps,
+    assumedSlippageBps: slippageBps,
+    winRate: rounded(winRate),
     killSwitch,
     backtest: backtest ? {
       status: backtest.status === "completed" ? "completed" : "insufficient_data",
