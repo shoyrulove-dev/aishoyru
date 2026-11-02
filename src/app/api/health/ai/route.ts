@@ -32,12 +32,14 @@ export async function GET() {
     const failureType = row?.status === "healthy" || !error
       ? null
       : row?.failureType || classifyProviderError(new Error(error));
-    const availableNow = !(row?.nextProbeAt instanceof Date && row.nextProbeAt > new Date()) &&
+    const eligibleForProbe = !(row?.nextProbeAt instanceof Date && row.nextProbeAt > new Date()) &&
       !(row?.cooldownUntil instanceof Date && row.cooldownUntil > new Date());
+    const availableNow = eligibleForProbe && ["healthy", "degraded", "untested"].includes(String(row?.status || "untested"));
     return {
       name,
       status: row?.status || "untested",
       availableNow,
+      eligibleForProbe,
       consecutiveFailures: Number(row?.consecutiveFailures || 0),
       failureType,
       nextProbeAt: row?.nextProbeAt || null,
