@@ -91,6 +91,18 @@ async function reviewRecentProductivity(db: Db) {
   );
 }
 
+async function backfillRecentJournals(db: Db) {
+  const jobs = await db.collection("agent_jobs")
+    .find({ status: "completed", slot: { $type: "string" } })
+    .sort({ completedAt: -1 })
+    .limit(48)
+    .project({ slot: 1 })
+    .toArray();
+  const slots = [...new Set(jobs.map((job) => String(job.slot || "")).filter(Boolean))];
+  const results = await Promise.allSettled(slots.map((slot) => ensureCycleJournal(db, slot)));
+  return results.filter((result) => result.status === "fulfilled" && result.value.inserted).length;
+}
+
 async function runWithDeadline<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -171,6 +183,7 @@ export async function runClaimedAgentCycle(
       recordOperationalSnapshot(db),
       createDailyBackup(db),
       reviewRecentProductivity(db),
+      backfillRecentJournals(db),
     ]);
     return { ...result, slot, source };
   } catch (error) {
