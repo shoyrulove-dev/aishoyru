@@ -8,7 +8,7 @@ import {
 } from "./ai-health";
 
 type ProbeConfig = {
-  name: "gemini" | "cloudflare" | "nvidia";
+  name: "gemini" | "cloudflare" | "nvidia" | "groq";
   apiKey?: string;
   baseURL: string;
   model: string;
@@ -16,6 +16,13 @@ type ProbeConfig = {
 };
 
 const configs = (): ProbeConfig[] => [
+  {
+    name: "groq",
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+    model: process.env.GROQ_MODEL || process.env.AI_MODEL || "openai/gpt-oss-20b",
+    expectedHost: "api.groq.com",
+  },
   {
     name: "gemini",
     apiKey: process.env.GEMINI_API_KEY,
@@ -57,6 +64,20 @@ const configShape = (config: ProbeConfig) => {
   };
 };
 
+function rateLimitHeaders(headers?: Headers | null) {
+  if (!headers) return undefined;
+  const values = {
+    requestsPerDay: headers.get("x-ratelimit-limit-requests") || undefined,
+    requestsRemaining: headers.get("x-ratelimit-remaining-requests") || undefined,
+    requestsReset: headers.get("x-ratelimit-reset-requests") || undefined,
+    tokensPerMinute: headers.get("x-ratelimit-limit-tokens") || undefined,
+    tokensRemaining: headers.get("x-ratelimit-remaining-tokens") || undefined,
+    tokensReset: headers.get("x-ratelimit-reset-tokens") || undefined,
+    retryAfter: headers.get("retry-after") || undefined,
+  };
+  return Object.values(values).some(Boolean) ? values : undefined;
+}
+
 async function probeOne(db: Db, config: ProbeConfig) {
   const shape = configShape(config);
   if (!Object.values(shape).every(Boolean)) {
@@ -75,26 +96,31 @@ async function probeOne(db: Db, config: ProbeConfig) {
       { role: "user" as const, content: "Trả về {\"status\":\"sẵn sàng\"}." },
     ];
     let response;
+    let responseHeaders: Headers | undefined;
     let strictJson = true;
     try {
-      response = await client.chat.completions.create({
+      const result = await client.chat.completions.create({
         model: config.model,
         messages,
         max_tokens: 80,
         stream: false,
         response_format: { type: "json_object" },
-      });
+      }).withResponse();
+      response = result.data;
+      responseHeaders = result.response.headers;
     } catch (error) {
       const status = Number((error as { status?: number })?.status || 0);
       const message = error instanceof Error ? error.message : String(error);
       if (status !== 400 && !/response_format|json_object|unsupported/i.test(message)) throw error;
       strictJson = false;
-      response = await client.chat.completions.create({
+      const result = await client.chat.completions.create({
         model: config.model,
         messages,
         max_tokens: 80,
         stream: false,
-      });
+      }).withResponse();
+      response = result.data;
+      responseHeaders = result.response.headers;
     }
     const content = String(response.choices[0]?.message?.content || "").trim();
     const start = content.indexOf("{");
@@ -106,7 +132,15 @@ async function probeOne(db: Db, config: ProbeConfig) {
       completionTokens: response.usage?.completion_tokens,
       totalTokens: response.usage?.total_tokens,
     });
-    return { provider: config.name, ok: true, config: shape, status: 200, latencyMs, strictJson };
+    return {
+      provider: config.name,
+      ok: true,
+      config: shape,
+      status: 200,
+      latencyMs,
+      strictJson,
+      rateLimit: rateLimitHeaders(responseHeaders),
+    };
   } catch (error) {
     await recordProviderFailure(db, config.name, config.model, error);
     return {
@@ -116,6 +150,7 @@ async function probeOne(db: Db, config: ProbeConfig) {
       failureType: classifyProviderError(error),
       status: Number((error as { status?: number })?.status || 0),
       code: String((error as { code?: string })?.code || "").slice(0, 60),
+      rateLimit: rateLimitHeaders((error as { headers?: Headers })?.headers),
       latencyMs: Date.now() - startedAt,
     };
   }
@@ -125,15 +160,15 @@ export async function runCoreProviderProbe(db: Db) {
   const results = [];
   for (const config of configs()) results.push(await probeOne(db, config));
   const report = {
-    version: 3,
+    version: 4,
     checkedAt: new Date(),
     ok: results.some((item) => item.ok),
     healthy: results.filter((item) => item.ok).length,
     results,
   };
   await db.collection("ai_probe_reports").updateOne(
-    { key: "core-v3" },
-    { $set: { ...report, key: "core-v3" } },
+    { key: "core-v4" },
+    { $set: { ...report, key: "core-v4" } },
     { upsert: true },
   );
   return report;

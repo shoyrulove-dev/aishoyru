@@ -1202,6 +1202,7 @@ export async function runAgentCycle() {
       baseURL: "https://api.groq.com/openai/v1",
       model:
         process.env.GROQ_MODEL || process.env.AI_MODEL || "openai/gpt-oss-20b",
+      maxInputTokensPerMinute: 8_000,
     },
     {
       name: "nvidia",
@@ -1322,9 +1323,19 @@ export async function runAgentCycle() {
   ) {
     const errors: string[] = [];
     const compactMessages = messages.slice(-3);
+    // Groq's free GPT-OSS allowance is 8K tokens/minute. The main decision
+    // prompt can exceed that in a single call, while chat and critiques fit.
+    // Skip an incompatible request instead of poisoning provider health.
+    const estimatedInputTokens = Math.ceil(
+      compactMessages.reduce((total, message) => total + message.content.length, 0) / 4,
+    );
     let attempted = 0;
     for (const provider of providers) {
       if (provider.name === options.excludeProvider) continue;
+      if (
+        provider.maxInputTokensPerMinute &&
+        estimatedInputTokens > Math.floor(provider.maxInputTokensPerMinute * 0.8)
+      ) continue;
       if (await providerIsCoolingDown(db!, provider.name)) continue;
       if (attempted >= (options.maxProviders || providers.length)) break;
       attempted += 1;
@@ -1339,6 +1350,7 @@ export async function runAgentCycle() {
         const request = (strictJson: boolean) =>
           client.chat.completions.create({
             model: provider.model,
+            max_tokens: 900,
             ...(strictJson ? { response_format: { type: "json_object" as const } } : {}),
             messages: strictJson
               ? compactMessages
