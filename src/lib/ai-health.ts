@@ -43,6 +43,16 @@ export async function providerIsCoolingDown(db: Db, provider: string) {
   );
 }
 
+export function providerCanBeProbed(
+  health: { nextProbeAt?: Date | null; cooldownUntil?: Date | null } | null | undefined,
+  now = new Date(),
+) {
+  return !(
+    (health?.nextProbeAt instanceof Date && health.nextProbeAt > now) ||
+    (health?.cooldownUntil instanceof Date && health.cooldownUntil > now)
+  );
+}
+
 export async function recordProviderSuccess(
   db: Db,
   provider: string,

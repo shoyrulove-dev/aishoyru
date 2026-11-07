@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
-import { classifyProviderError } from "@/lib/ai-health";
+import { classifyProviderError, providerCanBeProbed } from "@/lib/ai-health";
 
 export async function GET() {
   const db = await getDb();
@@ -32,12 +32,12 @@ export async function GET() {
     const failureType = row?.status === "healthy" || !error
       ? null
       : row?.failureType || classifyProviderError(new Error(error));
-    const eligibleForProbe = !(row?.nextProbeAt instanceof Date && row.nextProbeAt > new Date()) &&
-      !(row?.cooldownUntil instanceof Date && row.cooldownUntil > new Date());
-    const availableNow = eligibleForProbe && ["healthy", "degraded", "untested"].includes(String(row?.status || "untested"));
+    const eligibleForProbe = providerCanBeProbed(row);
+    const reportedStatus = row?.status === "cooldown" && eligibleForProbe ? "probe-due" : row?.status || "untested";
+    const availableNow = eligibleForProbe;
     return {
       name,
-      status: row?.status || "untested",
+      status: reportedStatus,
       availableNow,
       eligibleForProbe,
       consecutiveFailures: Number(row?.consecutiveFailures || 0),

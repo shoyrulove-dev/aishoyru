@@ -103,6 +103,15 @@ type Overview = {
         weeklyReport?: { week: string; opened: number; closed: number; realizedPnlUsdc: number; winRate: number } | null;
         capitalReadiness: { eligible: boolean; missing: string[]; note: string };
       } | null;
+      xauShadow?: {
+        mode: "research-only";
+        liveTradingEnabled: false;
+        status: string;
+        paperDays: number;
+        closedTrades: number;
+        metrics: { profitFactor: number; maxDrawdownPercent: number; outOfSampleWindows: number; netAfterCosts: number };
+        capitalReadiness: { eligible: boolean; missing: string[]; note: string };
+      } | null;
     };
   };
   trafficSources: Array<{ label: string; views: number; visitors: number }>;
@@ -707,6 +716,7 @@ function OverviewPanel({
 
 function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
   const paper = data.capital.paperTrading;
+  const xau = data.capital.xauShadow;
   const policy = data.capital.policy;
   const stages = [
     ["Đang hỏi nhu cầu", data.chatLeads.qualifying],
@@ -798,6 +808,26 @@ function SurvivalCenter({ data }: { data: Overview["survivalCenter"] }) {
           <p className="mt-4 border-t border-white/10 pt-4 text-xs text-[#8f9aa5]">500.000đ chi phí vận hành không được tính là vốn giao dịch.</p>
         </section>
       </div>
+
+      <section className="mt-6 rounded-2xl border border-[#f0c58d] bg-[#fff8ed] p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold tracking-[.14em] text-[#c6632d]">XAU SHADOW LAB</p>
+            <h2 className="mt-2 text-xl font-black">Học chiến lược vàng, chưa chạm tài khoản thật</h2>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${xau?.capitalReadiness.eligible ? "bg-[#dff6e7] text-[#237a43]" : "bg-[#ffe5d8] text-[#a64b24]"}`}>
+            {xau?.capitalReadiness.eligible ? "ĐỦ BẰNG CHỨNG ĐỂ XIN VỐN" : "MẶC ĐỊNH PASS"}
+          </span>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl bg-white p-4"><b className="text-2xl">{xau?.paperDays || 0}/30</b><p className="text-xs text-[#77818b]">ngày paper trade</p></div>
+          <div className="rounded-xl bg-white p-4"><b className="text-2xl">{xau?.closedTrades || 0}/100</b><p className="text-xs text-[#77818b]">lệnh đã đóng</p></div>
+          <div className="rounded-xl bg-white p-4"><b className="text-2xl">{Number(xau?.metrics.profitFactor || 0).toFixed(2)}</b><p className="text-xs text-[#77818b]">profit factor sau phí</p></div>
+          <div className="rounded-xl bg-white p-4"><b className="text-2xl">{Number(xau?.metrics.maxDrawdownPercent || 0).toFixed(2)}%</b><p className="text-xs text-[#77818b]">drawdown đã xác minh</p></div>
+        </div>
+        <p className="mt-4 text-sm text-[#6f5949]">{xau?.capitalReadiness.note || "Phòng lab đang chờ dữ liệu thị trường XAU cập nhật."}</p>
+        {!!xau?.capitalReadiness.missing?.length && <ul className="mt-3 grid gap-1 text-xs text-[#9a5a35] sm:grid-cols-2">{xau.capitalReadiness.missing.map((item) => <li key={item}>• {item}</li>)}</ul>}
+      </section>
 
       <section className="mt-6 rounded-2xl border border-[#dfe4e8] bg-white p-6">
         <p className="text-xs font-bold tracking-[.14em] text-[#929ba4]">GÓI DỊCH VỤ CÓ THỂ BÁN</p>

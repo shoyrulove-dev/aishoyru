@@ -3,6 +3,7 @@ import type { Db } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getOperationalHealth } from "@/lib/operations";
 import { getPolymarketResearch } from "@/lib/polymarket";
+import { getXauShadowLab } from "@/lib/xau-shadow";
 import {
   ownerOnlyActions,
   servicePackages,
@@ -301,7 +302,7 @@ export async function GET(request: NextRequest) {
       },
     ]).toArray(),
   ]);
-  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket, adaptivePolicy, weeklyReport, activeTrial, financialTruth, assetRows, brainE2e, productivityAlert] = await Promise.all([
+  const [careerLaneRows, taskLaneRows, chatLeadRows, polymarket, xauShadow, adaptivePolicy, weeklyReport, activeTrial, financialTruth, assetRows, brainE2e, productivityAlert] = await Promise.all([
     db.collection("search_lane_stats").aggregate([
       { $group: { _id: "$kind", attempts: { $sum: "$attempts" }, results: { $sum: "$results" }, useful: { $sum: "$usefulResults" }, qualified: { $sum: "$qualified" } } },
       { $sort: { qualified: -1, useful: -1 } },
@@ -314,6 +315,7 @@ export async function GET(request: NextRequest) {
     process.env.POLYMARKET_RESEARCH_ENABLED === "false"
       ? Promise.resolve(null)
       : getPolymarketResearch(db).catch(() => null),
+    getXauShadowLab(db).catch(() => null),
     db.collection("survival_policy_state").findOne({ key: "adaptive-allocation" }),
     db.collection("published_posts").findOne({ reportType: "weekly-survival" }, { sort: { publishedAt: -1 } }),
     db.collection("survival_trials").findOne({}, { sort: { updatedAt: -1 } }),
@@ -427,6 +429,7 @@ export async function GET(request: NextRequest) {
       capital: {
         policy: tradingCapitalRules,
         paperTrading: polymarket?.paperTrading || null,
+        xauShadow: xauShadow || null,
       },
     },
     trafficSources,

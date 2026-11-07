@@ -35,6 +35,7 @@ import {
 } from "./survival-policy";
 import { evaluatePublicLanguage } from "./language-quality";
 import { runSurvivalMaintenance } from "./survival-maintenance";
+import { compactXauShadowLab, getXauShadowLab } from "./xau-shadow";
 
 const clip = (value: string, max: number) => {
   const clean = value.replace(/\s+/g, " ").trim();
@@ -1291,6 +1292,16 @@ export async function runAgentCycle() {
   const providerHealth = await db.collection("ai_provider_health").find({
     provider: { $in: providers.map((item) => item.name) },
   }).toArray();
+  const probeCandidate = providerHealth
+    .filter((item) =>
+      ["cooldown", "degraded"].includes(String(item.status || "")) &&
+      (!item.nextProbeAt || new Date(item.nextProbeAt as Date) <= new Date()) &&
+      (!item.cooldownUntil || new Date(item.cooldownUntil as Date) <= new Date()) &&
+      Date.now() - new Date(item.updatedAt as Date || 0).getTime() >= 6 * 60 * 60 * 1000,
+    )
+    .sort((left, right) =>
+      new Date(left.updatedAt as Date || 0).getTime() - new Date(right.updatedAt as Date || 0).getTime(),
+    )[0]?.provider;
   const providerScore = (name: string) => {
     const row = providerHealth.find((item) => item.provider === name);
     if (!row) return 50;
@@ -1300,7 +1311,11 @@ export async function runAgentCycle() {
     const latencyPenalty = Math.min(20, Number(row.lastLatencyMs || 0) / 1000);
     return successRate * 100 - latencyPenalty - Number(row.consecutiveFailures || 0) * 12;
   };
-  providers.sort((left, right) => providerScore(right.name) - providerScore(left.name));
+  providers.sort((left, right) => {
+    if (left.name === probeCandidate) return -1;
+    if (right.name === probeCandidate) return 1;
+    return providerScore(right.name) - providerScore(left.name);
+  });
   async function completeJson(
     messages: AiMessage[],
     options: { validatePublic?: boolean; excludeProvider?: string; maxProviders?: number } = {},
@@ -1533,12 +1548,13 @@ export async function runAgentCycle() {
   const workLaneSequence = await adaptiveWorkLaneSequence(db);
   const recommendedLane = workLaneSequence[rotationIndex % workLaneSequence.length];
   const searchQueryIndex = await selectSurvivalQueryIndex(db, rotationIndex, recommendedLane);
-  const [fundingResearch, webResearch, polymarketResearch] = await Promise.all([
+  const [fundingResearch, webResearch, polymarketResearch, xauShadowLab] = await Promise.all([
     inspectFundingSource(fundingSourceIndex),
     searchSurvivalOpportunities(db, searchQueryIndex),
     process.env.POLYMARKET_RESEARCH_ENABLED === "false"
       ? Promise.resolve(null)
       : getPolymarketResearch(db).catch(() => null),
+    getXauShadowLab(db).catch(() => null),
   ]);
   let decisionResponse: { content: string; provider: string; model: string };
   try {
@@ -1679,6 +1695,7 @@ export async function runAgentCycle() {
         polymarketResearch: polymarketResearch
           ? compactPolymarketResearch(polymarketResearch)
           : null,
+        xauShadowLab: xauShadowLab ? compactXauShadowLab(xauShadowLab) : null,
         autonomyPolicy: {
           canDoWithoutApproval: [
             "tìm kiếm và đọc dữ liệu công khai",
@@ -2677,11 +2694,7 @@ export async function runAgentCycle() {
     const key = journalKey(candidate);
     return key && !recentJournalKeys.has(key) &&
       ![...recentJournalKeys].some((recentKey) => journalSimilarity(key, recentKey) >= 0.82);
-  }) || `Shoyru vừa hoàn thành lượt làm việc lúc ${now.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-  })}. Kết quả đã được ghi vào nhật ký.`;
+  }) || "";
   const conversationEntries = [{
     speaker: "shoyru",
     text: publicJournalLine,

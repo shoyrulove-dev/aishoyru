@@ -22,6 +22,16 @@ const checks = [
       data.tradesScanned > 0 &&
       data.marketsObserved > 0,
   },
+  {
+    path: "/api/health/xau-shadow",
+    json: (data) =>
+      data.ok &&
+      data.mode === "research-only" &&
+      data.liveTradingEnabled === false &&
+      data.brokerExecutionEnabled === false &&
+      data.defaultDecision === "PASS" &&
+      typeof data.capitalReadiness?.eligible === "boolean",
+  },
   { path: "/api/state", json: (data) => data.demo === false && data.lastRunAt },
 ];
 
