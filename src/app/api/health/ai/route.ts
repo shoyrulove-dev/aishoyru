@@ -34,7 +34,7 @@ export async function GET() {
       : row?.failureType || classifyProviderError(new Error(error));
     const eligibleForProbe = providerCanBeProbed(row);
     const reportedStatus = row?.status === "cooldown" && eligibleForProbe ? "probe-due" : row?.status || "untested";
-    const availableNow = eligibleForProbe;
+    const availableNow = eligibleForProbe && ["healthy", "degraded", "untested"].includes(String(row?.status || "untested"));
     return {
       name,
       status: reportedStatus,
@@ -47,8 +47,10 @@ export async function GET() {
     };
   });
   const available = providers.filter((provider) => provider.availableNow).length;
+  const probeDue = providers.filter((provider) => provider.status === "probe-due").length;
+  const operational = configured.length > 0 && (available > 0 || probeDue > 0);
   return NextResponse.json(
-    { ok: configured.length > 0 && available > 0, configured: configured.length, available, providers },
-    { status: configured.length > 0 && available > 0 ? 200 : 503, headers: { "Cache-Control": "no-store" } },
+    { ok: operational, configured: configured.length, available, probeDue, providers },
+    { status: operational ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }
