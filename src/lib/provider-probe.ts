@@ -102,7 +102,7 @@ async function probeOne(db: Db, config: ProbeConfig) {
       const result = await client.chat.completions.create({
         model: config.model,
         messages,
-        max_tokens: 80,
+        max_tokens: config.name === "groq" ? 512 : 80,
         stream: false,
         response_format: { type: "json_object" },
       }).withResponse();
@@ -116,7 +116,7 @@ async function probeOne(db: Db, config: ProbeConfig) {
       const result = await client.chat.completions.create({
         model: config.model,
         messages,
-        max_tokens: 80,
+        max_tokens: config.name === "groq" ? 512 : 80,
         stream: false,
       }).withResponse();
       response = result.data;
@@ -160,15 +160,15 @@ export async function runCoreProviderProbe(db: Db) {
   const results = [];
   for (const config of configs()) results.push(await probeOne(db, config));
   const report = {
-    version: 4,
+    version: 5,
     checkedAt: new Date(),
     ok: results.some((item) => item.ok),
     healthy: results.filter((item) => item.ok).length,
     results,
   };
   await db.collection("ai_probe_reports").updateOne(
-    { key: "core-v4" },
-    { $set: { ...report, key: "core-v4" } },
+    { key: "core-v5" },
+    { $set: { ...report, key: "core-v5" } },
     { upsert: true },
   );
   return report;
