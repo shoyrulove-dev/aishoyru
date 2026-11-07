@@ -10,7 +10,14 @@ const checks = [
   { path: "/b3f08a6c9d2e4175a8c6e1f94b7d203a.txt", contains: "b3f08a6c9d2e4175a8c6e1f94b7d203a" },
   { path: "/api/health/search", json: (data) => data.configured && data.lastStatus === "success" },
   { path: "/api/health/ai", json: (data) => data.ok && data.configured > 0 && (data.available > 0 || data.probeDue > 0) },
-  { path: "/api/health/ai-probe", json: (data) => Array.isArray(data.results) && data.results.length === 3 },
+  {
+    path: "/api/health/ai-probe",
+    json: (data) =>
+      Array.isArray(data.results) &&
+      ["groq", "gemini", "cloudflare", "nvidia"].every((provider) =>
+        data.results.some((item) => item.provider === provider && item.ok === true),
+      ),
+  },
   { path: "/api/health/github", json: (data) => data.configured && data.ok && data.canPush },
   { path: "/api/health/commerce", json: (data) => data.ok },
   { path: "/api/health/agent", json: (data) => data.ok && data.ageMinutes <= 90 },
