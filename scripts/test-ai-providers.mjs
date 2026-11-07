@@ -41,7 +41,7 @@ let providers = [
   ["Kilo", "KILO", "openai", "https://ai-gateway.kilo.ai/api/v1", "kilo-auto/free"],
   ["Radox AI", "RADOX", "openai", "https://radoxai.com/v1", ""],
   ["Cerebras", "CEREBRAS", "openai", "https://api.cerebras.ai/v1", ""],
-  ["Gemini", "GEMINI", "openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash"],
+  ["Gemini", "GEMINI", "openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"],
   ["Hugging Face", "HUGGINGFACE", "openai", "https://router.huggingface.co/v1", "openai/gpt-oss-120b:fastest"],
   ["Cohere", "COHERE", "cohere", "https://api.cohere.com/v2", "command-a-03-2025"],
   ["Mistral", "MISTRAL", "openai", "https://api.mistral.ai/v1", "mistral-small-latest"],
@@ -146,6 +146,9 @@ async function oneRequest(provider, model) {
       : body?.choices?.[0]?.message?.content;
     const usage = body?.usage || {};
     const textContent = String(content || "").trim();
+    const safeError = String(body?.error?.message || body?.message || "")
+      .replace(/(key|token|secret)\s*[=:]\s*\S+/gi, "$1=[hidden]")
+      .slice(0, 180);
     return {
       status: response.status,
       result: classify(response.status, body),
@@ -156,6 +159,7 @@ async function oneRequest(provider, model) {
       inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? "",
       outputTokens: usage.completion_tokens ?? usage.output_tokens ?? "",
       errorCode: body?.error?.code || body?.error?.type || "",
+      errorMessage: safeError,
       ...rateHeaders(response.headers),
     };
   } catch (error) {
@@ -175,6 +179,7 @@ async function oneRequest(provider, model) {
       tokenRemaining: "",
       retryAfter: "",
       errorCode: "",
+      errorMessage: String(error?.cause?.code || error?.message || error?.name || "").slice(0, 180),
     };
   }
 }
