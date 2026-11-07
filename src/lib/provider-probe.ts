@@ -20,7 +20,7 @@ const configs = (): ProbeConfig[] => [
     name: "gemini",
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai",
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model: "gemini-2.5-flash-lite",
     expectedHost: "generativelanguage.googleapis.com",
   },
   {
@@ -29,7 +29,7 @@ const configs = (): ProbeConfig[] => [
       ? process.env.CLOUDFLARE_AI_API_TOKEN
       : undefined,
     baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID || ""}/ai/v1`,
-    model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
+    model: "@cf/meta/llama-3.1-8b-instruct",
     expectedHost: "api.cloudflare.com",
   },
   {
@@ -125,15 +125,15 @@ export async function runCoreProviderProbe(db: Db) {
   const results = [];
   for (const config of configs()) results.push(await probeOne(db, config));
   const report = {
-    version: 1,
+    version: 2,
     checkedAt: new Date(),
     ok: results.some((item) => item.ok),
     healthy: results.filter((item) => item.ok).length,
     results,
   };
   await db.collection("ai_probe_reports").updateOne(
-    { key: "core-v1" },
-    { $set: { ...report, key: "core-v1" } },
+    { key: "core-v2" },
+    { $set: { ...report, key: "core-v2" } },
     { upsert: true },
   );
   return report;

@@ -26,7 +26,8 @@ const retryDelay = (type: ProviderFailureType, failures: number) => {
 
 export function providerTimeoutMs(provider: string) {
   if (provider === "groq") return 8_000;
-  if (["nvidia", "gemini", "openrouter", "kilo", "kilo-fallback"].includes(provider)) return 15_000;
+  if (provider === "gemini") return 30_000;
+  if (["nvidia", "openrouter", "kilo", "kilo-fallback"].includes(provider)) return 15_000;
   if (provider === "cloudflare") return 12_000;
   return 10_000;
 }
