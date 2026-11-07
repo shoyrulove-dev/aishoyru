@@ -1216,13 +1216,13 @@ export async function runAgentCycle() {
           ? process.env.CLOUDFLARE_AI_API_TOKEN
           : undefined,
       baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
-      model: "@cf/meta/llama-3.1-8b-instruct",
+      model: "@cf/meta/llama-3.2-3b-instruct",
     },
     {
       name: "gemini",
       apiKey: process.env.GEMINI_API_KEY,
       baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3.5-flash-lite",
     },
     {
       name: "cerebras",

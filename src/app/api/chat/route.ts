@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       name: "gemini",
       apiKey: process.env.GEMINI_API_KEY,
       baseURL: process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/",
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3.5-flash-lite",
     },
     process.env.GROQ_API_KEY && {
       name: "groq",
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       name: "cloudflare",
       apiKey: process.env.CLOUDFLARE_AI_API_TOKEN,
       baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
-      model: "@cf/meta/llama-3.1-8b-instruct",
+      model: "@cf/meta/llama-3.2-3b-instruct",
     },
     process.env.OPENROUTER_API_KEY && {
       name: "openrouter",

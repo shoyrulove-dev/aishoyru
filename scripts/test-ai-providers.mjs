@@ -41,7 +41,7 @@ let providers = [
   ["Kilo", "KILO", "openai", "https://ai-gateway.kilo.ai/api/v1", "kilo-auto/free"],
   ["Radox AI", "RADOX", "openai", "https://radoxai.com/v1", ""],
   ["Cerebras", "CEREBRAS", "openai", "https://api.cerebras.ai/v1", ""],
-  ["Gemini", "GEMINI", "openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash"],
+  ["Gemini", "GEMINI", "openai", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash-lite"],
   ["Hugging Face", "HUGGINGFACE", "openai", "https://router.huggingface.co/v1", "openai/gpt-oss-120b:fastest"],
   ["Cohere", "COHERE", "cohere", "https://api.cohere.com/v2", "command-a-03-2025"],
   ["Mistral", "MISTRAL", "openai", "https://api.mistral.ai/v1", "mistral-small-latest"],
@@ -63,7 +63,7 @@ providers.push({
   key: process.env.CLOUDFLARE_AI_API_TOKEN || "",
   accountId: process.env.CLOUDFLARE_ACCOUNT_ID || "",
   baseURL: "https://api.cloudflare.com/client/v4",
-  model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.1-8b-instruct",
+  model: process.env.CLOUDFLARE_AI_MODEL || "@cf/meta/llama-3.2-3b-instruct",
 });
 
 if (providerFilter) {
