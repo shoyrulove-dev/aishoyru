@@ -1,0 +1,38 @@
+# Fill .dev.vars for local preview. Never commit or paste any values into chat.
+# Use a dedicated test database on preview; use the exact Vercel DB on production.
+MONGODB_URI=
+MONGODB_DB=
+ADMIN_API_KEY=
+CRON_SECRET=
+
+# AI: configure at least one provider that supports structured output (e.g. Groq).
+GROQ_API_KEY=
+# Optional last-resort OpenAI-compatible fallback (Shoptaikhoan key only).
+SHOPTAIKHOAN_API_KEY=
+# GROQ_MODEL=openai/gpt-oss-20b
+# OPENAI_API_KEY=
+# GEMINI_API_KEY=
+# NVIDIA_NIM_API_KEY=
+# OXION_API_KEY=
+# CEREBRAS_API_KEY=
+# HUGGINGFACE_API_KEY=
+# KILO_API_KEY=
+# MISTRAL_API_KEY=
+# OPENROUTER_API_KEY=
+# RADOX_API_KEY=
+# SAMBANOVA_API_KEY=
+# CLOUDFLARE_ACCOUNT_ID=
+# CLOUDFLARE_AI_API_TOKEN=
+
+# Optional integrations; keep the same values/settings as the old deployment.
+# BRAVE_SEARCH_API_KEY=
+# GITHUB_AUTOMATION_TOKEN=
+# SEPAY_API_KEY=
+# BANK_BIN=
+# BANK_ACCOUNT_NO=
+# BANK_ACCOUNT_NAME=
+# BLOB_READ_WRITE_TOKEN=
+# PRODUCT_AGENT_STARTER_URL=
+# PRODUCT_STICKER_URL=
+# RESEND_API_KEY=
+# SHOYRU_EMAIL=

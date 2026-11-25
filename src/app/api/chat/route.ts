@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { estimateServiceScope } from "@/lib/survival-maintenance";
+import { getShoptaikhoanProvider } from "@/lib/shoptaikhoan";
 import {
   providerIsCoolingDown,
   providerTimeoutMs,
@@ -208,6 +209,7 @@ export async function POST(request: NextRequest) {
       baseURL: process.env.OXION_BASE_URL || "https://www.oxionai.com/v1",
       model: process.env.OXION_MODEL || "gpt-5.6-luna",
     },
+    getShoptaikhoanProvider(),
   ].filter(Boolean) as Array<{ name: string; apiKey: string; baseURL: string; model: string }>;
   for (const provider of deterministicReply || qualifyingReply ? [] : providers) {
     if (await providerIsCoolingDown(db, provider.name)) continue;
@@ -217,17 +219,20 @@ export async function POST(request: NextRequest) {
         apiKey: provider.apiKey,
         baseURL: provider.baseURL,
         timeout: providerTimeoutMs(provider.name),
+        ...(provider.name === "shoptaikhoan" ? { maxRetries: 0 } : {}),
       });
       const result = await client.chat.completions.create({
         model: provider.model,
-        max_tokens: 120,
+        ...(provider.name === "shoptaikhoan"
+          ? { max_completion_tokens: 768 }
+          : { max_tokens: 120 }),
         messages: [
           {
             role: "system",
             content:
               "Bạn là Shoyru, một chú rồng AI dễ thương đang học làm việc và tự kiếm chi phí nuôi mình. Tên của bạn luôn là Shoyru. Trả lời đúng câu vừa hỏi theo ngữ cảnh hội thoại, bằng tiếng Việt có dấu, tối đa 2 câu ngắn và 220 ký tự. Không trả lời bằng câu xác nhận chung chung khi câu hỏi có đáp án trực tiếp. Chỉ giới thiệu sản phẩm khi liên quan; không ép mua, không bịa doanh thu, tính năng hay khuyến mãi và không xin dữ liệu nhạy cảm. Chỉ nói cần chủ nhân khi khách yêu cầu hoàn tiền, hợp đồng, pháp lý, báo giá riêng hoặc quyết định vượt quyền.",
           },
-          ...history.reverse().map((message) => ({
+          ...history.toReversed().map((message) => ({
             role: message.role === "shoyru" ? ("assistant" as const) : ("user" as const),
             content: String(message.text || ""),
           })),

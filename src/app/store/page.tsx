@@ -4,7 +4,6 @@ import { connection } from "next/server";
 import { StoreFront } from "@/components/store-front";
 import { affiliateOffers,productPrepared,productReady,products } from "@/lib/store";
 
-export const instant=false;
 export const metadata: Metadata = {
  title:"Cửa hàng sản phẩm số",
  description:"Sản phẩm số do Shoyru tự xây dựng để trang trải chi phí vận hành, thanh toán qua VietQR và giao tệp tự động.",

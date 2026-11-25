@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { getShoptaikhoanProvider } from "./shoptaikhoan";
 import { getDb } from "./mongodb";
 import {
   providerIsCoolingDown,
@@ -1195,6 +1196,7 @@ export async function runAgentCycle() {
       nextWake: routine.nextWake,
     };
   }
+  const shoptaikhoan = getShoptaikhoanProvider();
   const providers = [
     {
       name: "groq",
@@ -1285,10 +1287,11 @@ export async function runAgentCycle() {
       baseURL: "https://api.openai.com/v1",
       model: process.env.OPENAI_MODEL || "gpt-5-mini",
     },
+    ...(shoptaikhoan ? [{ ...shoptaikhoan, maxInputTokensPerMinute: undefined }] : []),
   ].filter((p) => p.apiKey);
   if (!providers.length)
     throw new Error(
-      "Chưa cấu hình API key cho Groq, OpenRouter, Kilo hoặc OpenAI",
+      "Chưa cấu hình API key cho nhà cung cấp AI",
     );
   const providerHealth = await db.collection("ai_provider_health").find({
     provider: { $in: providers.map((item) => item.name) },
@@ -1313,6 +1316,9 @@ export async function runAgentCycle() {
     return successRate * 100 - latencyPenalty - Number(row.consecutiveFailures || 0) * 12;
   };
   providers.sort((left, right) => {
+    if (left.name === "shoptaikhoan" || right.name === "shoptaikhoan") {
+      return Number(left.name === "shoptaikhoan") - Number(right.name === "shoptaikhoan");
+    }
     if (left.name === probeCandidate) return -1;
     if (right.name === probeCandidate) return 1;
     return providerScore(right.name) - providerScore(left.name);
@@ -1350,7 +1356,9 @@ export async function runAgentCycle() {
         const request = (strictJson: boolean) =>
           client.chat.completions.create({
             model: provider.model,
-            max_tokens: 900,
+            ...(provider.name === "shoptaikhoan"
+              ? { max_completion_tokens: 2_048 }
+              : { max_tokens: 900 }),
             ...(strictJson ? { response_format: { type: "json_object" as const } } : {}),
             messages: strictJson
               ? compactMessages

@@ -1,13 +1,18 @@
 const base = process.env.SHOYRU_BASE_URL || "https://shoyruai.blissbiovn.com";
-const checks = [
-  { path: "/", contains: "Shoyru" },
-  { path: "/store", contains: "Shoyru" },
-  { path: "/store/bo-khoi-tao-ai-shoyru", contains: "79.000" },
-  { path: "/free", contains: "Starter Mini" },
+const publicOnly = process.argv.includes("--public-only");
+const publicChecks = [
+  { path: "/", contains: "Shoyru", vietnameseHtml: true },
+  { path: "/store", contains: "Cửa hàng", vietnameseHtml: true },
+  { path: "/store/bo-khoi-tao-ai-shoyru", contains: "79.000", vietnameseHtml: true },
+  { path: "/free", contains: "Starter Mini", vietnameseHtml: true },
+  { path: "/updates", vietnameseHtml: true },
+  { path: "/admin", vietnameseHtml: true },
   { path: "/api/free-starter", contains: "SHOYRU STARTER MINI" },
   { path: "/feed.xml", contains: "<rss version=\"2.0\">" },
   { path: "/post-sitemap.xml", contains: "<urlset" },
   { path: "/b3f08a6c9d2e4175a8c6e1f94b7d203a.txt", contains: "b3f08a6c9d2e4175a8c6e1f94b7d203a" },
+];
+const integrationChecks = [
   { path: "/api/health/search", json: (data) => data.configured && data.lastStatus === "success" },
   { path: "/api/health/ai", json: (data) => data.ok && data.configured > 0 && (data.available > 0 || data.probeDue > 0) },
   {
@@ -44,15 +49,19 @@ const checks = [
 ];
 
 let failed = 0;
+const checks = publicOnly ? publicChecks : [...publicChecks, ...integrationChecks];
 for (const check of checks) {
   try {
     const response = await fetch(`${base}${check.path}`, {
       signal: AbortSignal.timeout(15_000),
       headers: { "User-Agent": "Shoyru production E2E/1.0" },
     });
-    const body = await response.text();
+    const body = new TextDecoder("utf-8", { fatal: true }).decode(await response.arrayBuffer());
     let valid = response.ok;
     if (valid && check.contains) valid = body.includes(check.contains);
+    if (valid && check.vietnameseHtml) {
+      valid = /<html\b[^>]*\blang=["']vi(?:-VN)?["']/i.test(body) && !body.includes("\uFFFD");
+    }
     if (valid && check.json) valid = Boolean(check.json(JSON.parse(body)));
     console.log(`${valid ? "PASS" : "FAIL"} ${check.path} HTTP ${response.status}`);
     if (!valid) failed += 1;
@@ -61,4 +70,5 @@ for (const check of checks) {
     console.log(`FAIL ${check.path} ${error instanceof Error ? error.message : error}`);
   }
 }
+console.log(`${checks.length - failed}/${checks.length} checks passed${publicOnly ? " (public only)" : ""}.`);
 if (failed) process.exitCode = 1;

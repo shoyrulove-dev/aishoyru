@@ -25,6 +25,7 @@ export async function GET() {
     ["kilo", process.env.KILO_API_KEY],
     ["oxion", process.env.OXION_API_KEY],
     ["openai", process.env.OPENAI_API_KEY],
+    ["shoptaikhoan", process.env.SHOPTAIKHOAN_API_KEY?.trim()],
   ].filter(([, key]) => Boolean(key)).map(([name]) => name);
   const providers = configured.map((name) => {
     const row = rows.find((item) => item.provider === name || (name === "kilo" && item.provider === "kilo-fallback"));

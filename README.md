@@ -40,6 +40,8 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 
 ## Triển khai
 
+Phương án chuyển sang Cloudflare Workers: [hướng dẫn build, secrets và đổi domain](docs/cloudflare-deployment.md).
+
 Import repository lên Vercel, thêm biến môi trường rồi deploy. GitHub Actions chạy mỗi giờ; lịch trong `vercel.json` là lượt dự phòng hằng ngày, phù hợp giới hạn Vercel Hobby.
 
 Watchdog độc lập nằm trong `cloudflare-watchdog/`. Sau khi có token `Workers Scripts: Edit`, chạy `npm run cloudflare:deploy`; Cron Trigger sẽ gọi heartbeat mỗi 10 phút và endpoint vẫn khóa tối đa một lượt làm việc mỗi giờ.
@@ -66,4 +68,3 @@ Có thể kiểm tra riêng một provider/model mà không sửa file chứa ke
 ```bash
 node scripts/test-ai-providers.mjs --provider=Gemini --model=gemini-3.5-flash-lite --requests=3 --max_tokens=256
 ```
-
