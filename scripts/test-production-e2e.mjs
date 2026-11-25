@@ -23,7 +23,6 @@ const integrationChecks = [
         data.results.some((item) => item.provider === provider && item.ok === true),
       ),
   },
-  { path: "/api/health/github", json: (data) => data.configured && data.ok && data.canPush },
   { path: "/api/health/commerce", json: (data) => data.ok },
   { path: "/api/health/agent", json: (data) => data.ok && data.ageMinutes <= 90 },
   {

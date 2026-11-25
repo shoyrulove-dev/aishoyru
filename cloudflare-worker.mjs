@@ -11,8 +11,7 @@ async function closeMongo(scope) {
   }
 }
 
-export default {
-  fetch(request, env, ctx) {
+function fetchWithMongoScope(request, env, ctx) {
     const scope = {};
     return mongoRequestScope.run(scope, async () => {
       try {
@@ -32,5 +31,29 @@ export default {
         throw error;
       }
     });
+}
+
+const scheduledRoutes = new Map([
+  ["*/10 * * * *", "/api/cron/agent"],
+  ["2,17,32,47 * * * *", "/api/cron/quant"],
+]);
+
+const worker = {
+  fetch: fetchWithMongoScope,
+  async scheduled(controller, env, ctx) {
+    const route = scheduledRoutes.get(controller.cron);
+    if (!route) throw new Error("Unknown Shoyru cron trigger");
+    if (!env.CRON_SECRET) throw new Error("Shoyru cron credential is not configured");
+    const request = new Request(`https://shoyruai.blissbiovn.com${route}`, {
+      headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
+    });
+    const response = await fetchWithMongoScope(request, env, ctx);
+    const result = await response.json().catch(() => null);
+    if (!response.ok || result?.ok !== true) {
+      throw new Error(`Shoyru cron ${route} failed (HTTP ${response.status})`);
+    }
+    console.info("Shoyru cron completed", { route, skipped: result.skipped === true });
   },
 };
+
+export default worker;

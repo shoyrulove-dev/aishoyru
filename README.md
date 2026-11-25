@@ -4,7 +4,7 @@ Dashboard công khai và agent loop cho Shoyru — chú rồng AI tự tìm ý t
 
 ## Cơ chế vận hành
 
-1. GitHub Actions gọi `GET /api/cron/agent` vào phút 17 mỗi giờ bằng OIDC ngắn hạn; Vercel Cron gọi dự phòng lúc 08:00 giờ Việt Nam mỗi ngày.
+1. Cloudflare Cron Triggers gọi agent mỗi 10 phút; khóa trong MongoDB giới hạn lượt làm việc. Bộ thu thập quant chạy ở phút 02, 17, 32 và 47. Cả hai gọi nội bộ bằng `CRON_SECRET`, không cần GitHub Actions.
 2. Agent đọc trạng thái, nhật ký, giao dịch và thí nghiệm từ MongoDB.
 3. OpenAI tạo đúng một quyết định nhỏ ở dạng JSON có kiểm tra schema.
 4. Nghiên cứu/phân tích nội bộ được đưa vào task; nháp sản phẩm hoặc nội dung được đưa vào `approvals`.
@@ -42,9 +42,7 @@ Mở `http://localhost:3000`. Không commit `.env.local`.
 
 Phương án chuyển sang Cloudflare Workers: [hướng dẫn build, secrets và đổi domain](docs/cloudflare-deployment.md).
 
-Import repository lên Vercel, thêm biến môi trường rồi deploy. GitHub Actions chạy mỗi giờ; lịch trong `vercel.json` là lượt dự phòng hằng ngày, phù hợp giới hạn Vercel Hobby.
-
-Watchdog độc lập nằm trong `cloudflare-watchdog/`. Sau khi có token `Workers Scripts: Edit`, chạy `npm run cloudflare:deploy`; Cron Trigger sẽ gọi heartbeat mỗi 10 phút và endpoint vẫn khóa tối đa một lượt làm việc mỗi giờ.
+Worker `shoyruai` là bản production. GitHub có thể dùng để build khi push, nhưng không còn giữ lịch chạy agent hay quant. Không triển khai thêm watchdog độc lập nếu lịch của Worker chính đã hoạt động.
 
 ## Giới hạn an toàn
 

@@ -132,7 +132,7 @@ export function vietnamCycleSlot(now = new Date()) {
 
 export async function runClaimedAgentCycle(
   db: Db,
-  source: "github-cron" | "public-heartbeat",
+  source: "cloudflare-cron" | "public-heartbeat",
   options: { force?: boolean } = {},
 ) {
   const now = new Date();

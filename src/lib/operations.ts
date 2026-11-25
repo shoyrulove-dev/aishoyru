@@ -5,7 +5,7 @@ const DAY = 24 * 60 * MINUTE;
 const MAX_ATTEMPTS = 3;
 const JOB_LEASE = 5 * MINUTE;
 
-export type CycleSource = "github-cron" | "public-heartbeat";
+export type CycleSource = "cloudflare-cron" | "github-cron" | "public-heartbeat";
 
 export async function ensureOperationalIndexes(db: Db) {
   await Promise.all([

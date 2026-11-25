@@ -11,7 +11,7 @@ Ngày 25/11/2026, tên miền `shoyruai.blissbiovn.com` trả HTTP 402 từ Verc
 | MongoDB | `MONGODB_URI`, `MONGODB_DB`. Khi lên production, dùng đúng database đang chạy trên Vercel để giữ nguyên dữ liệu. Preview dùng database/test user riêng; các route đọc như `/api/state` có thể kích hoạt agent. |
 | Admin | `ADMIN_API_KEY`. Dùng key riêng cho preview; production dùng key hiện tại hoặc thống nhất việc xoay key. |
 | Agent/AI | Ít nhất một provider hỗ trợ structured output, ví dụ `GROQ_API_KEY`. Cloudflare Workers AI qua REST hiện chỉ dự phòng chat, không thay thế provider cho agent. |
-| Cron | Giữ `CRON_SECRET` nếu còn caller dùng Bearer. GitHub Actions chạy bằng OIDC, không cần đổi sang dùng secret này. |
+| Cron | `CRON_SECRET` là bắt buộc cho hai Cloudflare Cron Triggers. Worker dùng khóa này để gọi nội bộ; GitHub Actions không còn gọi cron. |
 | Cửa hàng | Nếu đang bán hàng: `SEPAY_API_KEY` và `BANK_BIN`, `BANK_ACCOUNT_NO`, `BANK_ACCOUNT_NAME`. Nếu đang giao qua Vercel Blob, cần `BLOB_READ_WRITE_TOKEN` và store còn hoạt động. Đổi host không di chuyển file sang R2. |
 | Tích hợp khác | Chuyển các key/tùy chỉnh đang dùng (Brave, GitHub Automation, Resend và model) từ deployment cũ nếu muốn giữ tính năng tương ứng. |
 
@@ -32,7 +32,7 @@ Kiểm tra `/`, `/api/state`, đăng nhập `/admin`, chat và các tính năng 
 
 OpenNext cảnh báo hỗ trợ Next.js Proxy còn thử nghiệm và Cache Components chưa đầy đủ: kiểm tra đặc biệt các route admin/API và `/updates`. `npm audit --omit=dev` báo 4 mục mức high trong cây phụ thuộc Vercel Blob; rà soát/xử lý trước khi mở production, không chạy `npm audit fix --force` tùy tiện trên kho file đang bán.
 
-Sau khi preview ổn, vào đúng tài khoản Cloudflare đang quản lý zone. Cấu hình ban đầu chỉ bật `workers.dev`, không tự đổi tên miền hoặc lập Cron Trigger mới:
+Sau khi preview ổn, vào đúng tài khoản Cloudflare đang quản lý zone. Cấu hình bật `workers.dev` và đăng ký hai Cron Trigger; không tự gắn tên miền chính. Dùng Worker riêng nếu kiểm tra staging để không thay lịch production:
 
 ```sh
 npx wrangler login
@@ -46,5 +46,5 @@ Chưa gắn production secrets vào một URL thử công khai nếu không mu�
 
 1. Lưu record DNS cũ của `shoyruai.blissbiovn.com` để rollback. Chỉ khi Worker đã thử xong và đang dùng đúng biến production mới gắn tên miền trong **Settings → Domains & Routes → Add → Custom domain**. Nếu Cloudflare báo CNAME đang tồn tại, gỡ đúng record của subdomain đó trong cửa sổ cutover rồi gắn Custom Domain; tránh thay các record của zone khác.
 2. Kiểm tra HTTPS, dashboard đọc đúng dữ liệu, admin, chat, các webhook và giao hàng nếu đang sử dụng. Nếu Vercel Blob hết quyền hoặc hết dịch vụ, xử lý di chuyển các file trả phí sang kho private riêng rồi mới xác nhận cửa hàng hoạt động đầy đủ.
-3. GitHub Actions và Cloudflare watchdog hiện đã gọi tên miền chính nên không cần sửa URL nếu giữ tên miền. Theo dõi lần chạy kế tiếp; không bật thêm lịch Cloudflare song song. Lượt Vercel Cron dự phòng lúc 08:00 không được chuyển nguyên trạng; khi Cloudflare chạy ổn thì ngắt Vercel Cron nếu Vercel sẽ được bật lại. Các thiết lập thời lượng của Vercel không thay đổi giới hạn CPU/runtime của Workers; kiểm tra log agent với gói Cloudflare thực tế.
+3. Theo dõi log của Cloudflare Cron Triggers trên Worker chính. Không bật GitHub Actions, Vercel Cron hoặc watchdog độc lập làm lịch song song. Các thiết lập thời lượng của Vercel không thay đổi giới hạn CPU/runtime của Workers; kiểm tra log agent với gói Cloudflare thực tế.
 4. Nếu cần rollback, tháo Custom Domain và khôi phục record cũ **chỉ khi** Vercel đã được kích hoạt lại. Record cũ sẽ không phục hồi dịch vụ nếu Vercel vẫn trả HTTP 402. Nếu đã có bản Worker tốt trước đó, dùng rollback của Cloudflare để tránh đổi DNS lần nữa.

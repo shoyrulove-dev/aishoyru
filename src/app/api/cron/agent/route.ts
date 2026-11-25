@@ -1,43 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runClaimedAgentCycle } from "@/lib/agent-cycle";
 import { getDb } from "@/lib/mongodb";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { hasCronSecret } from "@/lib/cron-auth";
 
 export const maxDuration = 300;
 
-const githubKeys = createRemoteJWKSet(
-  new URL("https://token.actions.githubusercontent.com/.well-known/jwks"),
-);
-
-async function isAuthorized(req: NextRequest) {
-  const authorization = req.headers.get("authorization");
-  const token = authorization?.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : "";
-  if (!token) return false;
-
-  const expected = process.env.CRON_SECRET;
-  if (expected && token === expected) return true;
-
-  try {
-    const { payload } = await jwtVerify(token, githubKeys, {
-      issuer: "https://token.actions.githubusercontent.com",
-      audience: "aishoyru-agent",
-    });
-    return (
-      payload.repository === "shoyrulove-dev/aishoyru" &&
-      payload.ref === "refs/heads/main"
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await isAuthorized(req)))
+  if (!hasCronSecret(req))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const db = await getDb();
-  const state = await db?.collection("agent_state").findOne({ key: "main" });
+  if (!db) return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+  const state = await db.collection("agent_state").findOne({ key: "main" });
   const lastRun = state?.lastRunAt
     ? new Date(state.lastRunAt as Date).getTime()
     : 0;
@@ -54,7 +27,7 @@ export async function GET(req: NextRequest) {
     });
   try {
     return NextResponse.json(
-      await runClaimedAgentCycle(db!, "github-cron", {
+      await runClaimedAgentCycle(db, "cloudflare-cron", {
         force: req.nextUrl.searchParams.get("force") === "1",
       }),
     );
